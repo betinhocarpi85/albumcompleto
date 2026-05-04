@@ -102,10 +102,12 @@ const VENDAS = [
 type Tab = 'trocas' | 'doacoes' | 'vendas'
 
 export default function MatchesPage() {
-  const [tab, setTab]       = useState<Tab>('trocas')
+  const [tab, setTab]           = useState<Tab>('trocas')
   const [expanded, setExpanded] = useState<string | null>(null)
-  // Por match: quais figurinhas da minha oferta estão desmarcadas
+  // Trocas: figurinhas removidas da oferta por match
   const [removidos, setRemovidos] = useState<Record<string, Set<number>>>({})
+  // Vendas: figurinhas selecionadas no carrinho por vendedor
+  const [carrinho, setCarrinho] = useState<Record<string, Set<number>>>({})
 
   function toggleRemovido(matchId: string, num: number) {
     setRemovidos(prev => {
@@ -113,6 +115,22 @@ export default function MatchesPage() {
       next.has(num) ? next.delete(num) : next.add(num)
       return { ...prev, [matchId]: next }
     })
+  }
+
+  function toggleCarrinho(vendaId: string, num: number) {
+    setCarrinho(prev => {
+      const next = new Set(prev[vendaId] ?? [])
+      next.has(num) ? next.delete(num) : next.add(num)
+      return { ...prev, [vendaId]: next }
+    })
+  }
+
+  function selecionarTudo(vendaId: string, nums: number[]) {
+    setCarrinho(prev => ({ ...prev, [vendaId]: new Set(nums) }))
+  }
+
+  function limparCarrinho(vendaId: string) {
+    setCarrinho(prev => ({ ...prev, [vendaId]: new Set() }))
   }
 
   return (
@@ -297,58 +315,136 @@ export default function MatchesPage() {
       {tab === 'vendas' && (
         <div className="space-y-3 animate-fadein">
           <p className="text-xs text-slate-400 text-center mb-1">
-            Vendedores com figurinhas que você ainda não tem no álbum
+            Vendedores com figurinhas que você ainda não tem — toque nas que quer comprar
           </p>
-          {VENDAS.map(v => (
-            <div key={v.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                  <span className="text-white text-xs font-black">{v.user.avatar}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800">{v.user.name}</p>
-                  <p className="text-xs text-slate-400">{v.user.city} · ⭐ {v.user.rating} · {v.user.sales} vendas</p>
-                </div>
-                <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-1 rounded-full flex-shrink-0">
-                  💰 Vendedor
-                </span>
-              </div>
+          {VENDAS.map(v => {
+            const isOpen     = expanded === v.id
+            const sel        = carrinho[v.id] ?? new Set<number>()
+            const precoNum   = (p: string) => parseFloat(p.replace('R$ ', '').replace(',', '.'))
+            const totalSel   = v.items.filter(i => sel.has(i.num)).reduce((a, i) => a + precoNum(i.preco), 0)
+            const precoMin   = Math.min(...v.items.map(i => precoNum(i.preco)))
+            const precoMax   = Math.max(...v.items.map(i => precoNum(i.preco)))
+            const faixaPreco = precoMin === precoMax
+              ? `R$ ${precoMin.toFixed(2).replace('.', ',')}`
+              : `R$ ${precoMin.toFixed(2).replace('.', ',')} – R$ ${precoMax.toFixed(2).replace('.', ',')}`
 
-              {/* Listagem de figurinhas com preço */}
-              <div className="space-y-2 mb-3">
-                {v.items.map(item => {
-                  const s = allStickers.find(x => x.number === item.num)
-                  const tipoLabel = item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'
-                  return (
-                    <div key={item.num} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2">
-                      <StickerSquare number={item.num} name={s?.name} stickerType={item.tipo} status="venda" size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {s?.name ?? '—'}</p>
-                        <p className="text-[11px] text-slate-400">{tipoLabel}</p>
-                      </div>
-                      <span className="text-sm font-black text-green-700 flex-shrink-0">{item.preco}</span>
+            return (
+              <div key={v.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+                {/* Header — sempre visível */}
+                <button
+                  onClick={() => setExpanded(isOpen ? null : v.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                    <span className="text-white text-xs font-black">{v.user.avatar}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm text-slate-800">{v.user.name}</p>
+                      {sel.size > 0 && (
+                        <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          {sel.size} no carrinho
+                        </span>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
-
-              {/* Total e botão */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-green-50 rounded-xl px-3 py-2 text-center">
-                  <p className="text-[11px] text-slate-500">Total</p>
-                  <p className="text-sm font-black text-green-700">
-                    {v.items.reduce((acc, i) => {
-                      const val = parseFloat(i.preco.replace('R$ ', '').replace(',', '.'))
-                      return acc + val
-                    }, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </p>
-                </div>
-                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                  🛒 Comprar tudo
+                    <p className="text-xs text-slate-400">
+                      {v.user.city} · ⭐ {v.user.rating} · {v.user.sales} vendas
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                    <span className="text-[10px] font-semibold text-slate-500">{v.items.length} fig. disponíveis</span>
+                    <span className="text-[10px] text-slate-400">{faixaPreco}</span>
+                  </div>
+                  <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
                 </button>
+
+                {/* Grid expandido */}
+                {isOpen && (
+                  <div className="border-t border-slate-50 px-4 pt-3 pb-4 animate-fadein">
+
+                    {/* Ações rápidas */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        onClick={() => selecionarTudo(v.id, v.items.map(i => i.num))}
+                        className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
+                      >
+                        Selecionar tudo
+                      </button>
+                      {sel.size > 0 && (
+                        <button
+                          onClick={() => limparCarrinho(v.id)}
+                          className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Grid de quadradinhos */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {v.items.map(item => {
+                        const selecionado = sel.has(item.num)
+                        const isBrilhante = item.tipo === 'brilhante'
+                        const isEscudo    = item.tipo === 'escudo'
+                        return (
+                          <button
+                            key={item.num}
+                            onClick={() => toggleCarrinho(v.id, item.num)}
+                            title={`#${item.num} · ${allStickers.find(x => x.number === item.num)?.name ?? ''} · ${item.preco}`}
+                            className={[
+                              'w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 hover:scale-105 select-none',
+                              selecionado
+                                ? 'bg-green-600 border-green-700 text-white shadow-sm'
+                                : isBrilhante
+                                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                                  : isEscudo
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-green-300',
+                            ].join(' ')}
+                          >
+                            {selecionado ? (
+                              <span className="text-base leading-none">✓</span>
+                            ) : (
+                              <>
+                                <span className="text-[10px] font-black leading-none">{item.num}</span>
+                                <span className="text-[8px] leading-none font-semibold opacity-75">
+                                  {item.preco.replace('R$ ', 'R$')}
+                                </span>
+                                {isBrilhante && <span className="text-[7px] leading-none">✨</span>}
+                                {isEscudo    && <span className="text-[7px] leading-none">🛡</span>}
+                              </>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Carrinho dinâmico */}
+                    {sel.size > 0 ? (
+                      <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-green-800">
+                            {sel.size} figurinha{sel.size > 1 ? 's' : ''} selecionada{sel.size > 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Total: <span className="font-black">{totalSel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                          </p>
+                        </div>
+                        <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0">
+                          🛒 Comprar
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 text-center">
+                        Toque nas figurinhas que quer comprar
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
