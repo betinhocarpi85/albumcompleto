@@ -4,16 +4,16 @@ import StickerSquare from '@/components/StickerSquare'
 const DEMO_STICKERS = [
   { number: 17,  status: 'venda'  as const, type: 'brilhante' as const },
   { number: 29,  status: 'troca'  as const, type: 'brilhante' as const },
-  { number: 41,  status: 'preciso'as const, type: 'brilhante' as const },
   { number: 16,  status: 'troca'  as const, type: 'escudo'    as const },
   { number: 28,  status: 'doacao' as const, type: 'escudo'    as const },
   { number: 52,  status: 'venda'  as const, type: 'escudo'    as const },
   { number: 22,  status: 'troca'  as const, type: 'normal'    as const },
   { number: 33,  status: 'doacao' as const, type: 'normal'    as const },
-  { number: 45,  status: 'preciso'as const, type: 'normal'    as const },
   { number: 67,  status: 'venda'  as const, type: 'normal'    as const },
   { number: 89,  status: 'troca'  as const, type: 'brilhante' as const },
-  { number: 99,  status: 'preciso'as const, type: 'normal'    as const },
+  { number: 41,  status: 'colada' as const, type: 'brilhante' as const },
+  { number: 45,  status: 'colada' as const, type: 'normal'    as const },
+  { number: 99,  status: 'colada' as const, type: 'normal'    as const },
 ]
 
 const STATS = [
@@ -33,7 +33,7 @@ const FEATURES = [
   { icon: '🟢', color: 'bg-green-500',  title: 'Venda',  desc: 'Defina seu preço e venda figurinhas repetidas com pagamento protegido.' },
   { icon: '🔵', color: 'bg-blue-500',   title: 'Troca',  desc: 'Proponha trocas justas. O sistema equilibra a quantidade automaticamente.' },
   { icon: '🟣', color: 'bg-purple-500', title: 'Doação', desc: 'Doe figurinhas para quem precisa e ganhe badges exclusivos.' },
-  { icon: '🔴', color: 'bg-red-500',    title: 'Preciso',desc: 'Marque o que falta e seja avisado quando alguém tiver disponível.' },
+  { icon: '✅', color: 'bg-green-700',  title: 'Colada', desc: 'Marque o que já tem no álbum. O que não estiver marcado é faltando.' },
 ]
 
 export default function Home() {

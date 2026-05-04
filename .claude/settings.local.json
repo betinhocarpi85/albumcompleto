@@ -14,7 +14,8 @@
       "WebFetch(domain:www.cnnbrasil.com.br)",
       "WebFetch(domain:exame.com)",
       "WebFetch(domain:www.infomoney.com.br)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git push *)"
     ]
   }
 }
