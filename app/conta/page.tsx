@@ -348,47 +348,136 @@ export default function ContaPage() {
                 </div>
               </div>
 
-              {/* Badges */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <p className="font-bold text-slate-800 mb-4">Badges — {USER.badges.filter(b => b.earned).length}/{USER.badges.length} conquistados</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {USER.badges.map(b => (
-                    <div key={b.label} className={[
-                      'flex items-center gap-3 p-3 rounded-xl border transition-all',
-                      b.earned ? 'border-slate-200 bg-slate-50' : 'border-dashed border-slate-200 opacity-50',
-                    ].join(' ')}>
-                      <span className="text-2xl">{b.icon}</span>
-                      <div>
-                        <p className={`text-sm font-bold ${b.earned ? 'text-slate-800' : 'text-slate-400'}`}>{b.label}</p>
-                        <p className="text-xs text-slate-400">{b.desc}</p>
-                      </div>
-                      {b.earned && <span className="ml-auto text-green-500 text-lg">✓</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Badges por categoria */}
+              {[
+                {
+                  label: 'Vendas', icon: '💰', value: USER.sales,
+                  color: { bar: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500', dotOff: 'bg-slate-200' },
+                  levels: [
+                    { nome: 'Estreante',  meta: 1    },
+                    { nome: 'Bronze',     meta: 5    },
+                    { nome: 'Prata',      meta: 15   },
+                    { nome: 'Ouro',       meta: 30   },
+                    { nome: 'Platina',    meta: 60   },
+                    { nome: 'Diamante',   meta: 100  },
+                    { nome: 'Mestre',     meta: 200  },
+                    { nome: 'Elite',      meta: 500  },
+                    { nome: 'Lendário',   meta: 1000 },
+                    { nome: 'Supremo',    meta: 2500 },
+                  ],
+                },
+                {
+                  label: 'Trocas', icon: '🔁', value: USER.trades,
+                  color: { bar: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500', dotOff: 'bg-slate-200' },
+                  levels: [
+                    { nome: 'Estreante',  meta: 1    },
+                    { nome: 'Bronze',     meta: 10   },
+                    { nome: 'Prata',      meta: 25   },
+                    { nome: 'Ouro',       meta: 50   },
+                    { nome: 'Platina',    meta: 100  },
+                    { nome: 'Diamante',   meta: 200  },
+                    { nome: 'Mestre',     meta: 400  },
+                    { nome: 'Elite',      meta: 750  },
+                    { nome: 'Lendário',   meta: 1500 },
+                    { nome: 'Supremo',    meta: 3000 },
+                  ],
+                },
+                {
+                  label: 'Doações', icon: '💜', value: USER.donations,
+                  color: { bar: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500', dotOff: 'bg-slate-200' },
+                  levels: [
+                    { nome: 'Estreante',  meta: 1    },
+                    { nome: 'Bronze',     meta: 5    },
+                    { nome: 'Prata',      meta: 10   },
+                    { nome: 'Ouro',       meta: 20   },
+                    { nome: 'Platina',    meta: 40   },
+                    { nome: 'Diamante',   meta: 75   },
+                    { nome: 'Mestre',     meta: 150  },
+                    { nome: 'Elite',      meta: 300  },
+                    { nome: 'Lendário',   meta: 600  },
+                    { nome: 'Anjo',       meta: 1500 },
+                  ],
+                },
+              ].map(cat => {
+                const currentLevel = cat.levels.filter(l => cat.value >= l.meta).length
+                const nivel        = cat.levels[currentLevel - 1]
+                const proximo      = cat.levels[currentLevel]
+                const pctProximo   = proximo
+                  ? Math.round(((cat.value - (nivel?.meta ?? 0)) / (proximo.meta - (nivel?.meta ?? 0))) * 100)
+                  : 100
 
-              {/* Próximas conquistas */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <p className="font-bold text-slate-800 mb-3">Próximas conquistas</p>
-                <div className="space-y-3">
-                  {[
-                    { label: '100 Trocas',       icon: '🔥', current: USER.trades,    total: 100 },
-                    { label: 'Doador Diamante',  icon: '💎', current: USER.donations, total: 25  },
-                    { label: 'Álbum Completo',   icon: '🏆', current: USER.completion,total: 100, suffix: '%' },
-                  ].map(c => (
-                    <div key={c.label}>
-                      <div className="flex justify-between text-xs text-slate-500 mb-1">
-                        <span className="font-medium">{c.icon} {c.label}</span>
-                        <span>{c.current}{c.suffix ?? ''} / {c.total}{c.suffix ?? ''}</span>
+                return (
+                  <div key={cat.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`w-12 h-12 rounded-xl ${cat.color.bg} ${cat.color.border} border flex items-center justify-center text-2xl flex-shrink-0`}>
+                        {cat.icon}
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                        <div className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600" style={{ width: `${Math.min(100, (c.current / c.total) * 100)}%` }} />
+                      <div className="flex-1">
+                        <p className="font-black text-slate-800">{cat.label}</p>
+                        <p className={`text-sm font-bold ${cat.color.text}`}>
+                          Nível {currentLevel} — {nivel?.nome ?? 'Sem nível'}
+                        </p>
+                      </div>
+                      <div className={`${cat.color.bg} ${cat.color.border} border px-3 py-1.5 rounded-xl text-center`}>
+                        <p className={`text-xl font-black ${cat.color.text}`}>{cat.value}</p>
+                        <p className="text-[10px] text-slate-400">{cat.label.toLowerCase()}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    {/* Dots de nível */}
+                    <div className="flex items-center gap-1 mb-3">
+                      {cat.levels.map((l, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <div className={[
+                            'w-full h-2 rounded-full transition-all',
+                            i < currentLevel ? cat.color.bar : cat.color.dotOff,
+                          ].join(' ')} />
+                          {i === currentLevel - 1 && (
+                            <span className="text-[8px] font-bold text-slate-500">{l.nome}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progresso pro próximo nível */}
+                    {proximo ? (
+                      <div>
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
+                          <span>Próximo: <span className="font-bold">{proximo.nome}</span></span>
+                          <span>{cat.value} / {proximo.meta}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div className={`h-2 rounded-full ${cat.color.bar} transition-all`} style={{ width: `${pctProximo}%` }} />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Faltam {proximo.meta - cat.value} {cat.label.toLowerCase()} para o próximo nível
+                        </p>
+                      </div>
+                    ) : (
+                      <p className={`text-xs font-bold ${cat.color.text} text-center py-1`}>🏆 Nível máximo atingido!</p>
+                    )}
+
+                    {/* Lista todos os níveis */}
+                    <div className="mt-4 pt-4 border-t border-slate-50 grid grid-cols-2 gap-1.5">
+                      {cat.levels.map((l, i) => {
+                        const earned = cat.value >= l.meta
+                        return (
+                          <div key={i} className={[
+                            'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all',
+                            earned ? `${cat.color.bg}` : 'bg-slate-50 opacity-50',
+                          ].join(' ')}>
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${earned ? cat.color.bar : 'bg-slate-300'}`} />
+                            <span className={`font-semibold ${earned ? cat.color.text : 'text-slate-400'}`}>Nível {i + 1}</span>
+                            <span className={`ml-auto ${earned ? 'text-slate-500' : 'text-slate-400'}`}>{l.meta >= 1000 ? `${l.meta / 1000}k` : l.meta}</span>
+                            {earned && <span className="text-[10px]">✓</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
 
