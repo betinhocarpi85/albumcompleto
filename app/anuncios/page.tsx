@@ -6,12 +6,12 @@ import type { StickerType } from '@/data/album-copa-2026'
 
 type TipoAnuncio = 'venda' | 'troca' | 'doacao'
 
+// selecionadas: sid → quantidade (Map em vez de Set)
 interface TipoConfig {
   ativo:        boolean
   tipoAnuncio:  TipoAnuncio
   preco:        string
-  // seleção independente por ação
-  selecionadas: Record<TipoAnuncio, Set<string>>
+  selecionadas: Record<TipoAnuncio, Map<string, number>>
   expandido:    boolean
 }
 
@@ -24,14 +24,18 @@ const ANUNCIO_CONFIG = {
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 
 const TIPOS = [
-  { key: 'normal'   as StickerType, label: 'Normais',   desc: 'Jogadores comuns',         icon: '⬜' },
-  { key: 'escudo'   as StickerType, label: 'Escudos',   desc: 'Escudo de cada seleção',   icon: '🛡️' },
-  { key: 'brilhante'as StickerType, label: 'Brilhantes',desc: 'Figurinhas foil especiais', icon: '✨' },
-  { key: 'especial' as StickerType, label: 'Especiais', desc: 'Fotos de time e intro',    icon: '⭐' },
+  { key: 'normal'    as StickerType, label: 'Normais',    desc: 'Jogadores comuns',          icon: '⬜' },
+  { key: 'escudo'    as StickerType, label: 'Escudos',    desc: 'Escudo de cada seleção',    icon: '🛡️' },
+  { key: 'brilhante' as StickerType, label: 'Brilhantes', desc: 'Figurinhas foil especiais',  icon: '✨' },
+  { key: 'especial'  as StickerType, label: 'Especiais',  desc: 'Fotos de time e intro',     icon: '⭐' },
 ]
 
-// Mock anúncios ativos
-const ATIVOS_MOCK = [
+interface AtivoItem {
+  id: string; nome: string; seleção: string; tipo: string
+  anuncio: string; preco: string; qtd: number
+}
+
+const ATIVOS_INICIAL: AtivoItem[] = [
   { id: 'BRA-14', nome: 'Vinicius Jr.',  seleção: '🇧🇷 Brasil',    tipo: 'brilhante', anuncio: 'venda', preco: 'R$ 15,00', qtd: 2 },
   { id: 'ARG-10', nome: 'Lionel Messi',  seleção: '🇦🇷 Argentina', tipo: 'brilhante', anuncio: 'venda', preco: 'R$ 20,00', qtd: 1 },
   { id: 'FRA-10', nome: 'Kylian Mbappé', seleção: '🇫🇷 França',    tipo: 'brilhante', anuncio: 'troca', preco: '—',        qtd: 1 },
@@ -39,12 +43,13 @@ const ATIVOS_MOCK = [
 
 type Tab = 'configurar' | 'ativos'
 
-export default function AnunciosPage() {
-  const [tab, setTab] = useState<Tab>('configurar')
+const emptySel = (): Record<TipoAnuncio, Map<string, number>> => ({
+  venda: new Map(), troca: new Map(), doacao: new Map(),
+})
 
-  const emptySel = (): Record<TipoAnuncio, Set<string>> => ({
-    venda: new Set(), troca: new Set(), doacao: new Set(),
-  })
+export default function AnunciosPage() {
+  const [tab, setTab]   = useState<Tab>('configurar')
+  const [ativos, setAtivos] = useState<AtivoItem[]>(ATIVOS_INICIAL)
 
   const [configs, setConfigs] = useState<Record<StickerType, TipoConfig>>({
     normal:    { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
@@ -53,25 +58,29 @@ export default function AnunciosPage() {
     especial:  { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
   })
 
-  // Abre/fecha categorias dentro do seletor
   const [openCats, setOpenCats] = useState<Set<string>>(new Set())
 
   function update<K extends keyof TipoConfig>(tipo: StickerType, field: K, value: TipoConfig[K]) {
     setConfigs(prev => ({ ...prev, [tipo]: { ...prev[tipo], [field]: value } }))
   }
 
+  // Toca no quadradinho: se não está, adiciona com qty=1; se já está, remove
   function toggleSticker(tipo: StickerType, sid: string) {
     setConfigs(prev => {
       const acao = prev[tipo].tipoAnuncio
-      const next = new Set(prev[tipo].selecionadas[acao])
-      next.has(sid) ? next.delete(sid) : next.add(sid)
-      return {
-        ...prev,
-        [tipo]: {
-          ...prev[tipo],
-          selecionadas: { ...prev[tipo].selecionadas, [acao]: next },
-        },
-      }
+      const next = new Map(prev[tipo].selecionadas[acao])
+      next.has(sid) ? next.delete(sid) : next.set(sid, 1)
+      return { ...prev, [tipo]: { ...prev[tipo], selecionadas: { ...prev[tipo].selecionadas, [acao]: next } } }
+    })
+  }
+
+  // Ajusta quantidade — qty=0 remove da seleção
+  function setQty(tipo: StickerType, sid: string, qty: number) {
+    setConfigs(prev => {
+      const acao = prev[tipo].tipoAnuncio
+      const next = new Map(prev[tipo].selecionadas[acao])
+      if (qty <= 0) { next.delete(sid) } else { next.set(sid, qty) }
+      return { ...prev, [tipo]: { ...prev[tipo], selecionadas: { ...prev[tipo].selecionadas, [acao]: next } } }
     })
   }
 
@@ -83,7 +92,16 @@ export default function AnunciosPage() {
     })
   }
 
-  // Stickers por tipo, agrupados por categoria
+  // Atualiza qty de um ativo (aba Ativos)
+  function setAtivoQty(id: string, delta: number) {
+    setAtivos(prev => prev.map(a =>
+      a.id === id ? { ...a, qtd: Math.max(1, a.qtd + delta) } : a
+    ))
+  }
+  function removeAtivo(id: string) {
+    setAtivos(prev => prev.filter(a => a.id !== id))
+  }
+
   const stickersPorTipo = useMemo(() => {
     const map: Record<StickerType, { cat: typeof albumCopa2026.categories[0]; stickers: typeof albumCopa2026.categories[0]['stickers'] }[]> = {
       normal: [], escudo: [], brilhante: [], especial: [],
@@ -97,10 +115,22 @@ export default function AnunciosPage() {
     return map
   }, [])
 
+  // Total de figurinhas (soma de quantidades)
   const totalSelecionado = Object.values(configs).reduce((acc, c) => {
     if (!c.ativo) return acc
-    return acc + c.selecionadas.venda.size + c.selecionadas.troca.size + c.selecionadas.doacao.size
+    for (const m of Object.values(c.selecionadas)) for (const qty of m.values()) acc += qty
+    return acc
   }, 0)
+
+  // Total de IDs únicos selecionados (para o badge)
+  const totalUnicos = Object.values(configs).reduce((acc, c) => {
+    if (!c.ativo) return acc
+    for (const m of Object.values(c.selecionadas)) acc += m.size
+    return acc
+  }, 0)
+
+  const allStickersFlat = useMemo(() =>
+    albumCopa2026.categories.flatMap(c => c.stickers.map(s => ({ ...s, catCode: c.code, catName: c.name }))), [])
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
@@ -113,9 +143,9 @@ export default function AnunciosPage() {
       {/* Resumo */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         {[
-          { label: 'Selecionadas', value: totalSelecionado,  bg: 'bg-green-50',  text: 'text-green-700' },
-          { label: 'Ativas',       value: ATIVOS_MOCK.length, bg: 'bg-blue-50',   text: 'text-blue-700'  },
-          { label: 'Matches',      value: 4,                  bg: 'bg-amber-50',  text: 'text-amber-700' },
+          { label: 'Selecionadas', value: totalUnicos,    bg: 'bg-green-50',  text: 'text-green-700' },
+          { label: 'Ativas',       value: ativos.length,  bg: 'bg-blue-50',   text: 'text-blue-700'  },
+          { label: 'Matches',      value: 4,              bg: 'bg-amber-50',  text: 'text-amber-700' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-2xl px-3 py-3 text-center`}>
             <p className={`text-2xl font-black ${s.text}`}>{s.value}</p>
@@ -128,7 +158,7 @@ export default function AnunciosPage() {
       <div className="flex gap-2 mb-4">
         {([
           { key: 'configurar', label: '⚙️ Configurar' },
-          { key: 'ativos',     label: `📋 Ativos (${ATIVOS_MOCK.length})` },
+          { key: 'ativos',     label: `📋 Ativos (${ativos.length})` },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
@@ -141,11 +171,12 @@ export default function AnunciosPage() {
       {/* ── ABA CONFIGURAR ── */}
       {tab === 'configurar' && (
         <div className="space-y-3 animate-fadein">
-
           {TIPOS.map(({ key, label, desc, icon }) => {
-            const cfg  = configs[key]
-            const preco = STICKER_PRICES[key]
+            const cfg    = configs[key]
+            const preco  = STICKER_PRICES[key]
             const grupos = stickersPorTipo[key]
+            const selMap = cfg.selecionadas[cfg.tipoAnuncio]
+            const selIds = [...selMap.keys()]
 
             return (
               <div key={key}
@@ -159,9 +190,9 @@ export default function AnunciosPage() {
                     <p className="font-bold text-slate-800 text-sm">{label}</p>
                     <p className="text-xs text-slate-400">{desc}</p>
                   </div>
-                  {cfg.ativo && (cfg.selecionadas.venda.size + cfg.selecionadas.troca.size + cfg.selecionadas.doacao.size) > 0 && (
+                  {cfg.ativo && selIds.length > 0 && (
                     <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                      {cfg.selecionadas.venda.size + cfg.selecionadas.troca.size + cfg.selecionadas.doacao.size} fig.
+                      {selIds.length} fig. · {[...selMap.values()].reduce((a, b) => a + b, 0)} unid.
                     </span>
                   )}
                   <button
@@ -220,22 +251,21 @@ export default function AnunciosPage() {
                         className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors text-left"
                       >
                         <span className="text-sm font-semibold text-slate-700">
-                          {(() => {
-                            const n = cfg.selecionadas[cfg.tipoAnuncio].size
-                            return n === 0
-                              ? 'Selecionar figurinhas'
-                              : `${n} figurinha${n > 1 ? 's' : ''} selecionada${n > 1 ? 's' : ''} para ${cfg.tipoAnuncio}`
-                          })()}
+                          {selIds.length === 0
+                            ? 'Selecionar figurinhas'
+                            : `${selIds.length} figurinha${selIds.length > 1 ? 's' : ''} selecionada${selIds.length > 1 ? 's' : ''}`}
                         </span>
                         <span className={`text-slate-400 text-xs transition-transform ${cfg.expandido ? 'rotate-180' : ''}`}>▼</span>
                       </button>
 
                       {cfg.expandido && (
-                        <div className="px-4 pb-4 space-y-2 max-h-96 overflow-y-auto">
+                        <div className="px-4 pb-4 space-y-2 max-h-[28rem] overflow-y-auto">
+
+                          {/* Grid por categoria */}
                           {grupos.map(({ cat, stickers }) => {
-                            const catId   = `${key}-${cat.id}`
-                            const isOpen  = openCats.has(catId)
-                            const selQty  = stickers.filter(s => cfg.selecionadas[cfg.tipoAnuncio].has(stickerId(cat.code, s.number))).length
+                            const catId  = `${key}-${cat.id}`
+                            const isOpen = openCats.has(catId)
+                            const selQty = stickers.filter(s => selMap.has(stickerId(cat.code, s.number))).length
 
                             return (
                               <div key={cat.id} className="border border-slate-100 rounded-xl overflow-hidden">
@@ -246,9 +276,7 @@ export default function AnunciosPage() {
                                   <span className="text-base">{cat.flag ?? '📌'}</span>
                                   <span className="flex-1 text-sm font-semibold text-slate-700">{cat.name}</span>
                                   {selQty > 0 && (
-                                    <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
-                                      {selQty}✓
-                                    </span>
+                                    <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{selQty}✓</span>
                                   )}
                                   <span className="text-xs text-slate-400">{isOpen ? '▲' : '▼'}</span>
                                 </button>
@@ -257,26 +285,32 @@ export default function AnunciosPage() {
                                   <div className="px-3 pb-3 pt-1 flex flex-wrap gap-1.5 border-t border-slate-50">
                                     {stickers.map(s => {
                                       const sid      = stickerId(cat.code, s.number)
-                                      const selected = cfg.selecionadas[cfg.tipoAnuncio].has(sid)
+                                      const qty      = selMap.get(sid) ?? 0
+                                      const selected = qty > 0
                                       const gNum     = globalNumbers.get(sid) ?? s.number
+
+                                      const btnColor = selected
+                                        ? cfg.tipoAnuncio === 'venda'   ? 'bg-green-600 border-green-700 text-white'
+                                        : cfg.tipoAnuncio === 'troca'   ? 'bg-blue-500 border-blue-600 text-white'
+                                        :                                  'bg-purple-500 border-purple-600 text-white'
+                                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+
                                       return (
                                         <button
                                           key={sid}
                                           onClick={() => toggleSticker(key, sid)}
                                           title={`#${gNum} · ${s.name}`}
                                           className={[
-                                            'w-11 h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-all text-[10px] font-bold',
-                                            'active:scale-90 hover:scale-105',
-                                            selected
-                                              ? cfg.tipoAnuncio === 'venda'
-                                                ? 'bg-green-600 border-green-700 text-white'
-                                                : cfg.tipoAnuncio === 'troca'
-                                                  ? 'bg-blue-500 border-blue-600 text-white'
-                                                  : 'bg-purple-500 border-purple-600 text-white'
-                                              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400',
+                                            'w-11 h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-all text-[10px] font-bold active:scale-90 hover:scale-105',
+                                            btnColor,
                                           ].join(' ')}
                                         >
-                                          {selected ? '✓' : gNum}
+                                          {selected ? (
+                                            <>
+                                              <span className="text-[11px] font-black leading-none">{qty}</span>
+                                              <span className="text-[7px] leading-none opacity-80">unid.</span>
+                                            </>
+                                          ) : gNum}
                                         </button>
                                       )
                                     })}
@@ -285,6 +319,45 @@ export default function AnunciosPage() {
                               </div>
                             )
                           })}
+
+                          {/* Lista de quantidades — aparece se há algo selecionado */}
+                          {selIds.length > 0 && (
+                            <div className="border border-slate-200 rounded-xl overflow-hidden mt-1">
+                              <div className="px-3 py-2 bg-slate-50 flex items-center justify-between">
+                                <p className="text-xs font-bold text-slate-600">Quantidades</p>
+                                <p className="text-[10px] text-slate-400">Toque − ou + para ajustar</p>
+                              </div>
+                              <div className="divide-y divide-slate-50">
+                                {selIds.map(sid => {
+                                  const qty   = selMap.get(sid) ?? 1
+                                  const gNum  = globalNumbers.get(sid) ?? '?'
+                                  const sData = allStickersFlat.find(s => stickerId(s.catCode, s.number) === sid)
+                                  return (
+                                    <div key={sid} className="flex items-center gap-2 px-3 py-2">
+                                      <span className="text-xs font-black text-slate-400 w-6 flex-shrink-0">#{gNum}</span>
+                                      <span className="flex-1 text-xs text-slate-700 truncate">{sData?.name ?? sid}</span>
+                                      {/* Stepper */}
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button
+                                          onClick={() => setQty(key, sid, qty - 1)}
+                                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors flex items-center justify-center"
+                                        >
+                                          −
+                                        </button>
+                                        <span className="w-7 text-center text-sm font-black text-slate-800">{qty}</span>
+                                        <button
+                                          onClick={() => setQty(key, sid, qty + 1)}
+                                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors flex items-center justify-center"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -297,7 +370,7 @@ export default function AnunciosPage() {
           {/* Publicar */}
           {totalSelecionado > 0 && (
             <button className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-4 rounded-2xl text-sm transition-colors shadow-sm">
-              📢 Publicar {totalSelecionado} figurinha{totalSelecionado > 1 ? 's' : ''} agora
+              📢 Publicar {totalUnicos} figurinha{totalUnicos > 1 ? 's' : ''} · {totalSelecionado} unidade{totalSelecionado > 1 ? 's' : ''} no total
             </button>
           )}
         </div>
@@ -306,22 +379,66 @@ export default function AnunciosPage() {
       {/* ── ABA ATIVOS ── */}
       {tab === 'ativos' && (
         <div className="animate-fadein space-y-2">
-          {ATIVOS_MOCK.map(item => {
+          {ativos.length === 0 && (
+            <div className="text-center py-10 text-slate-400">
+              <p className="text-3xl mb-2">📭</p>
+              <p className="text-sm">Nenhum anúncio ativo</p>
+            </div>
+          )}
+          {ativos.map(item => {
             const cfg = ANUNCIO_CONFIG[item.anuncio as TipoAnuncio]
             return (
-              <div key={item.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-black text-slate-500">{item.id.split('-')[1]}</span>
+              <div key={item.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                <div className="flex items-center gap-3">
+                  {/* Num */}
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-black text-slate-500">{item.id.split('-')[1]}</span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-slate-800 truncate">{item.nome}</p>
+                    <p className="text-xs text-slate-400">{item.seleção}</p>
+                  </div>
+
+                  {/* Tipo + preço */}
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                    {item.preco !== '—' && <span className="text-xs font-semibold text-slate-500">{item.preco}</span>}
+                  </div>
+
+                  {/* Remover */}
+                  <button
+                    onClick={() => removeAtivo(item.id)}
+                    className="text-slate-300 hover:text-red-400 transition-colors ml-1 text-lg flex-shrink-0"
+                  >
+                    ×
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800 truncate">{item.nome}</p>
-                  <p className="text-xs text-slate-400">{item.seleção}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
-                  <span className="text-xs text-slate-500">{item.preco !== '—' ? item.preco : ''} · {item.qtd}x</span>
-                </div>
-                <button className="text-slate-300 hover:text-red-400 transition-colors ml-1 text-lg">×</button>
+
+                {/* Quantidade — só para venda e troca */}
+                {item.anuncio !== 'doacao' && (
+                  <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <span className="text-xs text-slate-500 font-medium">Quantidade disponível</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setAtivoQty(item.id, -1)}
+                        disabled={item.qtd <= 1}
+                        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 font-black text-base transition-colors flex items-center justify-center"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center text-base font-black text-slate-800">{item.qtd}</span>
+                      <button
+                        onClick={() => setAtivoQty(item.id, +1)}
+                        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-base transition-colors flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                      <span className="text-xs text-slate-400 ml-1">unid.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
