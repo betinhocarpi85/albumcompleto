@@ -1,0 +1,213 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { albumCopa2026, TOTAL_STICKERS, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
+
+// coladas = Set de IDs únicos ex: "BRA-14", "FWC-3"
+type ColadasSet = Set<string>
+
+// Mapa global gerado uma vez
+const globalNumbers = buildGlobalNumberMap(albumCopa2026)
+
+// Mock inicial — algumas já coladas (por ID único)
+const INICIAL: string[] = ['FWC-3','FWC-5','ALG-10','ARG-2','ARG-10','BRA-10','BRA-14','FRA-10','ESP-10','ENG-10']
+
+export default function AlbumPage() {
+  const [coladas, setColadas]       = useState<ColadasSet>(new Set(INICIAL))
+  const [search, setSearch]         = useState('')
+  const [openCats, setOpenCats]     = useState<Set<string>>(new Set(['fwc']))
+  const [mostrarFaltando, setMostrarFaltando] = useState(false)
+
+  const total    = TOTAL_STICKERS
+  const nColadas = coladas.size
+  const nFaltando= total - nColadas
+  const progress = Math.round((nColadas / total) * 100)
+
+  function toggleColada(id: string) {
+    setColadas(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleCat(id: string) {
+    setOpenCats(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const allStickers = useMemo(() =>
+    albumCopa2026.categories.flatMap(c => c.stickers), [])
+
+  return (
+    <div className="max-w-4xl mx-auto px-3 py-4 animate-fadein">
+
+      {/* ── CABEÇALHO ── */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-2xl">🏆</span>
+        <div>
+          <h1 className="text-lg font-black text-slate-800 leading-tight">Copa do Mundo FIFA 2026</h1>
+          <p className="text-xs text-slate-500">{total} figurinhas · {albumCopa2026.categories.length} seleções</p>
+        </div>
+      </div>
+
+      {/* ── PROGRESSO ── */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-slate-700">Progresso</span>
+          <span className="text-sm font-black text-green-600">{progress}%</span>
+        </div>
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden mb-3">
+          <div
+            className="h-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-green-50 rounded-xl px-3 py-2 text-center">
+            <p className="text-lg font-black text-green-600">{nColadas}</p>
+            <p className="text-[11px] text-slate-500">coladas</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl px-3 py-2 text-center">
+            <p className="text-lg font-black text-slate-500">{nFaltando}</p>
+            <p className="text-[11px] text-slate-500">faltando</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BUSCA + FILTRO ── */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar número ou nome..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <button
+          onClick={() => setMostrarFaltando(f => !f)}
+          className={[
+            'px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all whitespace-nowrap',
+            mostrarFaltando
+              ? 'bg-slate-800 text-white border-slate-800'
+              : 'bg-white text-slate-600 border-slate-200',
+          ].join(' ')}
+        >
+          {mostrarFaltando ? '👁 Todas' : '❌ Faltando'}
+        </button>
+      </div>
+
+      {/* ── DICA ── */}
+      <p className="text-xs text-slate-400 text-center mb-4">
+        Toque na figurinha para marcar como colada · toque de novo para desmarcar
+      </p>
+
+      {/* ── CATEGORIAS ── */}
+      <div className="space-y-2">
+        {albumCopa2026.categories.map(cat => {
+          const isOpen = openCats.has(cat.id)
+
+          const filtered = cat.stickers.filter(s => {
+            const sid   = stickerId(cat.code, s.number)
+            const gNum  = globalNumbers.get(sid) ?? s.number
+            const matchSearch = search === ''
+              || String(gNum).includes(search)
+              || s.name.toLowerCase().includes(search.toLowerCase())
+            const matchFiltro = mostrarFaltando ? !coladas.has(sid) : true
+            return matchSearch && matchFiltro
+          })
+
+          if (filtered.length === 0) return null
+
+          const catColadas  = cat.stickers.filter(s => coladas.has(stickerId(cat.code, s.number))).length
+          const catTotal    = cat.stickers.length
+          const catProgress = Math.round((catColadas / catTotal) * 100)
+
+          return (
+            <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+              {/* Header categoria */}
+              <button
+                onClick={() => toggleCat(cat.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
+              >
+                <span className="text-lg">{cat.flag ?? '📌'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800">{cat.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="h-1.5 rounded-full bg-green-500 transition-all"
+                        style={{ width: `${catProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 flex-shrink-0">
+                      {catColadas}/{catTotal}
+                    </span>
+                  </div>
+                </div>
+                <span className={`text-slate-400 text-xs transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+
+              {/* Grid figurinhas */}
+              {isOpen && (
+                <div className="px-4 pb-4 pt-2 border-t border-slate-50">
+                  <div className="flex flex-wrap gap-2">
+                    {filtered.map(s => {
+                      const sid      = stickerId(cat.code, s.number)
+                      const isColada = coladas.has(sid)
+                      const globalN  = globalNumbers.get(sid) ?? s.number
+                      const isBrilhante = s.type === 'brilhante'
+                      const isEscudo    = s.type === 'escudo'
+                      const isEspecial  = s.type === 'especial'
+
+                      return (
+                        <button
+                          key={sid}
+                          onClick={() => toggleColada(sid)}
+                          title={`#${globalN} · ${s.name}`}
+                          className={[
+                            'w-11 h-11 rounded-lg border-2 flex flex-col items-center justify-center select-none',
+                            'transition-all duration-150 active:scale-90 hover:scale-105',
+                            isColada
+                              ? 'bg-green-600 border-green-700 text-white shadow-sm'
+                              : isBrilhante
+                                ? 'bg-amber-50 border-amber-300 text-amber-700 sticker-brilhante'
+                                : isEscudo
+                                  ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                  : isEspecial
+                                    ? 'bg-orange-50 border-orange-200 text-orange-600'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:border-green-300',
+                          ].join(' ')}
+                        >
+                          {isColada
+                            ? <span className="text-base">✓</span>
+                            : (
+                              <>
+                                <span className="text-[10px] font-bold leading-none">{globalN}</span>
+                                {isBrilhante && <span className="text-[7px] leading-none">✨</span>}
+                                {isEscudo    && <span className="text-[7px] leading-none">🛡</span>}
+                                {isEspecial  && <span className="text-[7px] leading-none">⭐</span>}
+                              </>
+                            )
+                          }
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+    </div>
+  )
+}

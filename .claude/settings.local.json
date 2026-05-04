@@ -4,7 +4,17 @@
       "WebSearch",
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
       "Read(//d/CLAUDE/**)",
-      "Bash(npx create-next-app@latest albumcompleto --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+      "Bash(npx create-next-app@latest albumcompleto --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npm run *)",
+      "Bash(npx next *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "WebFetch(domain:www.checklistinsider.com)",
+      "WebFetch(domain:football-sticker-album.fandom.com)",
+      "WebFetch(domain:cartophilic-info-exch.blogspot.com)",
+      "WebFetch(domain:www.cnnbrasil.com.br)",
+      "WebFetch(domain:exame.com)",
+      "WebFetch(domain:www.infomoney.com.br)",
+      "Bash(npx tsc *)"
     ]
   }
 }
