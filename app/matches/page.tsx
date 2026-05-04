@@ -68,7 +68,38 @@ const DOACOES = [
   },
 ]
 
-type Tab = 'trocas' | 'doacoes'
+// Vendedores com figurinhas que você precisa
+const VENDAS = [
+  {
+    id: 'v1',
+    user: { name: 'Ricardo B.', city: 'São Paulo, SP',       avatar: 'RB', avatarColor: 'from-green-400 to-teal-500',  rating: 4.8, sales: 64, gender: 'M' as const },
+    items: [
+      { num: 19, preco: 'R$ 2,00',  tipo: 'normal'    as const },
+      { num: 21, preco: 'R$ 2,00',  tipo: 'normal'    as const },
+      { num: 40, preco: 'R$ 12,00', tipo: 'brilhante' as const },
+    ],
+  },
+  {
+    id: 'v2',
+    user: { name: 'Camila T.',  city: 'Belo Horizonte, MG', avatar: 'CT', avatarColor: 'from-rose-400 to-pink-500',   rating: 5.0, sales: 128, gender: 'F' as const },
+    items: [
+      { num: 65, preco: 'R$ 2,00',  tipo: 'normal'    as const },
+      { num: 76, preco: 'R$ 8,00',  tipo: 'escudo'    as const },
+      { num: 88, preco: 'R$ 2,00',  tipo: 'normal'    as const },
+      { num: 90, preco: 'R$ 15,00', tipo: 'brilhante' as const },
+    ],
+  },
+  {
+    id: 'v3',
+    user: { name: 'Leandro P.', city: 'Recife, PE',          avatar: 'LP', avatarColor: 'from-amber-400 to-orange-500', rating: 4.6, sales: 33, gender: 'M' as const },
+    items: [
+      { num: 101, preco: 'R$ 2,00', tipo: 'normal' as const },
+      { num: 78,  preco: 'R$ 5,00', tipo: 'escudo' as const },
+    ],
+  },
+]
+
+type Tab = 'trocas' | 'doacoes' | 'vendas'
 
 export default function MatchesPage() {
   const [tab, setTab] = useState<Tab>('trocas')
@@ -85,22 +116,23 @@ export default function MatchesPage() {
       <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
         <span className="text-2xl">🔥</span>
         <div>
-          <p className="text-sm font-bold text-green-800">{MATCHES.length} novos matches encontrados!</p>
-          <p className="text-xs text-green-600">Baseado nas suas figurinhas de troca e na lista de preciso</p>
+          <p className="text-sm font-bold text-green-800">{MATCHES.length + VENDAS.length + DOACOES.length} matches encontrados!</p>
+          <p className="text-xs text-green-600">Trocas, vendas e doações com figurinhas que você precisa</p>
         </div>
       </div>
 
       {/* Abas */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-1.5 mb-4">
         {([
-          { key: 'trocas',  label: `Trocas (${MATCHES.length})` },
-          { key: 'doacoes', label: `Doações (${DOACOES.length})` },
+          { key: 'trocas',  label: `🔁 Trocas (${MATCHES.length})` },
+          { key: 'vendas',  label: `💰 Vendas (${VENDAS.length})` },
+          { key: 'doacoes', label: `💜 Doações (${DOACOES.length})` },
         ] as const).map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={[
-              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
+              'flex-1 py-2.5 rounded-xl text-xs font-bold transition-all',
               tab === t.key
                 ? 'bg-slate-800 text-white'
                 : 'bg-white text-slate-500 border border-slate-200',
@@ -208,6 +240,65 @@ export default function MatchesPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── VENDAS ── */}
+      {tab === 'vendas' && (
+        <div className="space-y-3 animate-fadein">
+          <p className="text-xs text-slate-400 text-center mb-1">
+            Vendedores com figurinhas que você ainda não tem no álbum
+          </p>
+          {VENDAS.map(v => (
+            <div key={v.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                  <span className="text-white text-xs font-black">{v.user.avatar}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800">{v.user.name}</p>
+                  <p className="text-xs text-slate-400">{v.user.city} · ⭐ {v.user.rating} · {v.user.sales} vendas</p>
+                </div>
+                <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-1 rounded-full flex-shrink-0">
+                  💰 Vendedor
+                </span>
+              </div>
+
+              {/* Listagem de figurinhas com preço */}
+              <div className="space-y-2 mb-3">
+                {v.items.map(item => {
+                  const s = allStickers.find(x => x.number === item.num)
+                  const tipoLabel = item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'
+                  return (
+                    <div key={item.num} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2">
+                      <StickerSquare number={item.num} name={s?.name} stickerType={item.tipo} status="venda" size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {s?.name ?? '—'}</p>
+                        <p className="text-[11px] text-slate-400">{tipoLabel}</p>
+                      </div>
+                      <span className="text-sm font-black text-green-700 flex-shrink-0">{item.preco}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total e botão */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-green-50 rounded-xl px-3 py-2 text-center">
+                  <p className="text-[11px] text-slate-500">Total</p>
+                  <p className="text-sm font-black text-green-700">
+                    {v.items.reduce((acc, i) => {
+                      const val = parseFloat(i.preco.replace('R$ ', '').replace(',', '.'))
+                      return acc + val
+                    }, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <button className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                  🛒 Comprar tudo
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
