@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 
@@ -86,7 +87,16 @@ const TYPE_CONFIG = {
 }
 
 export default function ContaPage() {
+  const searchParams = useSearchParams()
   const [section, setSection] = useState<Section>('visao-geral')
+
+  useEffect(() => {
+    const s = searchParams.get('s') as Section | null
+    if (s && ['visao-geral','albuns','carrinho','gamificacao','dados','endereco','historico','seguranca'].includes(s)) {
+      setSection(s)
+    }
+  }, [searchParams])
+
   const [editDados, setEditDados] = useState(false)
   const [editEndereco, setEditEndereco] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { albumCopa2026 } from '@/data/album-copa-2026'
 import StickerSquare from '@/components/StickerSquare'
 
@@ -458,9 +459,9 @@ export default function MatchesPage() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-green-400 font-black text-lg leading-none">{fmtBRL(totalValor)}</p>
-                <button className="mt-1.5 bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
+                <Link href="/conta?s=carrinho" className="mt-1.5 inline-block bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
                   Finalizar compra →
-                </button>
+                </Link>
               </div>
             </div>
           )}
