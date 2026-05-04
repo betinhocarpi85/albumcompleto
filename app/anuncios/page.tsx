@@ -47,9 +47,19 @@ const emptySel = (): Record<TipoAnuncio, Map<string, number>> => ({
   venda: new Map(), troca: new Map(), doacao: new Map(),
 })
 
+interface QtyModal {
+  tipo:  StickerType
+  sid:   string
+  gNum:  number | string
+  nome:  string
+  qtdAtual: number  // 0 = ainda não selecionado
+}
+
 export default function AnunciosPage() {
-  const [tab, setTab]   = useState<Tab>('configurar')
+  const [tab, setTab]       = useState<Tab>('configurar')
   const [ativos, setAtivos] = useState<AtivoItem[]>(ATIVOS_INICIAL)
+  const [modal, setModal]   = useState<QtyModal | null>(null)
+  const [modalQty, setModalQty] = useState(1)
 
   const [configs, setConfigs] = useState<Record<StickerType, TipoConfig>>({
     normal:    { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
@@ -64,22 +74,31 @@ export default function AnunciosPage() {
     setConfigs(prev => ({ ...prev, [tipo]: { ...prev[tipo], [field]: value } }))
   }
 
-  // Toca no quadradinho: se não está, adiciona com qty=1; se já está, remove
-  function toggleSticker(tipo: StickerType, sid: string) {
-    setConfigs(prev => {
-      const acao = prev[tipo].tipoAnuncio
-      const next = new Map(prev[tipo].selecionadas[acao])
-      next.has(sid) ? next.delete(sid) : next.set(sid, 1)
-      return { ...prev, [tipo]: { ...prev[tipo], selecionadas: { ...prev[tipo].selecionadas, [acao]: next } } }
-    })
+  // Toca no quadradinho → abre modal de quantidade
+  function abrirModal(tipo: StickerType, sid: string, gNum: number | string, nome: string) {
+    const qtdAtual = configs[tipo].selecionadas[configs[tipo].tipoAnuncio].get(sid) ?? 0
+    setModal({ tipo, sid, gNum, nome, qtdAtual })
+    setModalQty(qtdAtual > 0 ? qtdAtual : 1)
   }
 
-  // Ajusta quantidade — qty=0 remove da seleção
-  function setQty(tipo: StickerType, sid: string, qty: number) {
+  // Confirma a quantidade no modal
+  function confirmarModal() {
+    if (!modal) return
+    setConfigs(prev => {
+      const acao = prev[modal.tipo].tipoAnuncio
+      const next = new Map(prev[modal.tipo].selecionadas[acao])
+      if (modalQty <= 0) { next.delete(modal.sid) } else { next.set(modal.sid, modalQty) }
+      return { ...prev, [modal.tipo]: { ...prev[modal.tipo], selecionadas: { ...prev[modal.tipo].selecionadas, [acao]: next } } }
+    })
+    setModal(null)
+  }
+
+  // Remove figurinha direto (sem passar pelo modal)
+  function removerSticker(tipo: StickerType, sid: string) {
     setConfigs(prev => {
       const acao = prev[tipo].tipoAnuncio
       const next = new Map(prev[tipo].selecionadas[acao])
-      if (qty <= 0) { next.delete(sid) } else { next.set(sid, qty) }
+      next.delete(sid)
       return { ...prev, [tipo]: { ...prev[tipo], selecionadas: { ...prev[tipo].selecionadas, [acao]: next } } }
     })
   }
@@ -134,6 +153,69 @@ export default function AnunciosPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
+
+      {/* ── MODAL DE QUANTIDADE ── */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
+
+            {/* Info figurinha */}
+            <p className="text-xs text-slate-400 mb-1">Figurinha #{modal.gNum}</p>
+            <p className="font-black text-slate-800 text-lg leading-tight mb-4">{modal.nome}</p>
+
+            {/* Pergunta */}
+            <p className="text-sm text-slate-600 mb-4">
+              Quantas unidades você tem{modal.qtdAtual > 0 ? ' (toque para atualizar)' : ''} disponíveis para anunciar?
+            </p>
+
+            {/* Stepper grande */}
+            <div className="flex items-center justify-center gap-5 mb-6">
+              <button
+                onClick={() => setModalQty(q => Math.max(1, q - 1))}
+                disabled={modalQty <= 1}
+                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center"
+              >
+                −
+              </button>
+              <div className="text-center">
+                <span className="text-5xl font-black text-slate-800">{modalQty}</span>
+                <p className="text-xs text-slate-400 mt-1">unidade{modalQty > 1 ? 's' : ''}</p>
+              </div>
+              <button
+                onClick={() => setModalQty(q => q + 1)}
+                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Ações */}
+            <div className="flex gap-2">
+              {modal.qtdAtual > 0 && (
+                <button
+                  onClick={() => { removerSticker(modal.tipo, modal.sid); setModal(null) }}
+                  className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
+                >
+                  Remover
+                </button>
+              )}
+              <button
+                onClick={() => setModal(null)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarModal}
+                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-black transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <h1 className="text-xl font-black text-slate-800">Anúncios</h1>
@@ -290,16 +372,16 @@ export default function AnunciosPage() {
                                       const gNum     = globalNumbers.get(sid) ?? s.number
 
                                       const btnColor = selected
-                                        ? cfg.tipoAnuncio === 'venda'   ? 'bg-green-600 border-green-700 text-white'
-                                        : cfg.tipoAnuncio === 'troca'   ? 'bg-blue-500 border-blue-600 text-white'
-                                        :                                  'bg-purple-500 border-purple-600 text-white'
+                                        ? cfg.tipoAnuncio === 'venda'  ? 'bg-green-600 border-green-700 text-white'
+                                        : cfg.tipoAnuncio === 'troca'  ? 'bg-blue-500 border-blue-600 text-white'
+                                        :                                 'bg-purple-500 border-purple-600 text-white'
                                         : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
 
                                       return (
                                         <button
                                           key={sid}
-                                          onClick={() => toggleSticker(key, sid)}
-                                          title={`#${gNum} · ${s.name}`}
+                                          onClick={() => abrirModal(key, sid, gNum, s.name)}
+                                          title={selected ? `#${gNum} · ${s.name} · ${qty} unid. (toque para editar)` : `#${gNum} · ${s.name} · toque para adicionar`}
                                           className={[
                                             'w-11 h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-all text-[10px] font-bold active:scale-90 hover:scale-105',
                                             btnColor,
@@ -307,8 +389,7 @@ export default function AnunciosPage() {
                                         >
                                           {selected ? (
                                             <>
-                                              <span className="text-[11px] font-black leading-none">{qty}</span>
-                                              <span className="text-[7px] leading-none opacity-80">unid.</span>
+                                              <span className="text-[13px] font-black leading-none">{qty}×</span>
                                             </>
                                           ) : gNum}
                                         </button>
@@ -320,43 +401,11 @@ export default function AnunciosPage() {
                             )
                           })}
 
-                          {/* Lista de quantidades — aparece se há algo selecionado */}
+                          {/* Dica */}
                           {selIds.length > 0 && (
-                            <div className="border border-slate-200 rounded-xl overflow-hidden mt-1">
-                              <div className="px-3 py-2 bg-slate-50 flex items-center justify-between">
-                                <p className="text-xs font-bold text-slate-600">Quantidades</p>
-                                <p className="text-[10px] text-slate-400">Toque − ou + para ajustar</p>
-                              </div>
-                              <div className="divide-y divide-slate-50">
-                                {selIds.map(sid => {
-                                  const qty   = selMap.get(sid) ?? 1
-                                  const gNum  = globalNumbers.get(sid) ?? '?'
-                                  const sData = allStickersFlat.find(s => stickerId(s.catCode, s.number) === sid)
-                                  return (
-                                    <div key={sid} className="flex items-center gap-2 px-3 py-2">
-                                      <span className="text-xs font-black text-slate-400 w-6 flex-shrink-0">#{gNum}</span>
-                                      <span className="flex-1 text-xs text-slate-700 truncate">{sData?.name ?? sid}</span>
-                                      {/* Stepper */}
-                                      <div className="flex items-center gap-1 flex-shrink-0">
-                                        <button
-                                          onClick={() => setQty(key, sid, qty - 1)}
-                                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors flex items-center justify-center"
-                                        >
-                                          −
-                                        </button>
-                                        <span className="w-7 text-center text-sm font-black text-slate-800">{qty}</span>
-                                        <button
-                                          onClick={() => setQty(key, sid, qty + 1)}
-                                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm transition-colors flex items-center justify-center"
-                                        >
-                                          +
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
+                            <p className="text-[10px] text-slate-400 text-center pt-1">
+                              Toque em qualquer figurinha selecionada para editar a quantidade
+                            </p>
                           )}
                         </div>
                       )}
