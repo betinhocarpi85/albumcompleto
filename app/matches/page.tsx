@@ -102,8 +102,18 @@ const VENDAS = [
 type Tab = 'trocas' | 'doacoes' | 'vendas'
 
 export default function MatchesPage() {
-  const [tab, setTab] = useState<Tab>('trocas')
+  const [tab, setTab]       = useState<Tab>('trocas')
   const [expanded, setExpanded] = useState<string | null>(null)
+  // Por match: quais figurinhas da minha oferta estão desmarcadas
+  const [removidos, setRemovidos] = useState<Record<string, Set<number>>>({})
+
+  function toggleRemovido(matchId: string, num: number) {
+    setRemovidos(prev => {
+      const next = new Set(prev[matchId] ?? [])
+      next.has(num) ? next.delete(num) : next.add(num)
+      return { ...prev, [matchId]: next }
+    })
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
@@ -147,9 +157,13 @@ export default function MatchesPage() {
       {tab === 'trocas' && (
         <div className="space-y-3 animate-fadein">
           {MATCHES.map(match => {
-            const isOpen = expanded === match.id
-            const isExato = match.balance === 0 && match.temParaMim.length === match.euTenhoPara.length
-            const p = pronome(match.user.gender)
+            const rem        = removidos[match.id] ?? new Set<number>()
+            const oferta     = match.euTenhoPara.filter(n => !rem.has(n))
+            const dynBalance = oferta.length - match.temParaMim.length
+            const equilibrado = dynBalance === 0
+            const isOpen     = expanded === match.id
+            const isExato    = equilibrado && oferta.length === match.temParaMim.length && rem.size === 0 && match.balance === 0
+            const p          = pronome(match.user.gender)
 
             return (
               <div key={match.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -163,9 +177,9 @@ export default function MatchesPage() {
                       <p className="font-bold text-sm text-slate-800">{match.user.name}</p>
                       <span className={[
                         'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                        isExato ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700',
+                        equilibrado ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700',
                       ].join(' ')}>
-                        {isExato ? '✓ Match exato' : '≈ Match parcial'}
+                        {equilibrado ? '✓ Match exato' : '≈ Match parcial'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-400">{match.user.city} · ⭐ {match.user.rating}</p>
@@ -186,14 +200,14 @@ export default function MatchesPage() {
                   </span>
                   <span className="text-slate-300">·</span>
                   <span className="flex items-center gap-1">
-                    <span className="text-green-500 font-bold">Você tem:</span>
-                    <span className="font-semibold text-slate-700">{match.euTenhoPara.length} fig. {p.dele}</span>
+                    <span className="text-green-500 font-bold">Você oferece:</span>
+                    <span className="font-semibold text-slate-700">{oferta.length} fig. {p.dele}</span>
                   </span>
-                  {match.balance !== 0 && (
+                  {!equilibrado && (
                     <>
                       <span className="text-slate-300">·</span>
                       <span className="text-amber-600 font-medium">
-                        {match.balance > 0 ? `+${match.balance} a mais` : `${Math.abs(match.balance)} a menos`}
+                        {dynBalance > 0 ? `${dynBalance} a mais` : `${Math.abs(dynBalance)} a menos`}
                       </span>
                     </>
                   )}
@@ -202,7 +216,8 @@ export default function MatchesPage() {
                 {/* Detalhes expandidos */}
                 {isOpen && (
                   <div className="px-4 pb-4 border-t border-slate-50 pt-3 animate-fadein">
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      {/* Figurinhas que ele tem pra mim */}
                       <div>
                         <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} tem para você:</p>
                         <div className="flex flex-wrap gap-1.5">
@@ -212,28 +227,63 @@ export default function MatchesPage() {
                           })}
                         </div>
                       </div>
+
+                      {/* Minha oferta — clicável para remover */}
                       <div>
-                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Você oferece:</p>
+                        <p className="text-xs font-semibold text-green-600 mb-1">🟢 Você oferece:</p>
+                        {dynBalance !== 0 && (
+                          <p className="text-[10px] text-slate-400 mb-1.5">Toque para remover da oferta</p>
+                        )}
                         <div className="flex flex-wrap gap-1.5">
                           {match.euTenhoPara.map(num => {
-                            const s = allStickers.find(x => x.number === num)
-                            return <StickerSquare key={num} number={num} name={s?.name} stickerType={s?.type} status="troca" size="sm" />
+                            const s        = allStickers.find(x => x.number === num)
+                            const removido = rem.has(num)
+                            return (
+                              <button
+                                key={num}
+                                onClick={() => toggleRemovido(match.id, num)}
+                                title={removido ? `Recolocar #${num}` : `Remover #${num} da oferta`}
+                                className={[
+                                  'w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
+                                  removido
+                                    ? 'bg-slate-100 border-slate-200 text-slate-300 line-through opacity-50'
+                                    : 'bg-blue-50 border-blue-300 text-blue-700 hover:border-red-300 hover:bg-red-50',
+                                ].join(' ')}
+                              >
+                                <span className="text-[10px] font-bold leading-none">{removido ? '✕' : num}</span>
+                              </button>
+                            )
                           })}
                         </div>
                       </div>
                     </div>
 
-                    {match.balance !== 0 && (
+                    {/* Aviso de desequilíbrio */}
+                    {!equilibrado && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-amber-700">
-                        {match.balance > 0
-                          ? `⚠️ Você oferece ${match.balance} figurinha(s) a mais. ${p.ele} precisará remover ${match.balance} da proposta ou você pode complementar com pagamento.`
-                          : `⚠️ Você precisará remover ${Math.abs(match.balance)} figurinha(s) da sua oferta para equilibrar a troca.`
+                        {dynBalance > 0
+                          ? `⚠️ Você oferece ${dynBalance} figurinha(s) a mais — remova ${dynBalance} da sua oferta para equilibrar.`
+                          : `⚠️ Faltam ${Math.abs(dynBalance)} figurinha(s) na sua oferta para equilibrar a troca.`
                         }
                       </div>
                     )}
 
-                    <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
-                      🔁 Enviar proposta de troca
+                    {equilibrado && rem.size > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-green-700">
+                        ✅ Troca equilibrada! Você pode enviar a proposta agora.
+                      </div>
+                    )}
+
+                    <button
+                      disabled={!equilibrado}
+                      className={[
+                        'w-full font-bold py-3 rounded-xl text-sm transition-colors',
+                        equilibrado
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed',
+                      ].join(' ')}
+                    >
+                      🔁 {equilibrado ? 'Enviar proposta de troca' : `Ajuste a oferta para enviar`}
                     </button>
                   </div>
                 )}
