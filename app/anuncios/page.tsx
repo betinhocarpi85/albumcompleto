@@ -389,7 +389,8 @@ export default function AnunciosPage() {
                                         >
                                           {selected ? (
                                             <>
-                                              <span className="text-[13px] font-black leading-none">{qty}×</span>
+                                              <span className="text-[11px] font-black leading-none">{gNum}</span>
+                                              <span className="text-[8px] leading-none opacity-80">{qty}×</span>
                                             </>
                                           ) : gNum}
                                         </button>
