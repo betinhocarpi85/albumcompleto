@@ -24,7 +24,7 @@ const MATCHES = [
   {
     id: '1',
     user: { name: 'Ana Lima',  city: 'Rio de Janeiro, RJ', avatar: 'AL', avatarColor: 'from-pink-400 to-purple-500', rating: 4.9, trades: 142, gender: 'F' as const },
-    type: 'exato' as const,
+    type: 'parcial' as const,
     temParaMim: [28, 42, 53],
     euTenhoPara: [17, 29],
     balance: -1,
@@ -116,7 +116,7 @@ export default function MatchesPage() {
         <div className="space-y-3 animate-fadein">
           {MATCHES.map(match => {
             const isOpen = expanded === match.id
-            const isExato = match.type === 'exato'
+            const isExato = match.balance === 0 && match.temParaMim.length === match.euTenhoPara.length
             const p = pronome(match.user.gender)
 
             return (

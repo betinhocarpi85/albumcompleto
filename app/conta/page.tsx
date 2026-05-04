@@ -38,7 +38,7 @@ type Section = 'visao-geral' | 'albuns' | 'gamificacao' | 'dados' | 'endereco' |
 const MENU: { key: Section; icon: string; label: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
   { key: 'albuns',      icon: '📚', label: 'Meus Álbuns' },
-  { key: 'gamificacao', icon: '🏆', label: 'Gamificação' },
+  { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
   { key: 'endereco',    icon: '📍', label: 'Endereço' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
@@ -326,7 +326,7 @@ export default function ContaPage() {
             </div>
           )}
 
-          {/* GAMIFICAÇÃO */}
+          {/* GAMEFICAÇÃO */}
           {section === 'gamificacao' && (
             <div className="animate-fadein space-y-4">
               {/* Ranking */}
