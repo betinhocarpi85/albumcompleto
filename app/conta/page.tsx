@@ -33,16 +33,43 @@ const USER = {
   ],
 }
 
-type Section = 'visao-geral' | 'albuns' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
 
-const MENU: { key: Section; icon: string; label: string }[] = [
+const MENU: { key: Section; icon: string; label: string; badge?: number }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
   { key: 'albuns',      icon: '📚', label: 'Meus Álbuns' },
+  { key: 'carrinho',    icon: '🛒', label: 'Meu Carrinho', badge: 7 },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
   { key: 'endereco',    icon: '📍', label: 'Endereço' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
   { key: 'seguranca',   icon: '🔒', label: 'Segurança' },
+]
+
+// Mock carrinho — em produção viria do estado global
+const CARRINHO_MOCK = [
+  {
+    vendedor: 'Ricardo B.', cidade: 'São Paulo, SP', avatar: 'RB', avatarColor: 'from-green-400 to-teal-500', rating: 4.8,
+    items: [
+      { num: 19,  nome: 'Vinicius Jr.',  tipo: 'normal'    as const, preco: 2.00  },
+      { num: 21,  nome: 'Rodrygo',       tipo: 'normal'    as const, preco: 2.00  },
+      { num: 40,  nome: 'Messi',         tipo: 'brilhante' as const, preco: 12.00 },
+    ],
+  },
+  {
+    vendedor: 'Camila T.', cidade: 'Belo Horizonte, MG', avatar: 'CT', avatarColor: 'from-rose-400 to-pink-500', rating: 5.0,
+    items: [
+      { num: 65,  nome: 'Mbappé',        tipo: 'normal'    as const, preco: 2.00  },
+      { num: 76,  nome: 'Brasil Escudo', tipo: 'escudo'    as const, preco: 8.00  },
+      { num: 90,  nome: 'Haaland',       tipo: 'brilhante' as const, preco: 15.00 },
+    ],
+  },
+  {
+    vendedor: 'Leandro P.', cidade: 'Recife, PE', avatar: 'LP', avatarColor: 'from-amber-400 to-orange-500', rating: 4.6,
+    items: [
+      { num: 78,  nome: 'França Escudo', tipo: 'escudo'    as const, preco: 5.00  },
+    ],
+  },
 ]
 
 // Mock: progresso por álbum
@@ -124,7 +151,12 @@ export default function ContaPage() {
                 ].join(' ')}
               >
                 <span>{item.icon}</span>
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="text-[10px] font-black bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                    {item.badge}
+                  </span>
+                )}
               </button>
             ))}
             <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-slate-100 transition-colors">
@@ -323,6 +355,91 @@ export default function ContaPage() {
                   </Link>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* CARRINHO */}
+          {section === 'carrinho' && (
+            <div className="animate-fadein space-y-4">
+              {/* Resumo */}
+              {(() => {
+                const totalItens = CARRINHO_MOCK.reduce((a, v) => a + v.items.length, 0)
+                const totalValor = CARRINHO_MOCK.reduce((a, v) => a + v.items.reduce((b, i) => b + i.preco, 0), 0)
+                return (
+                  <div className="bg-slate-800 rounded-2xl p-5 text-white flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="text-slate-400 text-xs mb-0.5">Total no carrinho</p>
+                      <p className="text-3xl font-black text-green-400">
+                        {totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-0.5">
+                        {totalItens} figurinha{totalItens > 1 ? 's' : ''} · {CARRINHO_MOCK.length} vendedor{CARRINHO_MOCK.length > 1 ? 'es' : ''}
+                      </p>
+                    </div>
+                    <button className="bg-green-600 hover:bg-green-500 text-white font-black px-5 py-3 rounded-xl text-sm transition-colors flex-shrink-0">
+                      Finalizar compra →
+                    </button>
+                  </div>
+                )
+              })()}
+
+              {/* Por vendedor */}
+              {CARRINHO_MOCK.map(v => {
+                const subtotal = v.items.reduce((a, i) => a + i.preco, 0)
+                return (
+                  <div key={v.vendedor} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    {/* Header vendedor */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${v.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-white text-xs font-black">{v.avatar}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-800">{v.vendedor}</p>
+                        <p className="text-xs text-slate-400">{v.cidade} · ⭐ {v.rating}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-slate-400">{v.items.length} fig.</p>
+                        <p className="text-sm font-black text-green-700">
+                          {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Itens */}
+                    <div className="divide-y divide-slate-50">
+                      {v.items.map(item => (
+                        <div key={item.num} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className={[
+                            'w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 text-[10px] font-black',
+                            item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-300 text-amber-700'
+                            : item.tipo === 'escudo'  ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-600',
+                          ].join(' ')}>
+                            {item.num}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {item.nome}</p>
+                            <p className="text-[11px] text-slate-400">
+                              {item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'}
+                            </p>
+                          </div>
+                          <p className="text-sm font-black text-slate-700 flex-shrink-0">
+                            {item.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                          <button className="text-slate-300 hover:text-red-400 transition-colors text-lg ml-1 flex-shrink-0">×</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Botão por vendedor */}
+                    <div className="px-4 py-3 bg-slate-50">
+                      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                        🛒 Comprar de {v.vendedor.split(' ')[0]} · {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
 
