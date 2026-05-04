@@ -383,16 +383,16 @@ export default function AnunciosPage() {
                                           onClick={() => abrirModal(key, sid, gNum, s.name)}
                                           title={selected ? `#${gNum} · ${s.name} · ${qty} unid. (toque para editar)` : `#${gNum} · ${s.name} · toque para adicionar`}
                                           className={[
-                                            'w-11 h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-all text-[10px] font-bold active:scale-90 hover:scale-105',
+                                            'w-11 h-11 rounded-lg border-2 relative flex items-center justify-center transition-all text-[10px] font-bold active:scale-90 hover:scale-105',
                                             btnColor,
                                           ].join(' ')}
                                         >
-                                          {selected ? (
-                                            <>
-                                              <span className="text-[11px] font-black leading-none">{gNum}</span>
-                                              <span className="text-[8px] leading-none opacity-80">{qty}×</span>
-                                            </>
-                                          ) : gNum}
+                                          <span className="text-[11px] font-black leading-none">{gNum}</span>
+                                          {selected && (
+                                            <span className="absolute bottom-0.5 right-1 text-[8px] font-black leading-none opacity-90">
+                                              {qty}×
+                                            </span>
+                                          )}
                                         </button>
                                       )
                                     })}
