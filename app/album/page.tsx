@@ -139,7 +139,7 @@ export default function AlbumPage() {
               >
                 <span className="text-lg">{cat.flag ?? '📌'}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800">{cat.name}</p>
+                  <p className="font-bold text-sm text-slate-800">{cat.name.replace(/^\p{Emoji_Presentation}\s*/u, '')}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                       <div

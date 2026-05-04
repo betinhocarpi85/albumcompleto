@@ -15,7 +15,9 @@
       "WebFetch(domain:exame.com)",
       "WebFetch(domain:www.infomoney.com.br)",
       "Bash(npx tsc *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
