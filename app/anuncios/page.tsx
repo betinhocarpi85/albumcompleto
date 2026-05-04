@@ -156,7 +156,7 @@ export default function AnunciosPage() {
 
       {/* ── MODAL DE QUANTIDADE ── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
 
