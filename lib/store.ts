@@ -68,6 +68,9 @@ export interface Pedido {
 
 // ─── Chaves ───────────────────────────────────────────────────────────────────
 
+// Versão do seed — incrementar aqui força re-seed dos mocks no browser
+const SEED_VERSION = '2'
+
 const K = {
   COLADAS:            (id: AlbumId) => `ac_coladas_${id}`,
   ANUNCIOS:           (tipo: TipoAnuncio) => `ac_anuncios_${tipo}`,
@@ -77,6 +80,7 @@ const K = {
   PROPS_RECEBIDAS:    'ac_props_recv',
   PEDIDOS:            'ac_pedidos',
   NOTIFS_VISTAS:      'ac_notifs_seen',
+  SEED_VERSION:       'ac_seed_v',
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -143,6 +147,14 @@ export function savePropostasEnviadas(items: PropostaEnviada[]): void {
 }
 
 export function getPropostasRecebidas(): PropostaRecebida[] {
+  // Re-seed se versão desatualizada (ex: dados mock antigos no browser)
+  if (typeof window !== 'undefined') {
+    const storedV = localStorage.getItem(K.SEED_VERSION)
+    if (storedV !== SEED_VERSION) {
+      localStorage.removeItem(K.PROPS_RECEBIDAS)
+      localStorage.setItem(K.SEED_VERSION, SEED_VERSION)
+    }
+  }
   return read<PropostaRecebida[]>(K.PROPS_RECEBIDAS, MOCK_PROPOSTAS_RECEBIDAS)
 }
 export function savePropostasRecebidas(items: PropostaRecebida[]): void {
@@ -179,7 +191,7 @@ const MOCK_PROPOSTAS_RECEBIDAS: PropostaRecebida[] = [
     id: 'pr1',
     de: 'Ana Lima', deAvatar: 'AL', deAvatarColor: 'from-pink-400 to-purple-500',
     deCity: 'Rio de Janeiro, RJ', deRating: 4.9, deGender: 'F',
-    eleOferece: [28, 42, 53],
+    eleOferece: [28, 42],
     elePede: [17, 29],
     status: 'pendente',
     data: '04/05/2026',
@@ -188,7 +200,7 @@ const MOCK_PROPOSTAS_RECEBIDAS: PropostaRecebida[] = [
     id: 'pr2',
     de: 'Pedro S.', deAvatar: 'PS', deAvatarColor: 'from-orange-400 to-red-500',
     deCity: 'Curitiba, PR', deRating: 4.6, deGender: 'M',
-    eleOferece: [19, 65],
+    eleOferece: [19, 65, 88],
     elePede: [22, 45, 67],
     status: 'pendente',
     data: '03/05/2026',
