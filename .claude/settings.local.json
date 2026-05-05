@@ -17,7 +17,10 @@
       "Bash(npx tsc *)",
       "Bash(git push *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Read(//mnt/**)",
+      "Bash(ls /mnt/)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\CLAUDE\\\\albumcompleto\\\\app\" -Recurse | Where-Object { !$_.PSIsContainer } | Select-Object FullName)"
     ]
   }
 }

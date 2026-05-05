@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { albumCopa2026, TOTAL_STICKERS, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
+import { getColadas, saveColadas } from '@/lib/store'
 
 // coladas = Set de IDs únicos ex: "BRA-14", "FWC-3"
 type ColadasSet = Set<string>
@@ -9,11 +10,19 @@ type ColadasSet = Set<string>
 // Mapa global gerado uma vez
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 
-// Mock inicial — algumas já coladas (por ID único)
-const INICIAL: string[] = ['FWC-3','FWC-5','ALG-10','ARG-2','ARG-10','BRA-10','BRA-14','FRA-10','ESP-10','ENG-10']
+// Seed inicial para novos usuários
+const SEED: string[] = ['FWC-3','FWC-5','ALG-10','ARG-2','ARG-10','BRA-10','BRA-14','FRA-10','ESP-10','ENG-10']
 
 export default function AlbumPage() {
-  const [coladas, setColadas]       = useState<ColadasSet>(new Set(INICIAL))
+  const [coladas, setColadas]       = useState<ColadasSet>(new Set())
+  const [hydrated, setHydrated]     = useState(false)
+
+  // Hidrata do localStorage após mount
+  useEffect(() => {
+    const saved = getColadas('copa-2026')
+    setColadas(new Set(saved.length ? saved : SEED))
+    setHydrated(true)
+  }, [])
   const [search, setSearch]         = useState('')
   const [openCats, setOpenCats]     = useState<Set<string>>(new Set(['fwc']))
   const [mostrarFaltando, setMostrarFaltando] = useState(false)
@@ -27,6 +36,8 @@ export default function AlbumPage() {
     setColadas(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
+      // Persiste imediatamente
+      saveColadas('copa-2026', Array.from(next))
       return next
     })
   }

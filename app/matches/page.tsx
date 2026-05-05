@@ -4,6 +4,10 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { albumCopa2026 } from '@/data/album-copa-2026'
 import StickerSquare from '@/components/StickerSquare'
+import {
+  saveCarrinho, savePropostasEnviadas, getPropostasEnviadas,
+  type CarrinhoItem,
+} from '@/lib/store'
 
 const allStickers = albumCopa2026.categories.flatMap(c => c.stickers)
 
@@ -50,11 +54,17 @@ const VENDAS = [
 const POR_PAGINA = 10
 
 type Tab = 'trocas' | 'doacoes' | 'vendas'
+type FiltroTipo = 'todos' | 'brilhante' | 'escudo' | 'especial'
+type OrdemVenda = 'padrao' | 'preco-asc' | 'preco-desc' | 'avaliacao'
 
 interface DuplicateWarning {
   vendaId:        string
   num:            number
   outroVendedor:  string
+}
+
+interface PropostaSucesso {
+  nome: string
 }
 
 export default function MatchesPage() {
@@ -65,10 +75,26 @@ export default function MatchesPage() {
   const [carrinho, setCarrinho]         = useState<Record<string, Set<number>>>({})
   const [pagina, setPagina]             = useState(0)
   const [aviso, setAviso]               = useState<DuplicateWarning | null>(null)
+  const [filtroTipo, setFiltroTipo]     = useState<FiltroTipo>('todos')
+  const [ordemVenda, setOrdemVenda]     = useState<OrdemVenda>('padrao')
+  const [propostaSucesso, setPropostaSucesso] = useState<PropostaSucesso | null>(null)
+  const [mostrarFiltros, setMostrarFiltros]   = useState(false)
+
+  // ── Filtros / Ordenação (Vendas) ──────────────────────────────
+  const vendasFiltradas = useMemo(() => {
+    let lista = [...VENDAS]
+    if (filtroTipo !== 'todos') {
+      lista = lista.filter(v => v.items.some(i => i.tipo === filtroTipo))
+    }
+    if (ordemVenda === 'preco-asc')  lista.sort((a, b) => Math.min(...a.items.map(i => i.preco)) - Math.min(...b.items.map(i => i.preco)))
+    if (ordemVenda === 'preco-desc') lista.sort((a, b) => Math.max(...b.items.map(i => i.preco)) - Math.max(...a.items.map(i => i.preco)))
+    if (ordemVenda === 'avaliacao')  lista.sort((a, b) => b.user.rating - a.user.rating)
+    return lista
+  }, [filtroTipo, ordemVenda])
 
   // ── Paginação ─────────────────────────────────────────────────
-  const totalPaginas  = Math.ceil(VENDAS.length / POR_PAGINA)
-  const vendaPagina   = VENDAS.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA)
+  const totalPaginas  = Math.ceil(vendasFiltradas.length / POR_PAGINA)
+  const vendaPagina   = vendasFiltradas.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA)
 
   // ── Totais globais do carrinho ─────────────────────────────────
   const { totalItens, totalValor } = useMemo(() => {
@@ -145,10 +171,76 @@ export default function MatchesPage() {
     setCarrinho(prev => ({ ...prev, [vendaId]: new Set() }))
   }
 
+  function enviarProposta(match: typeof MATCHES[0], oferta: number[], recebe: number[]) {
+    const prev = getPropostasEnviadas()
+    savePropostasEnviadas([
+      {
+        id:                     'pe-' + Date.now(),
+        matchId:                match.id,
+        contraparte:            match.user.name,
+        contraparteAvatar:      match.user.avatar,
+        contraparteAvatarColor: match.user.avatarColor,
+        euOfereco:              oferta,
+        euRecebo:               recebe,
+        status:                 'pendente',
+        data:                   new Date().toLocaleDateString('pt-BR'),
+      },
+      ...prev,
+    ])
+    setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
+  }
+
+  function finalizarCompra() {
+    // Serializa carrinho para localStorage antes de ir ao checkout
+    const items: CarrinhoItem[] = []
+    for (const v of VENDAS) {
+      const sel = carrinho[v.id] ?? new Set<number>()
+      if (sel.size === 0) continue
+      items.push({
+        vendaId:    v.id,
+        vendedor:   v.user.name,
+        avatar:     v.user.avatar,
+        avatarColor:v.user.avatarColor,
+        cidade:     v.user.city,
+        rating:     v.user.rating,
+        stickers:   v.items
+          .filter(i => sel.has(i.num))
+          .map(i => ({ num: i.num, nome: allStickers.find(x => x.number === i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
+      })
+    }
+    saveCarrinho(items)
+  }
+
   const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
+
+      {/* Modal proposta enviada */}
+      {propostaSucesso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setPropostaSucesso(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein text-center">
+            <p className="text-4xl mb-3">🤝</p>
+            <p className="font-black text-slate-800 text-lg mb-1">Proposta enviada!</p>
+            <p className="text-sm text-slate-500 mb-4">
+              {propostaSucesso.nome} receberá sua proposta e tem até 48h para responder.
+              Você será notificado aqui no app.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setPropostaSucesso(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">
+                Fechar
+              </button>
+              <Link href="/propostas"
+                onClick={() => setPropostaSucesso(null)}
+                className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-bold text-center">
+                Ver propostas →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal aviso duplicata */}
       {aviso && (
@@ -330,6 +422,7 @@ export default function MatchesPage() {
 
                     <button
                       disabled={!equilibrado}
+                      onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
                       className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}
                     >
                       🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
@@ -345,8 +438,78 @@ export default function MatchesPage() {
       {/* ── VENDAS ── */}
       {tab === 'vendas' && (
         <div className="animate-fadein">
+          {/* Filtros */}
+          <div className="mb-3">
+            <button
+              onClick={() => setMostrarFiltros(f => !f)}
+              className={[
+                'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all mb-2',
+                mostrarFiltros || filtroTipo !== 'todos' || ordemVenda !== 'padrao'
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-600 border-slate-200',
+              ].join(' ')}
+            >
+              🔽 Filtrar e ordenar
+              {(filtroTipo !== 'todos' || ordemVenda !== 'padrao') && (
+                <span className="w-4 h-4 rounded-full bg-green-500 text-[9px] text-white flex items-center justify-center font-black">
+                  {(filtroTipo !== 'todos' ? 1 : 0) + (ordemVenda !== 'padrao' ? 1 : 0)}
+                </span>
+              )}
+            </button>
+
+            {mostrarFiltros && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 animate-fadein">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 mb-2">Tipo de figurinha</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      { key: 'todos',     label: 'Todas'     },
+                      { key: 'brilhante', label: '✨ Brilhante' },
+                      { key: 'escudo',    label: '🛡 Escudo'   },
+                      { key: 'especial',  label: '⭐ Especial'  },
+                    ] as { key: FiltroTipo; label: string }[]).map(f => (
+                      <button key={f.key} onClick={() => { setFiltroTipo(f.key); setPagina(0) }}
+                        className={[
+                          'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                          filtroTipo === f.key ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                        ].join(' ')}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-600 mb-2">Ordenar por</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      { key: 'padrao',     label: 'Padrão'           },
+                      { key: 'preco-asc',  label: '💰 Menor preço'   },
+                      { key: 'preco-desc', label: '💰 Maior preço'   },
+                      { key: 'avaliacao',  label: '⭐ Melhor avaliação' },
+                    ] as { key: OrdemVenda; label: string }[]).map(o => (
+                      <button key={o.key} onClick={() => { setOrdemVenda(o.key); setPagina(0) }}
+                        className={[
+                          'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                          ordemVenda === o.key ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                        ].join(' ')}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {(filtroTipo !== 'todos' || ordemVenda !== 'padrao') && (
+                  <button onClick={() => { setFiltroTipo('todos'); setOrdemVenda('padrao'); setPagina(0) }}
+                    className="text-xs text-red-500 font-semibold">
+                    × Limpar filtros
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           <p className="text-xs text-slate-400 text-center mb-3">
-            Vendedores com figurinhas que você não tem — toque nas que quer comprar
+            {vendasFiltradas.length} vendedor{vendasFiltradas.length !== 1 ? 'es' : ''} encontrado{vendasFiltradas.length !== 1 ? 's' : ''}
+            {filtroTipo !== 'todos' ? ` com figurinhas ${filtroTipo}` : ''} — toque nas que quer comprar
           </p>
 
           <div className="space-y-3">
@@ -502,7 +665,7 @@ export default function MatchesPage() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-green-400 font-black text-lg leading-none">{fmtBRL(totalValor)}</p>
-                <Link href="/conta?s=carrinho" className="mt-1.5 inline-block bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
+                <Link href="/checkout" onClick={finalizarCompra} className="mt-1.5 inline-block bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
                   Finalizar compra →
                 </Link>
               </div>

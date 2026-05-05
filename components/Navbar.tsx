@@ -2,9 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { MOCK_NOTIFICACOES, getNotifsSeen } from '@/lib/store'
 
 export default function Navbar() {
   const path = usePathname()
+  const [notifCount, setNotifCount] = useState(0)
+
+  useEffect(() => {
+    const vistas = getNotifsSeen()
+    setNotifCount(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
+  }, [])
 
   const links = [
     { href: '/',          label: 'Início'      },
@@ -45,8 +53,16 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* CTA */}
+        {/* CTA + sino */}
         <div className="flex items-center gap-3">
+          <Link href="/notificacoes" className="relative p-2 rounded-lg hover:bg-slate-50 transition-colors">
+            <span className="text-xl">🔔</span>
+            {notifCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            )}
+          </Link>
           <Link
             href="/entrar"
             className="text-sm text-slate-600 hover:text-slate-900 font-medium"
