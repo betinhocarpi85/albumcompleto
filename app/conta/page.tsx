@@ -698,11 +698,12 @@ function ContaPageInner() {
                     </div>
                   </div>
                   {[
-                    { label: 'Logradouro',  value: 'Av. Paulista',      col: 'col-span-3' },
-                    { label: 'Número',      value: '1000',               col: 'col-span-1' },
-                    { label: 'Complemento',value: 'Apto 42',            col: 'col-span-2' },
-                    { label: 'Bairro',      value: 'Bela Vista',         col: 'col-span-3' },
-                    { label: 'Cidade',      value: 'São Paulo',          col: 'col-span-3' },
+                    { label: 'Logradouro',         value: 'Av. Paulista',               col: 'col-span-3' },
+                    { label: 'Número',             value: '1000',                       col: 'col-span-1' },
+                    { label: 'Complemento',        value: 'Apto 42',                    col: 'col-span-2' },
+                    { label: 'Bairro',             value: 'Bela Vista',                 col: 'col-span-3' },
+                    { label: 'Cidade',             value: 'São Paulo',                  col: 'col-span-3' },
+                    { label: 'Ponto de referência',value: 'Próximo ao metrô Trianon',   col: 'col-span-3' },
                   ].map(f => (
                     <div key={f.label} className={f.col}>
                       <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>

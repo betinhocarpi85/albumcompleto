@@ -236,6 +236,11 @@ export default function CadastroPage() {
                     onChange={e => setEnd(p => ({ ...p, cidade: e.target.value }))}
                     className={inputClass} />
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block">Ponto de referência <span className="text-slate-400 font-normal">(opcional)</span></label>
+                  <input type="text" placeholder="Ex: Próximo ao mercado, portão azul..."
+                    className={inputClass} />
+                </div>
 
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => { setErros([]); setStep(0) }}

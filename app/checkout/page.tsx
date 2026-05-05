@@ -268,12 +268,20 @@ function CheckoutInner() {
 
           {/* Endereço de entrega */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <p className="font-bold text-sm text-slate-800">Endereço de entrega</p>
               <button className="text-xs text-green-600 font-semibold">Alterar</button>
             </div>
             <p className="text-sm text-slate-600">Rua das Flores, 123 · Apto 45</p>
-            <p className="text-xs text-slate-400">São Paulo, SP · 01234-567</p>
+            <p className="text-xs text-slate-400 mb-3">São Paulo, SP · 01234-567</p>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Ponto de referência <span className="text-slate-400 font-normal">(opcional)</span></label>
+              <input
+                type="text"
+                placeholder="Ex: Próximo ao mercado, portão azul..."
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
           </div>
 
           {/* Total */}
