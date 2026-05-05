@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { albumCopa2026, TOTAL_STICKERS, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
-import { getColadas, saveColadas } from '@/lib/store'
+import { getColadas, saveColadas, type AlbumId } from '@/lib/store'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 
 // coladas = Set de IDs únicos ex: "BRA-14", "FWC-3"
 type ColadasSet = Set<string>
@@ -14,15 +15,20 @@ const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 const SEED: string[] = ['FWC-3','FWC-5','ALG-10','ARG-2','ARG-10','BRA-10','BRA-14','FRA-10','ESP-10','ENG-10']
 
 export default function AlbumPage() {
+  const [albumId, setAlbumId]       = useState<AlbumId>('copa-2026')
   const [coladas, setColadas]       = useState<ColadasSet>(new Set())
   const [hydrated, setHydrated]     = useState(false)
+  const [mostrarSeletor, setMostrarSeletor] = useState(false)
 
-  // Hidrata do localStorage após mount
+  // Hidrata do localStorage após mount ou troca de álbum
   useEffect(() => {
-    const saved = getColadas('copa-2026')
-    setColadas(new Set(saved.length ? saved : SEED))
+    setHydrated(false)
+    const saved = getColadas(albumId)
+    setColadas(new Set(albumId === 'copa-2026' && !saved.length ? SEED : saved))
     setHydrated(true)
-  }, [])
+    setOpenCats(new Set(['fwc']))
+    setSearch('')
+  }, [albumId])
   const [search, setSearch]         = useState('')
   const [openCats, setOpenCats]     = useState<Set<string>>(new Set(['fwc']))
   const [mostrarFaltando, setMostrarFaltando] = useState(false)
@@ -36,11 +42,12 @@ export default function AlbumPage() {
     setColadas(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
-      // Persiste imediatamente
-      saveColadas('copa-2026', Array.from(next))
+      saveColadas(albumId, Array.from(next))
       return next
     })
   }
+
+  const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)!
 
   function toggleCat(id: string) {
     setOpenCats(prev => {
@@ -56,11 +63,48 @@ export default function AlbumPage() {
   return (
     <div className="max-w-4xl mx-auto px-3 py-4 animate-fadein">
 
+      {/* ── SELETOR DE ÁLBUM ── */}
+      <div className="mb-4">
+        <button
+          onClick={() => setMostrarSeletor(s => !s)}
+          className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          <span className="text-2xl">{albumMeta.emoji}</span>
+          <div className="flex-1 text-left min-w-0">
+            <p className="font-black text-sm text-slate-800 truncate">{albumMeta.name}</p>
+            <p className="text-xs text-slate-400">{albumMeta.description}</p>
+          </div>
+          <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
+        </button>
+
+        {mostrarSeletor && (
+          <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
+            {ALBUMS_REGISTRY.map(a => (
+              <button
+                key={a.id}
+                onClick={() => { setAlbumId(a.id); setMostrarSeletor(false) }}
+                className={[
+                  'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b border-slate-50 last:border-0',
+                  a.id === albumId ? 'bg-green-50' : 'hover:bg-slate-50',
+                ].join(' ')}
+              >
+                <span className="text-xl">{a.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800 truncate">{a.name}</p>
+                  <p className="text-xs text-slate-400">{a.description}</p>
+                </div>
+                {a.id === albumId && <span className="text-green-500 text-sm flex-shrink-0">✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ── CABEÇALHO ── */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-2xl">🏆</span>
+        <span className="text-2xl">{albumMeta.emoji}</span>
         <div>
-          <h1 className="text-lg font-black text-slate-800 leading-tight">Copa do Mundo FIFA 2026</h1>
+          <h1 className="text-lg font-black text-slate-800 leading-tight">{albumMeta.name}</h1>
           <p className="text-xs text-slate-500">{total} figurinhas · {albumCopa2026.categories.length} seleções</p>
         </div>
       </div>

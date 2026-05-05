@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
   getPedidos, getPropostasRecebidas, MOCK_NOTIFICACOES, getNotifsSeen,
+  setLoggedIn, savePedidos,
   type Pedido,
 } from '@/lib/store'
 
@@ -93,11 +94,31 @@ const TYPE_CONFIG = {
 
 function ContaPageInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [section, setSection]   = useState<Section>('visao-geral')
   const [pedidos, setPedidos]   = useState<Pedido[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
   const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda' | 'doacao'>('todos')
+  const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
+  const [estrelas, setEstrelas] = useState(5)
+  const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
+
+  function sair() {
+    setLoggedIn(false)
+    router.push('/entrar')
+  }
+
+  function enviarAvaliacao() {
+    if (!avaliacaoModal) return
+    const atualizados = pedidos.map(p =>
+      p.id === avaliacaoModal.id ? { ...p, status: 'concluido' as const } : p
+    )
+    setPedidos(atualizados)
+    savePedidos(atualizados)
+    setAvaliacaoEnviada(avaliacaoModal.id)
+    setAvaliacaoModal(null)
+  }
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
@@ -190,7 +211,7 @@ function ContaPageInner() {
                 )}
               </button>
             ))}
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-slate-100 transition-colors">
+            <button onClick={sair} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-slate-100 transition-colors">
               <span>🚪</span> Sair da conta
             </button>
           </nav>
@@ -825,6 +846,17 @@ function ContaPageInner() {
                             <p className="text-xs text-slate-400">{p.data}</p>
                             <p className={`text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</p>
                             {p.valor && <p className="text-xs font-bold text-green-600">R$ {p.valor.toFixed(2).replace('.',',')}</p>}
+                            {p.status === 'concluido' && !avaliacaoEnviada?.includes(p.id) && (
+                              <button
+                                onClick={() => { setAvaliacaoModal(p); setEstrelas(5) }}
+                                className="text-[10px] text-amber-600 font-semibold hover:underline mt-0.5 block"
+                              >
+                                ⭐ Avaliar
+                              </button>
+                            )}
+                            {avaliacaoEnviada?.includes(p.id) && (
+                              <p className="text-[10px] text-green-600 font-medium mt-0.5">✓ Avaliado</p>
+                            )}
                           </div>
                         </div>
                       )
@@ -889,6 +921,42 @@ function ContaPageInner() {
 
         </div>
       </div>
+
+      {/* Modal avaliação */}
+      {avaliacaoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setAvaliacaoModal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
+            <p className="font-black text-slate-800 text-lg mb-1">Avaliar transação</p>
+            <p className="text-sm text-slate-500 mb-4">
+              Como foi sua experiência com <span className="font-semibold">{avaliacaoModal.contraparte}</span>?
+            </p>
+            <div className="flex justify-center gap-2 mb-4">
+              {[1,2,3,4,5].map(n => (
+                <button key={n} onClick={() => setEstrelas(n)}
+                  className={`text-3xl transition-all ${n <= estrelas ? 'opacity-100 scale-110' : 'opacity-30'}`}>
+                  ⭐
+                </button>
+              ))}
+            </div>
+            <textarea
+              placeholder="Comentário opcional..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400 mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setAvaliacaoModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">
+                Cancelar
+              </button>
+              <button onClick={enviarAvaliacao}
+                className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold">
+                Enviar avaliação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal excluir conta */}
       {showDeleteConfirm && (

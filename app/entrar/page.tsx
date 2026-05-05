@@ -93,9 +93,9 @@ export default function EntrarPage() {
             <div>
               <div className="flex justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-600">Senha</label>
-                <button type="button" onClick={() => {}} className="text-xs text-green-600 hover:text-green-700">
+                <Link href="/senha" className="text-xs text-green-600 hover:text-green-700">
                   Esqueceu?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <input

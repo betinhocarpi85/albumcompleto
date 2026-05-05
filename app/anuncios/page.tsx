@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { albumCopa2026, STICKER_PRICES, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
 import type { StickerType } from '@/data/album-copa-2026'
+import { getAnuncios, saveAnuncios } from '@/lib/store'
 
 type TipoAnuncio = 'venda' | 'troca' | 'doacao'
 
@@ -57,7 +58,26 @@ interface QtyModal {
 
 export default function AnunciosPage() {
   const [tab, setTab]       = useState<Tab>('configurar')
-  const [ativos, setAtivos] = useState<AtivoItem[]>(ATIVOS_INICIAL)
+  const [ativos, setAtivos] = useState<AtivoItem[]>([])
+  const [publicado, setPublicado] = useState(false)
+
+  // Hidrata ativos do localStorage
+  useEffect(() => {
+    const saved = getAnuncios('tenho')
+    if (saved.length) {
+      setAtivos(saved.map(a => ({
+        id:      a.sid,
+        nome:    a.nome,
+        seleção: '',
+        tipo:    a.tipo,
+        anuncio: 'venda',
+        preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
+        qtd:     a.qty,
+      })))
+    } else {
+      setAtivos(ATIVOS_INICIAL)
+    }
+  }, [])
   const [modal, setModal]   = useState<QtyModal | null>(null)
   const [modalQty, setModalQty] = useState(1)
 
@@ -113,12 +133,61 @@ export default function AnunciosPage() {
 
   // Atualiza qty de um ativo (aba Ativos)
   function setAtivoQty(id: string, delta: number) {
-    setAtivos(prev => prev.map(a =>
-      a.id === id ? { ...a, qtd: Math.max(1, a.qtd + delta) } : a
-    ))
+    setAtivos(prev => {
+      const next = prev.map(a => a.id === id ? { ...a, qtd: Math.max(1, a.qtd + delta) } : a)
+      persistAtivos(next)
+      return next
+    })
   }
   function removeAtivo(id: string) {
-    setAtivos(prev => prev.filter(a => a.id !== id))
+    setAtivos(prev => {
+      const next = prev.filter(a => a.id !== id)
+      persistAtivos(next)
+      return next
+    })
+  }
+
+  function persistAtivos(lista: AtivoItem[]) {
+    saveAnuncios('tenho', lista.map(a => ({
+      sid:   a.id,
+      gNum:  Number(a.id.split('-')[1]) || a.id,
+      nome:  a.nome,
+      qty:   a.qtd,
+      tipo:  a.tipo as StickerType,
+      preco: a.preco !== '—' ? parseFloat(a.preco.replace('R$ ', '').replace(',', '.')) : undefined,
+    })))
+  }
+
+  function publicar() {
+    // Converte configs → AtivoItem e adiciona aos ativos
+    const novos: AtivoItem[] = []
+    for (const [tipoKey, cfg] of Object.entries(configs) as [StickerType, TipoConfig][]) {
+      if (!cfg.ativo) continue
+      const acao = cfg.tipoAnuncio
+      for (const [sid, qty] of cfg.selecionadas[acao]) {
+        const s = allStickersFlat.find(x => stickerId(x.catCode, x.number) === sid)
+        if (!s) continue
+        if (ativos.some(a => a.id === sid)) continue // já existe
+        novos.push({
+          id:      sid,
+          nome:    s.name,
+          seleção: s.catName,
+          tipo:    tipoKey,
+          anuncio: acao,
+          preco:   acao === 'venda' && cfg.preco ? `R$ ${parseFloat(cfg.preco).toFixed(2).replace('.', ',')}` : '—',
+          qtd:     qty,
+        })
+      }
+    }
+    if (!novos.length) return
+    setAtivos(prev => {
+      const next = [...prev, ...novos]
+      persistAtivos(next)
+      return next
+    })
+    setPublicado(true)
+    setTimeout(() => setPublicado(false), 3000)
+    setTab('ativos')
   }
 
   const stickersPorTipo = useMemo(() => {
@@ -419,8 +488,18 @@ export default function AnunciosPage() {
 
           {/* Publicar */}
           {totalSelecionado > 0 && (
-            <button className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-4 rounded-2xl text-sm transition-colors shadow-sm">
-              📢 Publicar {totalUnicos} figurinha{totalUnicos > 1 ? 's' : ''} · {totalSelecionado} unidade{totalSelecionado > 1 ? 's' : ''} no total
+            <button
+              onClick={publicar}
+              className={[
+                'w-full font-black py-4 rounded-2xl text-sm transition-all shadow-sm',
+                publicado
+                  ? 'bg-green-200 text-green-800 cursor-default'
+                  : 'bg-green-600 hover:bg-green-700 text-white',
+              ].join(' ')}
+            >
+              {publicado
+                ? '✓ Publicado com sucesso!'
+                : `📢 Publicar ${totalUnicos} figurinha${totalUnicos > 1 ? 's' : ''} · ${totalSelecionado} unidade${totalSelecionado > 1 ? 's' : ''} no total`}
             </button>
           )}
         </div>

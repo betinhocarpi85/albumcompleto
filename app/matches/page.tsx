@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { albumCopa2026 } from '@/data/album-copa-2026'
 import StickerSquare from '@/components/StickerSquare'
 import {
-  saveCarrinho, savePropostasEnviadas, getPropostasEnviadas,
+  saveCarrinho, savePropostasEnviadas, getPropostasEnviadas, addPedido,
   type CarrinhoItem,
 } from '@/lib/store'
 
@@ -56,6 +56,7 @@ const POR_PAGINA = 10
 type Tab = 'trocas' | 'doacoes' | 'vendas'
 type FiltroTipo = 'todos' | 'brilhante' | 'escudo' | 'especial'
 type OrdemVenda = 'padrao' | 'preco-asc' | 'preco-desc' | 'avaliacao'
+type FiltroTroca = 'todos' | 'exato' | 'parcial'
 
 interface DuplicateWarning {
   vendaId:        string
@@ -79,6 +80,8 @@ export default function MatchesPage() {
   const [ordemVenda, setOrdemVenda]     = useState<OrdemVenda>('padrao')
   const [propostaSucesso, setPropostaSucesso] = useState<PropostaSucesso | null>(null)
   const [mostrarFiltros, setMostrarFiltros]   = useState(false)
+  const [filtroTroca, setFiltroTroca]         = useState<FiltroTroca>('todos')
+  const [doacaoSolicitada, setDoacaoSolicitada] = useState<string | null>(null)
 
   // ── Filtros / Ordenação (Vendas) ──────────────────────────────
   const vendasFiltradas = useMemo(() => {
@@ -309,7 +312,34 @@ export default function MatchesPage() {
       {/* ── TROCAS ── */}
       {tab === 'trocas' && (
         <div className="space-y-3 animate-fadein">
-          {MATCHES.map(match => {
+          {/* Filtro rápido */}
+          <div className="flex gap-1.5">
+            {([
+              { key: 'todos',   label: 'Todos'         },
+              { key: 'exato',   label: '✓ Match exato'  },
+              { key: 'parcial', label: '≈ Match parcial' },
+            ] as { key: FiltroTroca; label: string }[]).map(f => (
+              <button key={f.key} onClick={() => setFiltroTroca(f.key)}
+                className={[
+                  'px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all',
+                  filtroTroca === f.key
+                    ? 'bg-slate-800 text-white border-slate-800'
+                    : 'bg-white text-slate-500 border-slate-200',
+                ].join(' ')}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {MATCHES.filter(match => {
+            const rem    = removidos[match.id]     ?? new Set<number>()
+            const remDel = removidosDele[match.id] ?? new Set<number>()
+            const bal    = match.euTenhoPara.filter(n => !rem.has(n)).length
+                         - match.temParaMim.filter(n => !remDel.has(n)).length
+            if (filtroTroca === 'exato')   return bal === 0
+            if (filtroTroca === 'parcial') return bal !== 0
+            return true
+          }).map(match => {
             const rem         = removidos[match.id]     ?? new Set<number>()
             const remDele     = removidosDele[match.id] ?? new Set<number>()
             const oferta      = match.euTenhoPara.filter(n => !rem.has(n))
@@ -608,9 +638,26 @@ export default function MatchesPage() {
                             <p className="text-sm font-bold text-green-800">{sel.size} figurinha{sel.size > 1 ? 's' : ''} selecionada{sel.size > 1 ? 's' : ''}</p>
                             <p className="text-xs text-green-600">Subtotal: <span className="font-black">{fmtBRL(totalSel)}</span></p>
                           </div>
-                          <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0">
+                          <Link
+                            href="/checkout"
+                            onClick={() => {
+                              const items: CarrinhoItem[] = [{
+                                vendaId:    v.id,
+                                vendedor:   v.user.name,
+                                avatar:     v.user.avatar,
+                                avatarColor:v.user.avatarColor,
+                                cidade:     v.user.city,
+                                rating:     v.user.rating,
+                                stickers:   v.items
+                                  .filter(i => sel.has(i.num))
+                                  .map(i => ({ num: i.num, nome: allStickers.find(x => x.number === i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
+                              }]
+                              saveCarrinho(items)
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
+                          >
                             🛒 Comprar
-                          </button>
+                          </Link>
                         </div>
                       ) : (
                         <p className="text-xs text-slate-400 text-center">Toque nas figurinhas que quer comprar</p>
@@ -697,8 +744,26 @@ export default function MatchesPage() {
                   return <StickerSquare key={num} number={num} name={s?.name} stickerType={s?.type} status="doacao" size="sm" />
                 })}
               </div>
-              <button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                💜 Solicitar doação
+              <button
+                onClick={() => {
+                  addPedido({
+                    id: 'doac-' + d.id + '-' + Date.now(),
+                    data: new Date().toLocaleDateString('pt-BR'),
+                    tipo: 'doacao', status: 'pendente',
+                    contraparte: d.user.name,
+                    fig: `${d.stickers.length} figurinha${d.stickers.length > 1 ? 's' : ''}`,
+                  })
+                  setDoacaoSolicitada(d.id)
+                  setTimeout(() => setDoacaoSolicitada(null), 3000)
+                }}
+                className={[
+                  'w-full font-bold py-2.5 rounded-xl text-sm transition-all',
+                  doacaoSolicitada === d.id
+                    ? 'bg-purple-100 text-purple-700 cursor-default'
+                    : 'bg-purple-500 hover:bg-purple-600 text-white',
+                ].join(' ')}
+              >
+                {doacaoSolicitada === d.id ? '✓ Solicitação enviada!' : '💜 Solicitar doação'}
               </button>
             </div>
           ))}
