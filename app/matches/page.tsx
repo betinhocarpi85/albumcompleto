@@ -60,10 +60,11 @@ interface DuplicateWarning {
 export default function MatchesPage() {
   const [tab, setTab]               = useState<Tab>('trocas')
   const [expanded, setExpanded]     = useState<string | null>(null)
-  const [removidos, setRemovidos]   = useState<Record<string, Set<number>>>({})
-  const [carrinho, setCarrinho]     = useState<Record<string, Set<number>>>({})
-  const [pagina, setPagina]         = useState(0)
-  const [aviso, setAviso]           = useState<DuplicateWarning | null>(null)
+  const [removidos, setRemovidos]       = useState<Record<string, Set<number>>>({})  // minha oferta
+  const [removidosDele, setRemovidosDele] = useState<Record<string, Set<number>>>({}) // oferta dele
+  const [carrinho, setCarrinho]         = useState<Record<string, Set<number>>>({})
+  const [pagina, setPagina]             = useState(0)
+  const [aviso, setAviso]               = useState<DuplicateWarning | null>(null)
 
   // ── Paginação ─────────────────────────────────────────────────
   const totalPaginas  = Math.ceil(VENDAS.length / POR_PAGINA)
@@ -85,6 +86,14 @@ export default function MatchesPage() {
   // ── Removidos (trocas) ─────────────────────────────────────────
   function toggleRemovido(matchId: string, num: number) {
     setRemovidos(prev => {
+      const next = new Set(prev[matchId] ?? [])
+      next.has(num) ? next.delete(num) : next.add(num)
+      return { ...prev, [matchId]: next }
+    })
+  }
+
+  function toggleRemovidoDele(matchId: string, num: number) {
+    setRemovidosDele(prev => {
       const next = new Set(prev[matchId] ?? [])
       next.has(num) ? next.delete(num) : next.add(num)
       return { ...prev, [matchId]: next }
@@ -209,9 +218,11 @@ export default function MatchesPage() {
       {tab === 'trocas' && (
         <div className="space-y-3 animate-fadein">
           {MATCHES.map(match => {
-            const rem         = removidos[match.id] ?? new Set<number>()
+            const rem         = removidos[match.id]     ?? new Set<number>()
+            const remDele     = removidosDele[match.id] ?? new Set<number>()
             const oferta      = match.euTenhoPara.filter(n => !rem.has(n))
-            const dynBalance  = oferta.length - match.temParaMim.length
+            const deles       = match.temParaMim.filter(n => !remDele.has(n))
+            const dynBalance  = oferta.length - deles.length
             const equilibrado = dynBalance === 0
             const isOpen      = expanded === match.id
             const p           = pronome(match.user.gender)
@@ -239,35 +250,61 @@ export default function MatchesPage() {
                 <div className="px-4 pb-3 flex items-center gap-3 text-xs text-slate-500">
                   <span><span className="text-blue-500 font-bold">{p.ele} tem:</span> <span className="font-semibold text-slate-700">{match.temParaMim.length} fig. suas</span></span>
                   <span className="text-slate-300">·</span>
+                  <span><span className="text-blue-500 font-bold">{p.ele} oferece:</span> <span className="font-semibold text-slate-700">{deles.length} fig. suas</span></span>
+                  <span className="text-slate-300">·</span>
                   <span><span className="text-green-500 font-bold">Você oferece:</span> <span className="font-semibold text-slate-700">{oferta.length} fig. {p.dele}</span></span>
                   {!equilibrado && <><span className="text-slate-300">·</span><span className="text-amber-600 font-medium">{dynBalance > 0 ? `${dynBalance} a mais` : `${Math.abs(dynBalance)} a menos`}</span></>}
                 </div>
 
                 {isOpen && (
                   <div className="px-4 pb-4 border-t border-slate-50 pt-3 animate-fadein">
+                    {!equilibrado && (
+                      <p className="text-[11px] text-slate-400 text-center mb-3">
+                        Toque em qualquer figurinha dos dois lados para removê-la da proposta
+                      </p>
+                    )}
                     <div className="grid grid-cols-2 gap-4 mb-3">
+
+                      {/* Lado dele — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} tem para você:</p>
+                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} oferece:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.temParaMim.map(num => {
-                            const s = allStickers.find(x => x.number === num)
-                            return <StickerSquare key={num} number={num} name={s?.name} stickerType={s?.type} status="troca" size="sm" />
+                            const s       = allStickers.find(x => x.number === num)
+                            const removido = remDele.has(num)
+                            return (
+                              <button
+                                key={num}
+                                onClick={() => toggleRemovidoDele(match.id, num)}
+                                title={removido ? `Recolocar #${num}` : `Remover #${num} da proposta`}
+                                className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
+                                  removido
+                                    ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50'
+                                    : 'bg-blue-50 border-blue-300 text-blue-700 hover:border-red-300 hover:bg-red-50'].join(' ')}
+                              >
+                                <span className="text-[10px] font-bold leading-none">{removido ? '✕' : num}</span>
+                              </button>
+                            )
                           })}
                         </div>
                       </div>
+
+                      {/* Lado meu — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-green-600 mb-1">🟢 Você oferece:</p>
-                        {dynBalance !== 0 && <p className="text-[10px] text-slate-400 mb-1.5">Toque para remover da oferta</p>}
+                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Você oferece:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.euTenhoPara.map(num => {
-                            const s = allStickers.find(x => x.number === num)
+                            const s       = allStickers.find(x => x.number === num)
                             const removido = rem.has(num)
                             return (
                               <button
                                 key={num}
                                 onClick={() => toggleRemovido(match.id, num)}
+                                title={removido ? `Recolocar #${num}` : `Remover #${num} da proposta`}
                                 className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
-                                  removido ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50' : 'bg-blue-50 border-blue-300 text-blue-700 hover:border-red-300 hover:bg-red-50'].join(' ')}
+                                  removido
+                                    ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50'
+                                    : 'bg-green-50 border-green-300 text-green-700 hover:border-red-300 hover:bg-red-50'].join(' ')}
                               >
                                 <span className="text-[10px] font-bold leading-none">{removido ? '✕' : num}</span>
                               </button>
@@ -279,10 +316,13 @@ export default function MatchesPage() {
 
                     {!equilibrado && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-amber-700">
-                        {dynBalance > 0 ? `⚠️ Você oferece ${dynBalance} fig. a mais — remova ${dynBalance} da sua oferta para equilibrar.` : `⚠️ Faltam ${Math.abs(dynBalance)} fig. na sua oferta para equilibrar a troca.`}
+                        {dynBalance > 0
+                          ? `⚠️ Você oferece ${dynBalance} fig. a mais — remova ${dynBalance} do seu lado para equilibrar.`
+                          : `⚠️ ${p.ele} oferece ${Math.abs(dynBalance)} fig. a mais — remova ${Math.abs(dynBalance)} do lado ${p.dele.replace('dela','dela').replace('dele','dele')} para equilibrar.`
+                        }
                       </div>
                     )}
-                    {equilibrado && rem.size > 0 && (
+                    {equilibrado && (rem.size > 0 || remDele.size > 0) && (
                       <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-green-700">
                         ✅ Troca equilibrada! Você pode enviar a proposta agora.
                       </div>
@@ -292,7 +332,7 @@ export default function MatchesPage() {
                       disabled={!equilibrado}
                       className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}
                     >
-                      🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a oferta para enviar'}
+                      🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
                     </button>
                   </div>
                 )}
