@@ -250,9 +250,9 @@ export default function MatchesPage() {
                 <div className="px-4 pb-3 flex items-center gap-3 text-xs text-slate-500">
                   <span><span className="text-blue-500 font-bold">{p.ele} tem:</span> <span className="font-semibold text-slate-700">{match.temParaMim.length} fig. suas</span></span>
                   <span className="text-slate-300">·</span>
-                  <span><span className="text-blue-500 font-bold">{p.ele} oferece:</span> <span className="font-semibold text-slate-700">{deles.length} fig. suas</span></span>
+                  <span><span className="text-blue-500 font-bold">{p.ele} tem:</span> <span className="font-semibold text-slate-700">{deles.length} fig. suas</span></span>
                   <span className="text-slate-300">·</span>
-                  <span><span className="text-green-500 font-bold">Você oferece:</span> <span className="font-semibold text-slate-700">{oferta.length} fig. {p.dele}</span></span>
+                  <span><span className="text-green-500 font-bold">Você tem:</span> <span className="font-semibold text-slate-700">{oferta.length} fig. {p.dele}</span></span>
                   {!equilibrado && <><span className="text-slate-300">·</span><span className="text-amber-600 font-medium">{dynBalance > 0 ? `${dynBalance} a mais` : `${Math.abs(dynBalance)} a menos`}</span></>}
                 </div>
 
@@ -267,7 +267,7 @@ export default function MatchesPage() {
 
                       {/* Lado dele — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} oferece:</p>
+                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} tem:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.temParaMim.map(num => {
                             const s       = allStickers.find(x => x.number === num)
@@ -291,7 +291,7 @@ export default function MatchesPage() {
 
                       {/* Lado meu — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Você oferece:</p>
+                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Você tem:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.euTenhoPara.map(num => {
                             const s       = allStickers.find(x => x.number === num)
@@ -317,8 +317,8 @@ export default function MatchesPage() {
                     {!equilibrado && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-amber-700">
                         {dynBalance > 0
-                          ? `⚠️ Você oferece ${dynBalance} fig. a mais — remova ${dynBalance} do seu lado para equilibrar.`
-                          : `⚠️ ${p.ele} oferece ${Math.abs(dynBalance)} fig. a mais — remova ${Math.abs(dynBalance)} do lado ${p.dele.replace('dela','dela').replace('dele','dele')} para equilibrar.`
+                          ? `⚠️ Você tem ${dynBalance} fig. a mais — remova ${dynBalance} do seu lado para equilibrar.`
+                          : `⚠️ ${p.ele} tem ${Math.abs(dynBalance)} fig. a mais — remova ${Math.abs(dynBalance)} do lado ${p.dele} para equilibrar.`
                         }
                       </div>
                     )}
