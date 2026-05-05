@@ -230,19 +230,21 @@ export default function MatchesPage() {
             return (
               <div key={match.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${match.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-white text-xs font-black">{match.user.avatar}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-slate-800">{match.user.name}</p>
-                      <span className={['text-[10px] font-bold px-2 py-0.5 rounded-full', equilibrado ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'].join(' ')}>
-                        {equilibrado ? '✓ Match exato' : '≈ Match parcial'}
-                      </span>
+                  <Link href={`/perfil/${match.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${match.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-white text-xs font-black">{match.user.avatar}</span>
                     </div>
-                    <p className="text-xs text-slate-400">{match.user.city} · ⭐ {match.user.rating}</p>
-                  </div>
-                  <button onClick={() => setExpanded(isOpen ? null : match.id)} className="text-slate-400 text-sm px-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm text-slate-800">{match.user.name}</p>
+                        <span className={['text-[10px] font-bold px-2 py-0.5 rounded-full', equilibrado ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'].join(' ')}>
+                          {equilibrado ? '✓ Match exato' : '≈ Match parcial'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">{match.user.city} · ⭐ {match.user.rating}</p>
+                    </div>
+                  </Link>
+                  <button onClick={() => setExpanded(isOpen ? null : match.id)} className="text-slate-400 text-sm px-2 flex-shrink-0">
                     {isOpen ? '▲' : '▼'}
                   </button>
                 </div>
@@ -364,20 +366,23 @@ export default function MatchesPage() {
                     onClick={() => setExpanded(isOpen ? null : v.id)}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left"
                   >
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-white text-xs font-black">{v.user.avatar}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-sm text-slate-800">{v.user.name}</p>
-                        {sel.size > 0 && (
-                          <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            {sel.size} no carrinho
-                          </span>
-                        )}
+                    <Link href={`/perfil/${v.id}`} onClick={e => e.stopPropagation()}
+                      className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-white text-xs font-black">{v.user.avatar}</span>
                       </div>
-                      <p className="text-xs text-slate-400">{v.user.city} · ⭐ {v.user.rating} · {v.user.sales} vendas</p>
-                    </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-slate-800">{v.user.name}</p>
+                          {sel.size > 0 && (
+                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              {sel.size} no carrinho
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400">{v.user.city} · ⭐ {v.user.rating} · {v.user.sales} vendas</p>
+                      </div>
+                    </Link>
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0 text-right">
                       <span className="text-[10px] font-semibold text-slate-500">{v.items.length} fig. disponíveis</span>
                       <span className="text-[10px] text-slate-400">{faixa}</span>
@@ -512,14 +517,16 @@ export default function MatchesPage() {
           {DOACOES.map(d => (
             <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${d.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                  <span className="text-white text-xs font-black">{d.user.avatar}</span>
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-slate-800">{d.user.name}</p>
-                  <p className="text-xs text-slate-400">{d.user.city} · ⭐ {d.user.rating}</p>
-                </div>
-                <span className="ml-auto text-xs bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-full">💜 Doação</span>
+                <Link href={`/perfil/${d.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${d.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                    <span className="text-white text-xs font-black">{d.user.avatar}</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-800">{d.user.name}</p>
+                    <p className="text-xs text-slate-400">{d.user.city} · ⭐ {d.user.rating}</p>
+                  </div>
+                </Link>
+                <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-full flex-shrink-0">💜 Doação</span>
               </div>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {d.stickers.map(num => {
