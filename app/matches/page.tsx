@@ -267,7 +267,7 @@ export default function MatchesPage() {
 
                       {/* Lado dele — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 {p.ele} tem:</p>
+                        <p className="text-xs font-semibold text-blue-600 mb-2">🔵 Para você</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.temParaMim.map(num => {
                             const s       = allStickers.find(x => x.number === num)
@@ -291,7 +291,7 @@ export default function MatchesPage() {
 
                       {/* Lado meu — clicável */}
                       <div>
-                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Você tem:</p>
+                        <p className="text-xs font-semibold text-green-600 mb-2">🟢 Sua oferta</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.euTenhoPara.map(num => {
                             const s       = allStickers.find(x => x.number === num)
