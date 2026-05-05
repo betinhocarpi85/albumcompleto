@@ -248,8 +248,6 @@ export default function MatchesPage() {
                 </div>
 
                 <div className="px-4 pb-3 flex items-center gap-3 text-xs text-slate-500">
-                  <span><span className="text-blue-500 font-bold">{p.ele} tem:</span> <span className="font-semibold text-slate-700">{match.temParaMim.length} fig. suas</span></span>
-                  <span className="text-slate-300">·</span>
                   <span><span className="text-blue-500 font-bold">{p.ele} tem:</span> <span className="font-semibold text-slate-700">{deles.length} fig. suas</span></span>
                   <span className="text-slate-300">·</span>
                   <span><span className="text-green-500 font-bold">Você tem:</span> <span className="font-semibold text-slate-700">{oferta.length} fig. {p.dele}</span></span>
