@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
@@ -86,7 +86,7 @@ const TYPE_CONFIG = {
   doacao: { label: 'Doação', bg: 'bg-purple-100', text: 'text-purple-700' },
 }
 
-export default function ContaPage() {
+function ContaPageInner() {
   const searchParams = useSearchParams()
   const [section, setSection] = useState<Section>('visao-geral')
 
@@ -805,5 +805,13 @@ export default function ContaPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ContaPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContaPageInner />
+    </Suspense>
   )
 }
