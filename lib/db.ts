@@ -44,6 +44,12 @@ export async function signOut() {
   return sb.auth.signOut()
 }
 
+export async function dbUpdatePassword(novaSenha: string): Promise<{ error: string | null }> {
+  const sb = createClient()
+  const { error } = await sb.auth.updateUser({ password: novaSenha })
+  return { error: error?.message ?? null }
+}
+
 // ─── Perfil ───────────────────────────────────────────────────────────────────
 
 export async function dbGetProfile(): Promise<Partial<UserProfile>> {

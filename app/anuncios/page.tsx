@@ -302,7 +302,7 @@ export default function AnunciosPage() {
         {[
           { label: 'Selecionadas', value: totalUnicos,    bg: 'bg-green-50',  text: 'text-green-700' },
           { label: 'Ativas',       value: ativos.length,  bg: 'bg-blue-50',   text: 'text-blue-700'  },
-          { label: 'Matches',      value: 4,              bg: 'bg-amber-50',  text: 'text-amber-700' },
+          { label: 'Matches',      value: 0,              bg: 'bg-amber-50',  text: 'text-amber-700' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-2xl px-3 py-3 text-center`}>
             <p className={`text-2xl font-black ${s.text}`}>{s.value}</p>

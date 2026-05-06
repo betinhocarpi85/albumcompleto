@@ -7,10 +7,9 @@ import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
   getPedidos, getPropostasRecebidas,
   savePedidos, getCarrinho, saveCarrinho,
-  getActiveAlbums, saveActiveAlbums,
   type Pedido, type CarrinhoItem, type UserProfile,
 } from '@/lib/store'
-import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas } from '@/lib/db'
+import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword } from '@/lib/db'
 
 
 type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
@@ -83,7 +82,8 @@ function ContaPageInner() {
     const rec = getPropostasRecebidas()
     setPropostasPendentes(rec.filter(p => p.status === 'pendente').length)
     dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
-    setActiveAlbums(new Set(getActiveAlbums() as AlbumId[]))
+    getUserId().then(id => setUserId(id))
+    dbGetActiveAlbums().then(ids => setActiveAlbums(new Set(ids)))
     // Progresso real dos álbuns (carrega coladas do DB em paralelo)
     import('@/data/albums-registry').then(async ({ ALBUMS_REGISTRY }) => {
       const prog: Record<string, number> = {}
@@ -113,7 +113,8 @@ function ContaPageInner() {
   const [senhaConf, setSenhaConf]                 = useState('')
   const [senhaErro, setSenhaErro]                 = useState('')
   const [senhaSalva, setSenhaSalva]               = useState(false)
-  const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set(['copa-2026']))
+  const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set())
+  const [userId, setUserId] = useState<string | null>(null)
   const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
 
   const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
@@ -143,7 +144,7 @@ function ContaPageInner() {
         next.add(id)
         setActiveAlbumView(id)
       }
-      saveActiveAlbums([...next] as AlbumId[])
+      dbSaveActiveAlbums([...next] as AlbumId[])
       return next
     })
   }
@@ -169,9 +170,11 @@ function ContaPageInner() {
             <div className="min-w-0">
               <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
               <p className="text-xs text-slate-400">{[perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
-              <Link href="/perfil/carlos" className="text-xs text-green-600 font-medium hover:underline">
-                Ver perfil público →
-              </Link>
+              {userId && (
+                <Link href={`/perfil/${userId}`} className="text-xs text-green-600 font-medium hover:underline">
+                  Ver perfil público →
+                </Link>
+              )}
             </div>
           </div>
 
@@ -1047,11 +1050,12 @@ function ContaPageInner() {
                     className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">
                     Cancelar
                   </button>
-                  <button onClick={() => {
-                    if (!senhaAtual)               { setSenhaErro('Informe a senha atual.'); return }
-                    if (senhaNova.length < 8)      { setSenhaErro('Nova senha deve ter ao menos 8 caracteres.'); return }
-                    if (senhaNova !== senhaConf)   { setSenhaErro('As senhas não coincidem.'); return }
+                  <button onClick={async () => {
+                    if (senhaNova.length < 8)    { setSenhaErro('Nova senha deve ter ao menos 8 caracteres.'); return }
+                    if (senhaNova !== senhaConf) { setSenhaErro('As senhas não coincidem.'); return }
                     setSenhaErro('')
+                    const { error } = await dbUpdatePassword(senhaNova)
+                    if (error) { setSenhaErro('Erro ao alterar: ' + error); return }
                     setSenhaSalva(true)
                   }} className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors">
                     Salvar
