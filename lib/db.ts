@@ -257,14 +257,14 @@ export async function dbUpdatePedidoStatus(id: string, status: Pedido['status'])
 
 export async function dbGetActiveAlbums(): Promise<AlbumId[]> {
   const uid = await getUserId()
-  if (!uid) return ['copa-2026']
+  if (!uid) return []
   const sb = createClient()
   const { data } = await sb
     .from('user_preferences')
     .select('active_albums')
     .eq('user_id', uid)
     .single()
-  return (data?.active_albums ?? ['copa-2026']) as AlbumId[]
+  return (data?.active_albums ?? []) as AlbumId[]
 }
 
 export async function dbSaveActiveAlbums(ids: AlbumId[]): Promise<void> {
