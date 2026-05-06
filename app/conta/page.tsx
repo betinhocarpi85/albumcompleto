@@ -12,12 +12,6 @@ import {
 } from '@/lib/store'
 import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas } from '@/lib/db'
 
-// Fallbacks para campos não preenchidos no perfil + mock de avaliações (sem sistema real ainda)
-const USER = {
-  name:    'Carlos Mendes',
-  city:    'São Paulo, SP',
-  ratings: 127,
-}
 
 type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
 
@@ -169,12 +163,12 @@ function ContaPageInner() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-black text-sm">
-                {(() => { const n = (perfil.nome ?? USER.name).trim().split(' ').filter(Boolean); return (n[0]?.[0] ?? '') + (n[n.length-1]?.[0] ?? '') })()}
+                {(() => { const n = (perfil.nome ?? '?').trim().split(' ').filter(Boolean); return (n[0]?.[0] ?? '?') + (n[n.length-1]?.[0] ?? '') })()}
               </span>
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || USER.name}</p>
-              <p className="text-xs text-slate-400">{[perfil.cidade, perfil.uf].filter(Boolean).join(', ') || USER.city}</p>
+              <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
+              <p className="text-xs text-slate-400">{[perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
               <Link href="/perfil/carlos" className="text-xs text-green-600 font-medium hover:underline">
                 Ver perfil público →
               </Link>
@@ -222,7 +216,7 @@ function ContaPageInner() {
                   { label: 'Trocas',    value: pedidos.filter(p => p.tipo === 'troca').length,   color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
                   { label: 'Vendas',    value: pedidos.filter(p => p.tipo === 'venda').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
                   { label: 'Doações',   value: pedidos.filter(p => p.tipo === 'doacao').length,  color: 'text-purple-600', bg: 'bg-purple-50', icon: '💜' },
-                  { label: 'Avaliações',value: USER.ratings,                                     color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
+                  { label: 'Avaliações',value: 0,                                                color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
                     <div className="text-2xl mb-1">{s.icon}</div>

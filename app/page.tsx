@@ -18,10 +18,10 @@ const DEMO_STICKERS = [
 ]
 
 const STATS = [
-  { value: '12.847', label: 'Colecionadores' },
-  { value: '94.320', label: 'Figurinhas anunciadas' },
-  { value: '31.550', label: 'Trocas concluídas' },
-  { value: '4.210',  label: 'Doações realizadas' },
+  { value: '0', label: 'Colecionadores' },
+  { value: '0', label: 'Figurinhas anunciadas' },
+  { value: '0', label: 'Trocas concluídas' },
+  { value: '0', label: 'Doações realizadas' },
 ]
 
 const STEPS = [
