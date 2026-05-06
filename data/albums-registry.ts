@@ -1,4 +1,4 @@
-export type AlbumId = 'copa-2026' | 'brasileirao-masc-2025' | 'brasileirao-fem-2025'
+export type AlbumId = 'copa-2026' | 'brasileirao-masc-2026' | 'brasileirao-fem-2026'
 
 export interface AlbumMeta {
   id: AlbumId
@@ -29,29 +29,29 @@ export const ALBUMS_REGISTRY: AlbumMeta[] = [
     available: true,
   },
   {
-    id: 'brasileirao-masc-2025',
-    name: 'Brasileirão Masculino 2025',
-    subtitle: 'Panini · Série A',
+    id: 'brasileirao-masc-2026',
+    name: 'Brasileirão Masculino 2026',
+    subtitle: 'Panini · Série A 2026',
     emoji: '🇧🇷',
     totalStickers: 685,
     totalTeams: 20,
-    year: 2025,
+    year: 2026,
     gradientFrom: 'from-yellow-500',
     gradientTo: 'to-green-600',
-    description: '685 figurinhas · 20 clubes · Série A',
+    description: '685 figurinhas · 20 clubes · Série A 2026',
     available: true,
   },
   {
-    id: 'brasileirao-fem-2025',
-    name: 'Brasileirão Feminino 2025',
-    subtitle: 'Panini · Série A1',
+    id: 'brasileirao-fem-2026',
+    name: 'Brasileirão Feminino 2026',
+    subtitle: 'Panini · Série A1 2026',
     emoji: '⚽',
     totalStickers: 480,
     totalTeams: 16,
-    year: 2025,
+    year: 2026,
     gradientFrom: 'from-pink-500',
     gradientTo: 'to-purple-600',
-    description: '480 figurinhas · 16 clubes · Série A1',
+    description: '480 figurinhas · 16 clubes · Série A1 2026',
     available: true,
   },
 ]

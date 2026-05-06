@@ -4,14 +4,27 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { MOCK_NOTIFICACOES, getNotifsSeen } from '@/lib/store'
+import { getSession, dbGetProfile } from '@/lib/db'
+
+function iniciais(nome?: string) {
+  if (!nome) return '?'
+  const p = nome.trim().split(' ').filter(Boolean)
+  return (p[0]?.[0] ?? '') + (p[p.length - 1]?.[0] ?? '')
+}
 
 export default function Navbar() {
   const path = usePathname()
   const [notifCount, setNotifCount] = useState(0)
+  const [logado, setLogado]         = useState(false)
+  const [nomeUsuario, setNomeUsuario] = useState('')
 
   useEffect(() => {
     const vistas = getNotifsSeen()
     setNotifCount(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
+    getSession().then(session => {
+      setLogado(!!session)
+      if (session) dbGetProfile().then(p => setNomeUsuario(p.nome ?? ''))
+    })
   }, [])
 
   const links = [
@@ -28,10 +41,10 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-            <span className="text-white text-sm font-black">AC</span>
+            <span className="text-white text-sm font-black">C</span>
           </div>
           <span className="font-black text-slate-800 text-lg tracking-tight">
-            álbum<span className="text-green-500">completo</span>
+            completan<span className="text-green-500">do</span>
           </span>
         </Link>
 
@@ -63,18 +76,32 @@ export default function Navbar() {
               </span>
             )}
           </Link>
-          <Link
-            href="/entrar"
-            className="text-sm text-slate-600 hover:text-slate-900 font-medium"
-          >
-            Entrar
-          </Link>
-          <Link
-            href="/cadastro"
-            className="text-sm bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            Começar grátis
-          </Link>
+          {logado ? (
+            <Link
+              href="/conta"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-green-700 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+                <span className="text-white text-xs font-black">{iniciais(nomeUsuario) || 'EU'}</span>
+              </div>
+              {nomeUsuario ? nomeUsuario.split(' ')[0] : 'Minha Conta'}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/entrar"
+                className="text-sm text-slate-600 hover:text-slate-900 font-medium"
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/cadastro"
+                className="text-sm bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                Começar grátis
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

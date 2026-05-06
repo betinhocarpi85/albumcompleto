@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { albumCopa2026, STICKER_PRICES, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
 import type { StickerType } from '@/data/album-copa-2026'
-import { getAnuncios, saveAnuncios } from '@/lib/store'
+import { dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
+import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca' | 'doacao'
 
@@ -60,24 +61,36 @@ export default function AnunciosPage() {
   const [tab, setTab]       = useState<Tab>('configurar')
   const [ativos, setAtivos] = useState<AtivoItem[]>([])
   const [publicado, setPublicado] = useState(false)
+  const [adulto, setAdulto]       = useState(true)
 
-  // Hidrata ativos do localStorage
+  // Hidrata ativos do DB
   useEffect(() => {
-    const saved = getAnuncios('tenho')
-    if (saved.length) {
-      setAtivos(saved.map(a => ({
-        id:      a.sid,
-        nome:    a.nome,
-        seleção: '',
-        tipo:    a.tipo,
-        anuncio: 'venda',
-        preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
-        qtd:     a.qty,
-      })))
-    } else {
-      setAtivos(ATIVOS_INICIAL)
-    }
+    getSession().then(session => {
+      // Se não logado, adulto = true (apenas leitura, sem anúncios reais)
+      if (!session) { setAdulto(true); return }
+      // Carrega coladas e anúncios em paralelo
+      Promise.all([
+        dbGetColadas('copa-2026'),
+        dbGetAnuncios('tenho'),
+      ]).then(([coladas, saved]) => {
+        setColadasSet(new Set(coladas))
+        if (saved.length) {
+          setAtivos(saved.map(a => ({
+            id:      a.sid,
+            nome:    a.nome,
+            seleção: '',
+            tipo:    a.tipo,
+            anuncio: 'venda',
+            preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
+            qtd:     a.qty,
+          })))
+        } else {
+          setAtivos(ATIVOS_INICIAL)
+        }
+      })
+    })
   }, [])
+  const [coladasSet, setColadasSet] = useState<Set<string>>(new Set())
   const [modal, setModal]   = useState<QtyModal | null>(null)
   const [modalQty, setModalQty] = useState(1)
 
@@ -148,7 +161,7 @@ export default function AnunciosPage() {
   }
 
   function persistAtivos(lista: AtivoItem[]) {
-    saveAnuncios('tenho', lista.map(a => ({
+    dbSaveAnuncios('tenho', lista.map(a => ({
       sid:   a.id,
       gNum:  Number(a.id.split('-')[1]) || a.id,
       nome:  a.nome,
@@ -222,6 +235,8 @@ export default function AnunciosPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
+
+      <BannerMenorDeIdade />
 
       {/* ── MODAL DE QUANTIDADE ── */}
       {modal && (
@@ -439,20 +454,25 @@ export default function AnunciosPage() {
                                       const qty      = selMap.get(sid) ?? 0
                                       const selected = qty > 0
                                       const gNum     = globalNumbers.get(sid) ?? s.number
+                                      const naoTem   = !coladasSet.has(sid)
 
-                                      const btnColor = selected
-                                        ? cfg.tipoAnuncio === 'venda'  ? 'bg-green-600 border-green-700 text-white'
-                                        : cfg.tipoAnuncio === 'troca'  ? 'bg-blue-500 border-blue-600 text-white'
-                                        :                                 'bg-purple-500 border-purple-600 text-white'
-                                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+                                      const btnColor = naoTem
+                                        ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                                        : selected
+                                          ? cfg.tipoAnuncio === 'venda'  ? 'bg-green-600 border-green-700 text-white'
+                                          : cfg.tipoAnuncio === 'troca'  ? 'bg-blue-500 border-blue-600 text-white'
+                                          :                                 'bg-purple-500 border-purple-600 text-white'
+                                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
 
                                       return (
                                         <button
                                           key={sid}
-                                          onClick={() => abrirModal(key, sid, gNum, s.name)}
-                                          title={selected ? `#${gNum} · ${s.name} · ${qty} unid. (toque para editar)` : `#${gNum} · ${s.name} · toque para adicionar`}
+                                          disabled={naoTem}
+                                          onClick={() => !naoTem && abrirModal(key, sid, gNum, s.name)}
+                                          title={naoTem ? `#${gNum} · ${s.name} · não colada` : selected ? `#${gNum} · ${s.name} · ${qty} unid. (toque para editar)` : `#${gNum} · ${s.name} · toque para adicionar`}
                                           className={[
-                                            'w-11 h-11 rounded-lg border-2 relative flex items-center justify-center transition-all text-[10px] font-bold active:scale-90 hover:scale-105',
+                                            'w-11 h-11 rounded-lg border-2 relative flex items-center justify-center transition-all text-[10px] font-bold',
+                                            naoTem ? 'opacity-35' : 'active:scale-90 hover:scale-105',
                                             btnColor,
                                           ].join(' ')}
                                         >
@@ -472,11 +492,11 @@ export default function AnunciosPage() {
                           })}
 
                           {/* Dica */}
-                          {selIds.length > 0 && (
-                            <p className="text-[10px] text-slate-400 text-center pt-1">
-                              Toque em qualquer figurinha selecionada para editar a quantidade
-                            </p>
-                          )}
+                          <p className="text-[10px] text-slate-400 text-center pt-1">
+                            {selIds.length > 0
+                              ? 'Toque em qualquer figurinha selecionada para editar a quantidade'
+                              : 'Figurinhas acinzentadas não estão coladas no seu álbum'}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -488,19 +508,25 @@ export default function AnunciosPage() {
 
           {/* Publicar */}
           {totalSelecionado > 0 && (
-            <button
-              onClick={publicar}
-              className={[
-                'w-full font-black py-4 rounded-2xl text-sm transition-all shadow-sm',
-                publicado
-                  ? 'bg-green-200 text-green-800 cursor-default'
-                  : 'bg-green-600 hover:bg-green-700 text-white',
-              ].join(' ')}
-            >
-              {publicado
-                ? '✓ Publicado com sucesso!'
-                : `📢 Publicar ${totalUnicos} figurinha${totalUnicos > 1 ? 's' : ''} · ${totalSelecionado} unidade${totalSelecionado > 1 ? 's' : ''} no total`}
-            </button>
+            adulto ? (
+              <button
+                onClick={publicar}
+                className={[
+                  'w-full font-black py-4 rounded-2xl text-sm transition-all shadow-sm',
+                  publicado
+                    ? 'bg-green-200 text-green-800 cursor-default'
+                    : 'bg-green-600 hover:bg-green-700 text-white',
+                ].join(' ')}
+              >
+                {publicado
+                  ? '✓ Publicado com sucesso!'
+                  : `📢 Publicar ${totalUnicos} figurinha${totalUnicos > 1 ? 's' : ''} · ${totalSelecionado} unidade${totalSelecionado > 1 ? 's' : ''} no total`}
+              </button>
+            ) : (
+              <div className="w-full py-4 rounded-2xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
+                🔒 Anúncios disponíveis apenas para maiores de 18
+              </div>
+            )
           )}
         </div>
       )}

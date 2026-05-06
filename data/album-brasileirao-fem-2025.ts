@@ -15,15 +15,15 @@ function clubStickers(players: string[]): { number: number; name: string; type: 
   return list
 }
 
-export const albumBrasileiraoFem2025: Album = {
-  id: 'brasileirao-fem-2025',
-  name: 'Campeonato Brasileiro Feminino 2025',
-  year: 2025,
+export const albumBrasileiraoFem2026: Album = {
+  id: 'brasileirao-fem-2026',
+  name: 'Campeonato Brasileiro Feminino 2026',
+  year: 2026,
   totalStickers: 480,
   categories: [
     // ── INTRO ──────────────────────────────────────────────────
     {
-      id: 'brf-intro', code: 'BRF', name: 'Brasileirão Feminino 2025',
+      id: 'brf-intro', code: 'BRF', name: 'Brasileirão Feminino 2026',
       stickers: [
         { number: 1, name: 'Logo Panini',                type: 'brilhante' },
         { number: 2, name: 'Troféu Brasileirão Feminino', type: 'brilhante' },

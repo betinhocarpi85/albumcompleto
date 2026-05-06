@@ -7,7 +7,9 @@
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-export type AlbumId = 'copa-2026' | 'brasileirao-masc-2025' | 'brasileirao-fem-2025'
+// AlbumId é definido em albums-registry; reexportado aqui para compatibilidade
+import type { AlbumId } from '@/data/albums-registry'
+export type { AlbumId }
 export type TipoAnuncio = 'tenho' | 'preciso'
 export type TipoSticker = 'normal' | 'brilhante' | 'escudo' | 'especial'
 
@@ -20,6 +22,12 @@ export interface AnuncioItem {
   preco?: number   // só para "tenho" (venda)
 }
 
+// Como cada parte quer receber suas figurinhas na troca
+export interface PreferenciaEntrega {
+  tipo:    'endereco' | 'agencia'
+  destino: string   // endereço residencial ou dados da agência
+}
+
 export interface PropostaEnviada {
   id:                    string
   matchId:               string
@@ -30,6 +38,8 @@ export interface PropostaEnviada {
   euRecebo:              number[]
   status:                'pendente' | 'aceita' | 'recusada'
   data:                  string
+  minhaEscolha?:         PreferenciaEntrega   // como EU quero receber
+  enviarPara?:           PreferenciaEntrega   // onde a contraparte quer receber
 }
 
 export interface PropostaRecebida {
@@ -44,6 +54,8 @@ export interface PropostaRecebida {
   elePede:         number[]
   status:          'pendente' | 'aceita' | 'recusada'
   data:            string
+  minhaEscolha?:   PreferenciaEntrega   // como EU quero receber (escolho ao aceitar)
+  enviarPara?:     PreferenciaEntrega   // onde a outra parte quer receber (revelado após aceitar)
 }
 
 export interface CarrinhoItem {
@@ -57,30 +69,59 @@ export interface CarrinhoItem {
 }
 
 export interface Pedido {
-  id:          string
-  data:        string
-  tipo:        'venda' | 'troca' | 'doacao'
-  status:      'concluido' | 'pendente' | 'cancelado'
-  contraparte: string
-  fig:         string
-  valor?:      number
+  id:                  string
+  data:                string
+  tipo:                'venda' | 'troca' | 'doacao'
+  status:              'concluido' | 'pendente' | 'cancelado'
+  contraparte:         string
+  fig:                 string
+  valor?:              number
+  enderecoEntrega?:    string   // endereço da contraparte para envio (trocas)
+}
+
+export interface UserProfile {
+  nome:               string
+  email:              string
+  cpf:                string
+  dataNascimento:     string   // YYYY-MM-DD
+  maior18:            boolean
+  aceitouTermos:      boolean
+  aceitouPrivacidade: boolean
+  cep:                string
+  uf:                 string
+  logradouro:         string
+  numero:             string
+  complemento:        string
+  cidade:             string
+}
+
+export function isProfileComplete(): boolean {
+  const p = getUserProfile()
+  return !!(p.cpf && p.cep && p.logradouro && p.cidade && p.aceitouTermos && p.aceitouPrivacidade)
+}
+
+/** Usuário confirmou maioridade — pode usar trocas, vendas e compras */
+export function isMaiorDeIdade(): boolean {
+  return getUserProfile().maior18 === true
 }
 
 // ─── Chaves ───────────────────────────────────────────────────────────────────
 
 // Versão do seed — incrementar aqui força re-seed dos mocks no browser
-const SEED_VERSION = '2'
+const SEED_VERSION = '3'
 
 const K = {
   COLADAS:            (id: AlbumId) => `ac_coladas_${id}`,
   ANUNCIOS:           (tipo: TipoAnuncio) => `ac_anuncios_${tipo}`,
   CARRINHO:           'ac_carrinho',
   AUTH:               'ac_auth',
+  PROFILE:            'ac_profile',
   PROPS_ENVIADAS:     'ac_props_sent',
   PROPS_RECEBIDAS:    'ac_props_recv',
   PEDIDOS:            'ac_pedidos',
   NOTIFS_VISTAS:      'ac_notifs_seen',
   SEED_VERSION:       'ac_seed_v',
+  ACTIVE_ALBUMS:      'ac_active_albums',
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -137,6 +178,15 @@ export function setLoggedIn(v: boolean): void {
   write(K.AUTH, v)
 }
 
+// ─── Perfil do usuário ────────────────────────────────────────────────────────
+
+export function getUserProfile(): Partial<UserProfile> {
+  return read<Partial<UserProfile>>(K.PROFILE, {})
+}
+export function saveUserProfile(p: Partial<UserProfile>): void {
+  write(K.PROFILE, p)
+}
+
 // ─── Propostas ───────────────────────────────────────────────────────────────
 
 export function getPropostasEnviadas(): PropostaEnviada[] {
@@ -172,6 +222,15 @@ export function savePedidos(items: Pedido[]): void {
 export function addPedido(p: Pedido): void {
   const prev = getPedidos()
   savePedidos([p, ...prev])
+}
+
+// ─── Álbuns ativos ───────────────────────────────────────────────────────────
+
+export function getActiveAlbums(): AlbumId[] {
+  return read<AlbumId[]>(K.ACTIVE_ALBUMS, ['copa-2026'])
+}
+export function saveActiveAlbums(ids: AlbumId[]): void {
+  write(K.ACTIVE_ALBUMS, ids)
 }
 
 // ─── Notificações vistas ──────────────────────────────────────────────────────
@@ -213,17 +272,22 @@ const MOCK_PROPOSTAS_RECEBIDAS: PropostaRecebida[] = [
     elePede: [33, 89, 22],
     status: 'aceita',
     data: '01/05/2026',
+    // Julia escolheu agência — você precisa enviar para lá
+    enviarPara: {
+      tipo: 'agencia',
+      destino: 'Ponto Mercado Envios — Savassi · Av. do Contorno, 6594 · Savassi · Belo Horizonte/MG · CEP 30110-042 · Seg–Sex 9h–20h · Sáb 9h–14h',
+    },
   },
 ]
 
 const MOCK_PEDIDOS: Pedido[] = [
-  { id: 'p1', data: '02/05/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Ana Lima',   fig: 'BRA-14 · Vinicius Jr.' },
-  { id: 'p2', data: '01/05/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Pedro S.',   fig: 'ARG-17 · Messi',        valor: 12 },
-  { id: 'p3', data: '30/04/2026', tipo: 'doacao', status: 'concluido', contraparte: 'Julia F.',   fig: 'ESP-15 · Yamal' },
-  { id: 'p4', data: '29/04/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Marcos T.',  fig: 'FRA-20 · Mbappé' },
-  { id: 'p5', data: '28/04/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Fernanda R.',fig: 'ENG-18 · Kane',          valor: 3 },
-  { id: 'p6', data: '26/04/2026', tipo: 'troca',  status: 'pendente',  contraparte: 'Carlos M.',  fig: 'BRA-5 · Endrick' },
-  { id: 'p7', data: '25/04/2026', tipo: 'venda',  status: 'pendente',  contraparte: 'Luciana T.', fig: 'ARG-10 · Di María',      valor: 8 },
+  { id: 'p1', data: '02/05/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Ana Lima',    fig: 'BRA-14 · Vinicius Jr.', enderecoEntrega: 'Rua das Flores, 12 · Rio de Janeiro/RJ · CEP 20040-010' },
+  { id: 'p2', data: '01/05/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Pedro S.',    fig: 'ARG-17 · Messi',        valor: 12, enderecoEntrega: 'Av. Batel, 800 · Curitiba/PR · CEP 80420-090' },
+  { id: 'p3', data: '30/04/2026', tipo: 'doacao', status: 'concluido', contraparte: 'Julia F.',    fig: 'ESP-15 · Yamal' },
+  { id: 'p4', data: '29/04/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Marcos T.',   fig: 'FRA-20 · Mbappé',       enderecoEntrega: 'Rua Augusta, 500 · São Paulo/SP · CEP 01305-000' },
+  { id: 'p5', data: '28/04/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Fernanda R.', fig: 'ENG-18 · Kane',         valor: 3,  enderecoEntrega: 'Rua XV de Novembro, 200 · Florianópolis/SC · CEP 88010-400' },
+  { id: 'p6', data: '26/04/2026', tipo: 'troca',  status: 'pendente',  contraparte: 'Carlos M.',   fig: 'BRA-5 · Endrick',       enderecoEntrega: 'Av. Paulista, 1000 · São Paulo/SP · CEP 01310-100' },
+  { id: 'p7', data: '25/04/2026', tipo: 'venda',  status: 'pendente',  contraparte: 'Luciana T.',  fig: 'ARG-10 · Di María',     valor: 8,  enderecoEntrega: 'Rua Sete de Setembro, 45 · Porto Alegre/RS · CEP 90010-190' },
 ]
 
 export const MOCK_NOTIFICACOES = [

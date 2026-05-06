@@ -1,18 +1,31 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { albumCopa2026 } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
 import StickerSquare from '@/components/StickerSquare'
 import {
   saveCarrinho, savePropostasEnviadas, getPropostasEnviadas, addPedido,
+  getColadas,
   type CarrinhoItem,
 } from '@/lib/store'
+import { getSession, dbGetProfile, dbGetColadas } from '@/lib/db'
+import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
-const allStickers = albumCopa2026.categories.flatMap(c => c.stickers)
+// Mapa globalNumber → info da figurinha (nome, código, tipo)
+interface StickerInfo { name: string; code: string; tipo: string }
+const globalInfoMap = new Map<number, StickerInfo>();
+{
+  let counter = 1
+  for (const cat of albumCopa2026.categories) {
+    for (const s of cat.stickers) {
+      globalInfoMap.set(counter++, { name: s.name, code: cat.code, tipo: s.type })
+    }
+  }
+}
 
-const MEU_PRECISO = [19, 21, 28, 40, 42, 53, 65, 76, 78, 88, 90, 101]
-const MEU_TENHO   = [17, 22, 29, 33, 45, 67, 89]
+// Mapa stickerId → globalNumber (para converter coladas)
+const sidToGlobal = buildGlobalNumberMap(albumCopa2026)
 
 function pronome(gender: 'M' | 'F') {
   return {
@@ -82,6 +95,27 @@ export default function MatchesPage() {
   const [mostrarFiltros, setMostrarFiltros]   = useState(false)
   const [filtroTroca, setFiltroTroca]         = useState<FiltroTroca>('todos')
   const [doacaoSolicitada, setDoacaoSolicitada] = useState<string | null>(null)
+  const [adulto, setAdulto]             = useState(true)
+  const [meuPrecisoSet, setMeuPrecisoSet] = useState<Set<number>>(new Set())
+  const [meuTenhoSet,   setMeuTenhoSet]   = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    getSession().then(session => {
+      if (!session) { setAdulto(true); return }
+      dbGetProfile().then(p => setAdulto(!!p.maior18))
+      dbGetColadas('copa-2026').then(coladas => {
+        const coladasSet = new Set(coladas)
+        const tenho   = new Set<number>()
+        const preciso = new Set<number>()
+        for (const [sid, gnum] of sidToGlobal) {
+          if (coladasSet.has(sid)) tenho.add(gnum)
+          else preciso.add(gnum)
+        }
+        setMeuTenhoSet(tenho)
+        setMeuPrecisoSet(preciso)
+      })
+    })
+  }, [])
 
   // ── Filtros / Ordenação (Vendas) ──────────────────────────────
   const vendasFiltradas = useMemo(() => {
@@ -208,7 +242,7 @@ export default function MatchesPage() {
         rating:     v.user.rating,
         stickers:   v.items
           .filter(i => sel.has(i.num))
-          .map(i => ({ num: i.num, nome: allStickers.find(x => x.number === i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
+          .map(i => ({ num: i.num, nome: globalInfoMap.get(i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
       })
     }
     saveCarrinho(items)
@@ -217,8 +251,11 @@ export default function MatchesPage() {
   const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
-    <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
+    <div className="max-w-2xl mx-auto py-4 animate-fadein">
 
+      <BannerMenorDeIdade />
+
+      <div className="px-3">
       {/* Modal proposta enviada */}
       {propostaSucesso && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -392,13 +429,13 @@ export default function MatchesPage() {
                         <p className="text-xs font-semibold text-blue-600 mb-2">🔵 Para você</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.temParaMim.map(num => {
-                            const s       = allStickers.find(x => x.number === num)
+                            const info    = globalInfoMap.get(num)
                             const removido = remDele.has(num)
                             return (
                               <button
                                 key={num}
                                 onClick={() => toggleRemovidoDele(match.id, num)}
-                                title={removido ? `Recolocar #${num}` : `Remover #${num} da proposta`}
+                                title={info ? `${info.code}-${num} · ${info.name}${removido ? ' (removido)' : ''}` : `#${num}`}
                                 className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
                                   removido
                                     ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50'
@@ -416,13 +453,13 @@ export default function MatchesPage() {
                         <p className="text-xs font-semibold text-green-600 mb-2">🟢 Sua oferta</p>
                         <div className="flex flex-wrap gap-1.5">
                           {match.euTenhoPara.map(num => {
-                            const s       = allStickers.find(x => x.number === num)
+                            const info    = globalInfoMap.get(num)
                             const removido = rem.has(num)
                             return (
                               <button
                                 key={num}
                                 onClick={() => toggleRemovido(match.id, num)}
-                                title={removido ? `Recolocar #${num}` : `Remover #${num} da proposta`}
+                                title={info ? `${info.code}-${num} · ${info.name}${removido ? ' (removido)' : ''}` : `#${num}`}
                                 className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
                                   removido
                                     ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50'
@@ -450,13 +487,19 @@ export default function MatchesPage() {
                       </div>
                     )}
 
-                    <button
-                      disabled={!equilibrado}
-                      onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
-                      className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}
-                    >
-                      🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
-                    </button>
+                    {adulto ? (
+                      <button
+                        disabled={!equilibrado}
+                        onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
+                        className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}
+                      >
+                        🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
+                      </button>
+                    ) : (
+                      <div className="w-full py-3 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
+                        🔒 Trocas disponíveis apenas para maiores de 18
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -544,10 +587,11 @@ export default function MatchesPage() {
 
           <div className="space-y-3">
             {vendaPagina.map(v => {
-              const isOpen   = expanded === v.id
-              const sel      = carrinho[v.id] ?? new Set<number>()
-              const totalSel = v.items.filter(i => sel.has(i.num)).reduce((a, i) => a + i.preco, 0)
-              const precos   = v.items.map(i => i.preco)
+              const isOpen    = expanded === v.id
+              const sel       = carrinho[v.id] ?? new Set<number>()
+              const totalSel  = v.items.filter(i => sel.has(i.num)).reduce((a, i) => a + i.preco, 0)
+              const itensNeed = meuTenhoSet.size > 0 ? v.items.filter(i => !meuTenhoSet.has(i.num)) : v.items
+              const precos    = itensNeed.length > 0 ? itensNeed.map(i => i.preco) : v.items.map(i => i.preco)
               const pMin = Math.min(...precos), pMax = Math.max(...precos)
               const faixa = pMin === pMax ? fmtBRL(pMin) : `${fmtBRL(pMin)} – ${fmtBRL(pMax)}`
 
@@ -577,7 +621,7 @@ export default function MatchesPage() {
                       </div>
                     </Link>
                     <div className="flex flex-col items-end gap-0.5 flex-shrink-0 text-right">
-                      <span className="text-[10px] font-semibold text-slate-500">{v.items.length} fig. disponíveis</span>
+                      <span className="text-[10px] font-semibold text-slate-500">{itensNeed.length} fig. que você precisa</span>
                       <span className="text-[10px] text-slate-400">{faixa}</span>
                     </div>
                     <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
@@ -586,8 +630,8 @@ export default function MatchesPage() {
                   {/* Grid expandido */}
                   {isOpen && (
                     <div className="border-t border-slate-50 px-4 pt-3 pb-4 animate-fadein">
-                      <div className="flex gap-2 mb-3">
-                        <button onClick={() => selecionarTudo(v.id, v.items.map(i => i.num))} className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors">
+                      <div className="flex gap-2 mb-3 flex-wrap">
+                        <button onClick={() => selecionarTudo(v.id, v.items.filter(i => !meuTenhoSet.has(i.num)).map(i => i.num))} className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors">
                           Selecionar tudo
                         </button>
                         {sel.size > 0 && (
@@ -600,22 +644,28 @@ export default function MatchesPage() {
                       <div className="flex flex-wrap gap-2 mb-4">
                         {v.items.map(item => {
                           const selecionado = sel.has(item.num)
+                          const jaColada    = meuTenhoSet.size > 0 && meuTenhoSet.has(item.num)
                           const isBrilhante = item.tipo === 'brilhante'
                           const isEscudo    = item.tipo === 'escudo'
+                          const info        = globalInfoMap.get(item.num)
                           return (
                             <button
                               key={item.num}
-                              onClick={() => toggleCarrinho(v.id, item.num)}
-                              title={`#${item.num} · ${allStickers.find(x => x.number === item.num)?.name ?? ''} · ${fmtBRL(item.preco)}`}
+                              disabled={jaColada}
+                              onClick={() => !jaColada && toggleCarrinho(v.id, item.num)}
+                              title={info ? `${info.code}-${item.num} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}
                               className={[
                                 'w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 hover:scale-105 select-none',
-                                selecionado ? 'bg-green-600 border-green-700 text-white shadow-sm'
+                                jaColada      ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-40 cursor-not-allowed'
+                                  : selecionado ? 'bg-green-600 border-green-700 text-white shadow-sm'
                                   : isBrilhante ? 'bg-amber-50 border-amber-300 text-amber-700'
                                   : isEscudo   ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
                                   : 'bg-white border-slate-200 text-slate-600 hover:border-green-300',
                               ].join(' ')}
                             >
-                              {selecionado ? (
+                              {jaColada ? (
+                                <span className="text-[10px] font-bold leading-none">✓</span>
+                              ) : selecionado ? (
                                 <span className="text-base leading-none">✓</span>
                               ) : (
                                 <>
@@ -631,6 +681,9 @@ export default function MatchesPage() {
                           )
                         })}
                       </div>
+                      {meuTenhoSet.size > 0 && v.items.some(i => meuTenhoSet.has(i.num)) && (
+                        <p className="text-[10px] text-slate-400 text-center -mt-2 mb-2">Figurinhas acinzentadas já estão no seu álbum</p>
+                      )}
 
                       {sel.size > 0 ? (
                         <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
@@ -638,26 +691,30 @@ export default function MatchesPage() {
                             <p className="text-sm font-bold text-green-800">{sel.size} figurinha{sel.size > 1 ? 's' : ''} selecionada{sel.size > 1 ? 's' : ''}</p>
                             <p className="text-xs text-green-600">Subtotal: <span className="font-black">{fmtBRL(totalSel)}</span></p>
                           </div>
-                          <Link
-                            href="/checkout"
-                            onClick={() => {
-                              const items: CarrinhoItem[] = [{
-                                vendaId:    v.id,
-                                vendedor:   v.user.name,
-                                avatar:     v.user.avatar,
-                                avatarColor:v.user.avatarColor,
-                                cidade:     v.user.city,
-                                rating:     v.user.rating,
-                                stickers:   v.items
-                                  .filter(i => sel.has(i.num))
-                                  .map(i => ({ num: i.num, nome: allStickers.find(x => x.number === i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
-                              }]
-                              saveCarrinho(items)
-                            }}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
-                          >
-                            🛒 Comprar
-                          </Link>
+                          {adulto ? (
+                            <Link
+                              href="/checkout"
+                              onClick={() => {
+                                const items: CarrinhoItem[] = [{
+                                  vendaId:    v.id,
+                                  vendedor:   v.user.name,
+                                  avatar:     v.user.avatar,
+                                  avatarColor:v.user.avatarColor,
+                                  cidade:     v.user.city,
+                                  rating:     v.user.rating,
+                                  stickers:   v.items
+                                    .filter(i => sel.has(i.num))
+                                    .map(i => ({ num: i.num, nome: globalInfoMap.get(i.num)?.name ?? `#${i.num}`, preco: i.preco, tipo: i.tipo })),
+                                }]
+                                saveCarrinho(items)
+                              }}
+                              className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
+                            >
+                              🛒 Comprar
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-amber-600 font-semibold flex-shrink-0">🔒 +18</span>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-slate-400 text-center">Toque nas figurinhas que quer comprar</p>
@@ -712,9 +769,13 @@ export default function MatchesPage() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-green-400 font-black text-lg leading-none">{fmtBRL(totalValor)}</p>
-                <Link href="/checkout" onClick={finalizarCompra} className="mt-1.5 inline-block bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
-                  Finalizar compra →
-                </Link>
+                {adulto ? (
+                  <Link href="/checkout" onClick={finalizarCompra} className="mt-1.5 inline-block bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-colors">
+                    Finalizar compra →
+                  </Link>
+                ) : (
+                  <span className="mt-1.5 inline-block text-amber-400 font-bold text-xs">🔒 +18 obrigatório</span>
+                )}
               </div>
             </div>
           )}
@@ -722,6 +783,7 @@ export default function MatchesPage() {
       )}
 
       {/* ── DOAÇÕES ── */}
+
       {tab === 'doacoes' && (
         <div className="space-y-3 animate-fadein">
           {DOACOES.map(d => (
@@ -740,35 +802,42 @@ export default function MatchesPage() {
               </div>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {d.stickers.map(num => {
-                  const s = allStickers.find(x => x.number === num)
-                  return <StickerSquare key={num} number={num} name={s?.name} stickerType={s?.type} status="doacao" size="sm" />
+                  const info = globalInfoMap.get(num)
+                  return <StickerSquare key={num} number={num} name={info?.name} stickerType={info?.tipo as 'normal' | 'brilhante' | 'escudo' | 'especial' | undefined} status="doacao" size="sm" />
                 })}
               </div>
-              <button
-                onClick={() => {
-                  addPedido({
-                    id: 'doac-' + d.id + '-' + Date.now(),
-                    data: new Date().toLocaleDateString('pt-BR'),
-                    tipo: 'doacao', status: 'pendente',
-                    contraparte: d.user.name,
-                    fig: `${d.stickers.length} figurinha${d.stickers.length > 1 ? 's' : ''}`,
-                  })
-                  setDoacaoSolicitada(d.id)
-                  setTimeout(() => setDoacaoSolicitada(null), 3000)
-                }}
-                className={[
-                  'w-full font-bold py-2.5 rounded-xl text-sm transition-all',
-                  doacaoSolicitada === d.id
-                    ? 'bg-purple-100 text-purple-700 cursor-default'
-                    : 'bg-purple-500 hover:bg-purple-600 text-white',
-                ].join(' ')}
-              >
-                {doacaoSolicitada === d.id ? '✓ Solicitação enviada!' : '💜 Solicitar doação'}
-              </button>
+              {adulto ? (
+                <button
+                  onClick={() => {
+                    addPedido({
+                      id: 'doac-' + d.id + '-' + Date.now(),
+                      data: new Date().toLocaleDateString('pt-BR'),
+                      tipo: 'doacao', status: 'pendente',
+                      contraparte: d.user.name,
+                      fig: `${d.stickers.length} figurinha${d.stickers.length > 1 ? 's' : ''}`,
+                    })
+                    setDoacaoSolicitada(d.id)
+                    setTimeout(() => setDoacaoSolicitada(null), 3000)
+                  }}
+                  className={[
+                    'w-full font-bold py-2.5 rounded-xl text-sm transition-all',
+                    doacaoSolicitada === d.id
+                      ? 'bg-purple-100 text-purple-700 cursor-default'
+                      : 'bg-purple-500 hover:bg-purple-600 text-white',
+                  ].join(' ')}
+                >
+                  {doacaoSolicitada === d.id ? '✓ Solicitação enviada!' : '💜 Solicitar doação'}
+                </button>
+              ) : (
+                <div className="w-full py-2.5 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
+                  🔒 Doações disponíveis apenas para maiores de 18
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+      </div> {/* px-3 */}
     </div>
   )
 }

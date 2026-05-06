@@ -17,15 +17,15 @@ function clubStickers(players: string[]): { number: number; name: string; type: 
   return list
 }
 
-export const albumBrasileiraoMasc2025: Album = {
-  id: 'brasileirao-masc-2025',
-  name: 'Campeonato Brasileiro Masculino 2025',
-  year: 2025,
+export const albumBrasileiraoMasc2026: Album = {
+  id: 'brasileirao-masc-2026',
+  name: 'Campeonato Brasileiro Masculino 2026',
+  year: 2026,
   totalStickers: 685,
   categories: [
     // ── INTRO ──────────────────────────────────────────────────
     {
-      id: 'bra-intro', code: 'BRM', name: 'Brasileirão 2025',
+      id: 'bra-intro', code: 'BRM', name: 'Brasileirão 2026',
       stickers: [
         { number: 1, name: 'Logo Panini',             type: 'brilhante' },
         { number: 2, name: 'Troféu Brasileirão',       type: 'brilhante' },

@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { isLoggedIn } from '@/lib/store'
+import { getSession } from '@/lib/db'
 
 export default function HomeCTA() {
   const [logado, setLogado] = useState(false)
 
   useEffect(() => {
-    setLogado(isLoggedIn())
+    getSession().then(s => setLogado(!!s))
   }, [])
 
   if (logado) {

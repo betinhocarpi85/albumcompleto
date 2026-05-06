@@ -6,37 +6,17 @@ import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
   getPedidos, getPropostasRecebidas, MOCK_NOTIFICACOES, getNotifsSeen,
-  setLoggedIn, savePedidos,
-  type Pedido,
+  savePedidos, getCarrinho, saveCarrinho,
+  getActiveAlbums, saveActiveAlbums,
+  type Pedido, type CarrinhoItem, type UserProfile,
 } from '@/lib/store'
+import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas } from '@/lib/db'
 
+// Fallbacks para campos não preenchidos no perfil + mock de avaliações (sem sistema real ainda)
 const USER = {
-  name: 'Carlos Mendes',
-  email: 'carlos@email.com',
-  city: 'São Paulo, SP',
-  avatar: 'CM',
-  since: 'Abril 2026',
-  rating: 4.8,
+  name:    'Carlos Mendes',
+  city:    'São Paulo, SP',
   ratings: 127,
-  trades: 89,
-  sales: 34,
-  donations: 12,
-  completion: 73,
-  badges: [
-    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Completou 10+ vendas com avaliação 5★', earned: true },
-    { icon: '💜', label: 'Doador Ouro',          desc: 'Realizou 10+ doações',                 earned: true },
-    { icon: '⭐', label: 'Top Trocador',          desc: 'Completou 50+ trocas',                 earned: true },
-    { icon: '🏆', label: 'Álbum Completo',        desc: 'Completou 100% do álbum',              earned: false },
-    { icon: '🔥', label: '100 Trocas',            desc: 'Realize 100 trocas para desbloquear',  earned: false },
-    { icon: '💎', label: 'Doador Diamante',       desc: 'Realize 25 doações para desbloquear',  earned: false },
-  ],
-  history: [
-    { type: 'troca',  fig: 'BRA-14 · Vinicius Jr.',  with: 'Ana Lima',   date: '02/05/2026', status: 'concluída' },
-    { type: 'venda',  fig: 'ARG-17 · Messi',         with: 'Pedro S.',   date: '01/05/2026', status: 'concluída' },
-    { type: 'doacao', fig: 'ESP-15 · Yamal',          with: 'Julia F.',   date: '30/04/2026', status: 'concluída' },
-    { type: 'troca',  fig: 'FRA-20 · Mbappé',        with: 'Marcos T.',  date: '29/04/2026', status: 'concluída' },
-    { type: 'venda',  fig: 'ENG-18 · Kane',           with: 'Fernanda R.',date: '28/04/2026', status: 'concluída' },
-  ],
 }
 
 type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
@@ -53,37 +33,12 @@ const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[
   { key: 'seguranca',   icon: '🔒', label: 'Segurança' },
 ]
 
-// Mock carrinho — em produção viria do estado global
-const CARRINHO_MOCK = [
-  {
-    vendedor: 'Ricardo B.', cidade: 'São Paulo, SP', avatar: 'RB', avatarColor: 'from-green-400 to-teal-500', rating: 4.8,
-    items: [
-      { num: 19,  nome: 'Vinicius Jr.',  tipo: 'normal'    as const, preco: 2.00  },
-      { num: 21,  nome: 'Rodrygo',       tipo: 'normal'    as const, preco: 2.00  },
-      { num: 40,  nome: 'Messi',         tipo: 'brilhante' as const, preco: 12.00 },
-    ],
-  },
-  {
-    vendedor: 'Camila T.', cidade: 'Belo Horizonte, MG', avatar: 'CT', avatarColor: 'from-rose-400 to-pink-500', rating: 5.0,
-    items: [
-      { num: 65,  nome: 'Mbappé',        tipo: 'normal'    as const, preco: 2.00  },
-      { num: 76,  nome: 'Brasil Escudo', tipo: 'escudo'    as const, preco: 8.00  },
-      { num: 90,  nome: 'Haaland',       tipo: 'brilhante' as const, preco: 15.00 },
-    ],
-  },
-  {
-    vendedor: 'Leandro P.', cidade: 'Recife, PE', avatar: 'LP', avatarColor: 'from-amber-400 to-orange-500', rating: 4.6,
-    items: [
-      { num: 78,  nome: 'França Escudo', tipo: 'escudo'    as const, preco: 5.00  },
-    ],
-  },
-]
 
-// Mock: progresso por álbum
-const ALBUM_PROGRESS: Record<AlbumId, number> = {
-  'copa-2026':               73,
-  'brasileirao-masc-2025':   41,
-  'brasileirao-fem-2025':    18,
+// Progresso real por álbum a partir do localStorage
+const ALBUM_PROGRESS_FALLBACK: Record<AlbumId, number> = {
+  'copa-2026':               0,
+  'brasileirao-masc-2026':   0,
+  'brasileirao-fem-2026':    0,
 }
 
 const TYPE_CONFIG = {
@@ -99,13 +54,15 @@ function ContaPageInner() {
   const [pedidos, setPedidos]   = useState<Pedido[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
+  const [carrinho, setCarrinho]         = useState<CarrinhoItem[]>([])
   const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda' | 'doacao'>('todos')
   const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
   const [estrelas, setEstrelas] = useState(5)
   const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
+  const [albumProgress, setAlbumProgress] = useState<Record<AlbumId, number>>(ALBUM_PROGRESS_FALLBACK)
 
-  function sair() {
-    setLoggedIn(false)
+  async function sair() {
+    await signOut()
     router.push('/entrar')
   }
 
@@ -128,22 +85,57 @@ function ContaPageInner() {
 
   useEffect(() => {
     setPedidos(getPedidos())
+    setCarrinho(getCarrinho())
     const rec = getPropostasRecebidas()
     setPropostasPendentes(rec.filter(p => p.status === 'pendente').length)
     const vistas = getNotifsSeen()
     setNotifNaoVistas(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
+    dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
+    setActiveAlbums(new Set(getActiveAlbums() as AlbumId[]))
+    // Progresso real dos álbuns (carrega coladas do DB em paralelo)
+    import('@/data/albums-registry').then(async ({ ALBUMS_REGISTRY }) => {
+      const prog: Record<string, number> = {}
+      await Promise.all(ALBUMS_REGISTRY.map(async a => {
+        const coladas = await dbGetColadas(a.id as AlbumId)
+        prog[a.id] = a.totalStickers > 0 ? Math.round(coladas.length / a.totalStickers * 100) : 0
+      }))
+      setAlbumProgress(prog as Record<AlbumId, number>)
+    })
   }, [])
 
+  const carrinhoItens = carrinho.reduce((a, v) => a + v.stickers.length, 0)
   const MENU = MENU_ITEMS.map(m => {
     if (m.key === 'propostas') return { ...m, badge: propostasPendentes }
+    if (m.key === 'carrinho')  return { ...m, badge: carrinhoItens > 0 ? carrinhoItens : undefined }
     return m
   })
 
   const [editDados, setEditDados] = useState(false)
   const [editEndereco, setEditEndereco] = useState(false)
+  const [perfil, setPerfil] = useState<Partial<UserProfile>>({})
+  const [perfilEdit, setPerfilEdit] = useState<Partial<UserProfile>>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSenhaModal, setShowSenhaModal]       = useState(false)
+  const [senhaAtual, setSenhaAtual]               = useState('')
+  const [senhaNova, setSenhaNova]                 = useState('')
+  const [senhaConf, setSenhaConf]                 = useState('')
+  const [senhaErro, setSenhaErro]                 = useState('')
+  const [senhaSalva, setSenhaSalva]               = useState(false)
   const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set(['copa-2026']))
   const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
+
+  const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
+  const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
+  const nDoacoes = pedidos.filter(p => p.tipo === 'doacao').length
+
+  const BADGE_DEFS = [
+    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Complete 10+ vendas',       earned: nVendas  >= 10  },
+    { icon: '💜', label: 'Doador Ouro',          desc: 'Realize 10+ doações',       earned: nDoacoes >= 10  },
+    { icon: '⭐', label: 'Top Trocador',          desc: 'Complete 50+ trocas',       earned: nTrocas  >= 50  },
+    { icon: '🔥', label: '100 Trocas',            desc: 'Realize 100 trocas',        earned: nTrocas  >= 100 },
+    { icon: '💎', label: 'Doador Diamante',       desc: 'Realize 25 doações',        earned: nDoacoes >= 25  },
+    { icon: '🏆', label: 'Álbum Completo',        desc: 'Complete 100% do álbum',    earned: false           },
+  ]
 
   function toggleAlbum(id: AlbumId) {
     setActiveAlbums(prev => {
@@ -159,6 +151,7 @@ function ContaPageInner() {
         next.add(id)
         setActiveAlbumView(id)
       }
+      saveActiveAlbums([...next] as AlbumId[])
       return next
     })
   }
@@ -177,11 +170,13 @@ function ContaPageInner() {
           {/* Mini perfil */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-black">{USER.avatar}</span>
+              <span className="text-white font-black text-sm">
+                {(() => { const n = (perfil.nome ?? USER.name).trim().split(' ').filter(Boolean); return (n[0]?.[0] ?? '') + (n[n.length-1]?.[0] ?? '') })()}
+              </span>
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-sm text-slate-800 truncate">{USER.name}</p>
-              <p className="text-xs text-slate-400">⭐ {USER.rating} · {USER.trades} trocas</p>
+              <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || USER.name}</p>
+              <p className="text-xs text-slate-400">{[perfil.cidade, perfil.uf].filter(Boolean).join(', ') || USER.city}</p>
               <Link href="/perfil/carlos" className="text-xs text-green-600 font-medium hover:underline">
                 Ver perfil público →
               </Link>
@@ -226,10 +221,10 @@ function ContaPageInner() {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Trocas',   value: USER.trades,    color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
-                  { label: 'Vendas',   value: USER.sales,     color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
-                  { label: 'Doações',  value: USER.donations, color: 'text-purple-600', bg: 'bg-purple-50', icon: '💜' },
-                  { label: 'Avaliações',value: USER.ratings,  color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
+                  { label: 'Trocas',    value: pedidos.filter(p => p.tipo === 'troca').length,   color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
+                  { label: 'Vendas',    value: pedidos.filter(p => p.tipo === 'venda').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
+                  { label: 'Doações',   value: pedidos.filter(p => p.tipo === 'doacao').length,  color: 'text-purple-600', bg: 'bg-purple-50', icon: '💜' },
+                  { label: 'Avaliações',value: USER.ratings,                                     color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
                     <div className="text-2xl mb-1">{s.icon}</div>
@@ -254,7 +249,7 @@ function ContaPageInner() {
 
                 <div className="space-y-4">
                   {activeAlbumsList.map(album => {
-                    const pct = ALBUM_PROGRESS[album.id] ?? 0
+                    const pct = albumProgress[album.id] ?? 0
                     const coladas = Math.round(album.totalStickers * pct / 100)
                     return (
                       <div key={album.id}>
@@ -295,7 +290,10 @@ function ContaPageInner() {
                   <button onClick={() => setSection('gamificacao')} className="text-xs text-green-600 font-medium hover:underline">Ver todos →</button>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {USER.badges.filter(b => b.earned).map(b => (
+                  {BADGE_DEFS.filter(b => b.earned).length === 0 && (
+                    <p className="text-sm text-slate-400">Complete transações para ganhar badges</p>
+                  )}
+                  {BADGE_DEFS.filter(b => b.earned).map(b => (
                     <div key={b.label} title={b.desc} className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full text-sm font-medium text-slate-700">
                       <span>{b.icon}</span> {b.label}
                     </div>
@@ -303,23 +301,27 @@ function ContaPageInner() {
                 </div>
               </div>
 
-              {/* Última transação */}
+              {/* Últimas transações */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-bold text-slate-800">Últimas transações</p>
                   <button onClick={() => setSection('historico')} className="text-xs text-green-600 font-medium hover:underline">Ver todas →</button>
                 </div>
-                <div className="space-y-2">
-                  {USER.history.slice(0, 3).map((h, i) => (
-                    <div key={i} className="flex items-center gap-3 text-sm">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TYPE_CONFIG[h.type as keyof typeof TYPE_CONFIG].bg} ${TYPE_CONFIG[h.type as keyof typeof TYPE_CONFIG].text}`}>
-                        {TYPE_CONFIG[h.type as keyof typeof TYPE_CONFIG].label}
-                      </span>
-                      <span className="text-slate-700 truncate flex-1">{h.fig}</span>
-                      <span className="text-slate-400 text-xs flex-shrink-0">{h.date}</span>
-                    </div>
-                  ))}
-                </div>
+                {pedidos.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">Nenhuma transação ainda.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {pedidos.slice(0, 3).map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 text-sm">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TYPE_CONFIG[p.tipo].bg} ${TYPE_CONFIG[p.tipo].text}`}>
+                          {TYPE_CONFIG[p.tipo].label}
+                        </span>
+                        <span className="text-slate-700 truncate flex-1">{p.fig}</span>
+                        <span className="text-slate-400 text-xs flex-shrink-0">{p.data}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -337,7 +339,7 @@ function ContaPageInner() {
                 <div className="space-y-3">
                   {ALBUMS_REGISTRY.map(album => {
                     const isActive = activeAlbums.has(album.id)
-                    const pct      = ALBUM_PROGRESS[album.id] ?? 0
+                    const pct      = albumProgress[album.id] ?? 0
                     const coladas  = Math.round(album.totalStickers * pct / 100)
 
                     return (
@@ -413,85 +415,117 @@ function ContaPageInner() {
           {/* CARRINHO */}
           {section === 'carrinho' && (
             <div className="animate-fadein space-y-4">
-              {/* Resumo */}
-              {(() => {
-                const totalItens = CARRINHO_MOCK.reduce((a, v) => a + v.items.length, 0)
-                const totalValor = CARRINHO_MOCK.reduce((a, v) => a + v.items.reduce((b, i) => b + i.preco, 0), 0)
-                return (
-                  <div className="bg-slate-800 rounded-2xl p-5 text-white flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-slate-400 text-xs mb-0.5">Total no carrinho</p>
-                      <p className="text-3xl font-black text-green-400">
-                        {totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </p>
-                      <p className="text-slate-400 text-xs mt-0.5">
-                        {totalItens} figurinha{totalItens > 1 ? 's' : ''} · {CARRINHO_MOCK.length} vendedor{CARRINHO_MOCK.length > 1 ? 'es' : ''}
-                      </p>
-                    </div>
-                    <button className="bg-green-600 hover:bg-green-500 text-white font-black px-5 py-3 rounded-xl text-sm transition-colors flex-shrink-0">
-                      Finalizar compra →
-                    </button>
-                  </div>
-                )
-              })()}
+              {carrinho.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-14 text-center">
+                  <p className="text-4xl mb-3">🛒</p>
+                  <p className="font-bold text-slate-700 mb-1">Carrinho vazio</p>
+                  <p className="text-sm text-slate-400 mb-4">Adicione figurinhas a partir dos matches ou anúncios.</p>
+                  <Link href="/matches" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                    Ver matches →
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {/* Resumo */}
+                  {(() => {
+                    const totalItens = carrinho.reduce((a, v) => a + v.stickers.length, 0)
+                    const totalValor = carrinho.reduce((a, v) => a + v.stickers.reduce((b, s) => b + s.preco, 0), 0)
+                    return (
+                      <div className="bg-slate-800 rounded-2xl p-5 text-white flex items-center gap-4">
+                        <div className="flex-1">
+                          <p className="text-slate-400 text-xs mb-0.5">Total no carrinho</p>
+                          <p className="text-3xl font-black text-green-400">
+                            {totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                          <p className="text-slate-400 text-xs mt-0.5">
+                            {totalItens} figurinha{totalItens !== 1 ? 's' : ''} · {carrinho.length} vendedor{carrinho.length !== 1 ? 'es' : ''}
+                          </p>
+                        </div>
+                        <Link
+                          href="/checkout"
+                          className="bg-green-600 hover:bg-green-500 text-white font-black px-5 py-3 rounded-xl text-sm transition-colors flex-shrink-0"
+                        >
+                          Finalizar compra →
+                        </Link>
+                      </div>
+                    )
+                  })()}
 
-              {/* Por vendedor */}
-              {CARRINHO_MOCK.map(v => {
-                const subtotal = v.items.reduce((a, i) => a + i.preco, 0)
-                return (
-                  <div key={v.vendedor} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    {/* Header vendedor */}
-                    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${v.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                        <span className="text-white text-xs font-black">{v.avatar}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-800">{v.vendedor}</p>
-                        <p className="text-xs text-slate-400">{v.cidade} · ⭐ {v.rating}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-slate-400">{v.items.length} fig.</p>
-                        <p className="text-sm font-black text-green-700">
-                          {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Itens */}
-                    <div className="divide-y divide-slate-50">
-                      {v.items.map(item => (
-                        <div key={item.num} className="flex items-center gap-3 px-4 py-2.5">
-                          <div className={[
-                            'w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 text-[10px] font-black',
-                            item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-300 text-amber-700'
-                            : item.tipo === 'escudo'  ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
-                            : 'bg-slate-50 border-slate-200 text-slate-600',
-                          ].join(' ')}>
-                            {item.num}
+                  {/* Por vendedor */}
+                  {carrinho.map(v => {
+                    const subtotal = v.stickers.reduce((a, s) => a + s.preco, 0)
+                    function removeSticker(num: number) {
+                      const novoCarrinho = carrinho
+                        .map(c => c.vendaId === v.vendaId
+                          ? { ...c, stickers: c.stickers.filter(s => s.num !== num) }
+                          : c
+                        )
+                        .filter(c => c.stickers.length > 0)
+                      setCarrinho(novoCarrinho)
+                      saveCarrinho(novoCarrinho)
+                    }
+                    return (
+                      <div key={v.vendaId} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        {/* Header vendedor */}
+                        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
+                          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${v.avatarColor} flex items-center justify-center flex-shrink-0`}>
+                            <span className="text-white text-xs font-black">{v.avatar}</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {item.nome}</p>
-                            <p className="text-[11px] text-slate-400">
-                              {item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'}
+                            <p className="font-bold text-sm text-slate-800">{v.vendedor}</p>
+                            <p className="text-xs text-slate-400">{v.cidade} · ⭐ {v.rating}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs text-slate-400">{v.stickers.length} fig.</p>
+                            <p className="text-sm font-black text-green-700">
+                              {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </p>
                           </div>
-                          <p className="text-sm font-black text-slate-700 flex-shrink-0">
-                            {item.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                          <button className="text-slate-300 hover:text-red-400 transition-colors text-lg ml-1 flex-shrink-0">×</button>
                         </div>
-                      ))}
-                    </div>
 
-                    {/* Botão por vendedor */}
-                    <div className="px-4 py-3 bg-slate-50">
-                      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                        🛒 Comprar de {v.vendedor.split(' ')[0]} · {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+                        {/* Itens */}
+                        <div className="divide-y divide-slate-50">
+                          {v.stickers.map(item => (
+                            <div key={item.num} className="flex items-center gap-3 px-4 py-2.5">
+                              <div className={[
+                                'w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 text-[10px] font-black',
+                                item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-300 text-amber-700'
+                                : item.tipo === 'escudo'  ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
+                                : 'bg-slate-50 border-slate-200 text-slate-600',
+                              ].join(' ')}>
+                                {item.num}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {item.nome}</p>
+                                <p className="text-[11px] text-slate-400">
+                                  {item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'}
+                                </p>
+                              </div>
+                              <p className="text-sm font-black text-slate-700 flex-shrink-0">
+                                {item.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </p>
+                              <button
+                                onClick={() => removeSticker(item.num)}
+                                className="text-slate-300 hover:text-red-400 transition-colors text-lg ml-1 flex-shrink-0"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Botão por vendedor */}
+                        <div className="px-4 py-3 bg-slate-50">
+                          <Link
+                            href="/checkout"
+                            className="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
+                          >
+                            🛒 Comprar de {v.vendedor.split(' ')[0]} · {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </Link>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </div>
           )}
 
@@ -505,9 +539,9 @@ function ContaPageInner() {
                 <p className="text-slate-400 text-sm mt-1">entre {(12847).toLocaleString('pt-BR')} colecionadores</p>
                 <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                   {[
-                    { label: 'Trocas',  value: USER.trades    },
-                    { label: 'Vendas',  value: USER.sales     },
-                    { label: 'Doações', value: USER.donations },
+                    { label: 'Trocas',  value: pedidos.filter(p => p.tipo === 'troca').length  },
+                    { label: 'Vendas',  value: pedidos.filter(p => p.tipo === 'venda').length  },
+                    { label: 'Doações', value: pedidos.filter(p => p.tipo === 'doacao').length },
                   ].map(s => (
                     <div key={s.label} className="bg-white/10 rounded-xl py-2">
                       <div className="text-xl font-black">{s.value}</div>
@@ -520,7 +554,7 @@ function ContaPageInner() {
               {/* Badges por categoria */}
               {[
                 {
-                  label: 'Vendas', icon: '💰', value: USER.sales,
+                  label: 'Vendas', icon: '💰', value: pedidos.filter(p => p.tipo === 'venda').length,
                   color: { bar: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500', dotOff: 'bg-slate-200' },
                   levels: [
                     { nome: 'Estreante',  meta: 1    },
@@ -536,7 +570,7 @@ function ContaPageInner() {
                   ],
                 },
                 {
-                  label: 'Trocas', icon: '🔁', value: USER.trades,
+                  label: 'Trocas', icon: '🔁', value: pedidos.filter(p => p.tipo === 'troca').length,
                   color: { bar: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500', dotOff: 'bg-slate-200' },
                   levels: [
                     { nome: 'Estreante',  meta: 1    },
@@ -552,7 +586,7 @@ function ContaPageInner() {
                   ],
                 },
                 {
-                  label: 'Doações', icon: '💜', value: USER.donations,
+                  label: 'Doações', icon: '💜', value: pedidos.filter(p => p.tipo === 'doacao').length,
                   color: { bar: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500', dotOff: 'bg-slate-200' },
                   levels: [
                     { nome: 'Estreante',  meta: 1    },
@@ -652,33 +686,45 @@ function ContaPageInner() {
 
           {/* MEUS DADOS */}
           {section === 'dados' && (
-            <div className="animate-fadein">
+            <div className="animate-fadein space-y-3">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-5">
                   <p className="font-bold text-slate-800">Dados pessoais</p>
-                  <button onClick={() => setEditDados(!editDados)} className="text-sm text-green-600 font-semibold hover:text-green-700">
+                  <button onClick={() => { setEditDados(!editDados); setPerfilEdit(perfil) }} className="text-sm text-green-600 font-semibold hover:text-green-700">
                     {editDados ? 'Cancelar' : '✏️ Editar'}
                   </button>
                 </div>
-
                 <div className="space-y-4">
-                  {[
-                    { label: 'Nome completo', value: USER.name,  type: 'text'  },
-                    { label: 'E-mail',        value: USER.email, type: 'email' },
-                    { label: 'CPF',           value: '•••.•••.•••-••', type: 'text' },
-                    { label: 'Telefone',      value: '(11) 99999-9999', type: 'tel' },
-                  ].map(f => (
+                  {([
+                    { label: 'Nome completo',    field: 'nome'           as keyof UserProfile, type: 'text'  },
+                    { label: 'E-mail',           field: 'email'          as keyof UserProfile, type: 'email' },
+                    { label: 'Data de nascimento', field: 'dataNascimento' as keyof UserProfile, type: 'date'  },
+                  ] as { label: string; field: keyof UserProfile; type: string }[]).map(f => (
                     <div key={f.label}>
                       <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
                       {editDados
-                        ? <input type={f.type} defaultValue={f.value} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{f.value}</p>
+                        ? <input type={f.type}
+                            value={String(perfilEdit[f.field] ?? '')}
+                            onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                        : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
+                            {String(perfil[f.field] || '—')}
+                          </p>
                       }
                     </div>
                   ))}
-
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">CPF</label>
+                    <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
+                      {perfil.cpf ? '•••.•••.' + perfil.cpf.slice(-6) : '—'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1">CPF não pode ser alterado. Entre em contato se precisar corrigir.</p>
+                  </div>
                   {editDados && (
-                    <button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2">
+                    <button
+                      onClick={() => { dbSaveProfile({ ...perfil, ...perfilEdit }); setPerfil({ ...perfil, ...perfilEdit }); setEditDados(false) }}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2"
+                    >
                       Salvar alterações
                     </button>
                   )}
@@ -696,47 +742,50 @@ function ContaPageInner() {
                     <p className="font-bold text-slate-800">Endereço de entrega</p>
                     <p className="text-xs text-slate-400 mt-0.5">Usado para envio de figurinhas. Nunca exibido publicamente.</p>
                   </div>
-                  <button onClick={() => setEditEndereco(!editEndereco)} className="text-sm text-green-600 font-semibold hover:text-green-700 flex-shrink-0">
+                  <button onClick={() => { setEditEndereco(!editEndereco); setPerfilEdit(perfil) }} className="text-sm text-green-600 font-semibold hover:text-green-700 flex-shrink-0">
                     {editEndereco ? 'Cancelar' : '✏️ Editar'}
                   </button>
                 </div>
-
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2">
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">CEP</label>
-                      {editEndereco
-                        ? <input type="text" defaultValue="01310-100" className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">01310-100</p>
-                      }
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">UF</label>
-                      {editEndereco
-                        ? <input type="text" defaultValue="SP" className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">SP</p>
-                      }
-                    </div>
+                    {([
+                      { label: 'CEP', field: 'cep' as keyof UserProfile, col: 'col-span-2' },
+                      { label: 'UF',  field: 'uf'  as keyof UserProfile, col: 'col-span-1' },
+                    ] as { label: string; field: keyof UserProfile; col: string }[]).map(f => (
+                      <div key={f.label} className={f.col}>
+                        <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
+                        {editEndereco
+                          ? <input type="text"
+                              value={String(perfilEdit[f.field] ?? '')}
+                              onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                          : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{String(perfil[f.field] || '—')}</p>
+                        }
+                      </div>
+                    ))}
                   </div>
-                  {[
-                    { label: 'Logradouro',         value: 'Av. Paulista',               col: 'col-span-3' },
-                    { label: 'Número',             value: '1000',                       col: 'col-span-1' },
-                    { label: 'Complemento',        value: 'Apto 42',                    col: 'col-span-2' },
-                    { label: 'Bairro',             value: 'Bela Vista',                 col: 'col-span-3' },
-                    { label: 'Cidade',             value: 'São Paulo',                  col: 'col-span-3' },
-                    { label: 'Ponto de referência',value: 'Próximo ao metrô Trianon',   col: 'col-span-3' },
-                  ].map(f => (
+                  {([
+                    { label: 'Logradouro',  field: 'logradouro'  as keyof UserProfile, col: 'col-span-3' },
+                    { label: 'Número',      field: 'numero'      as keyof UserProfile, col: 'col-span-1' },
+                    { label: 'Complemento', field: 'complemento' as keyof UserProfile, col: 'col-span-2' },
+                    { label: 'Cidade',      field: 'cidade'      as keyof UserProfile, col: 'col-span-3' },
+                  ] as { label: string; field: keyof UserProfile; col: string }[]).map(f => (
                     <div key={f.label} className={f.col}>
                       <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
                       {editEndereco
-                        ? <input type="text" defaultValue={f.value} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{f.value}</p>
+                        ? <input type="text"
+                            value={String(perfilEdit[f.field] ?? '')}
+                            onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                        : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{String(perfil[f.field] || '—')}</p>
                       }
                     </div>
                   ))}
-
                   {editEndereco && (
-                    <button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-1">
+                    <button
+                      onClick={() => { dbSaveProfile({ ...perfil, ...perfilEdit }); setPerfil({ ...perfil, ...perfilEdit }); setEditEndereco(false) }}
+                      className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-1"
+                    >
                       Salvar endereço
                     </button>
                   )}
@@ -841,6 +890,9 @@ function ContaPageInner() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-800 truncate">{p.fig}</p>
                             <p className="text-xs text-slate-400">com {p.contraparte}</p>
+                            {p.enderecoEntrega && (
+                              <p className="text-[10px] text-slate-300 truncate mt-0.5">📍 {p.enderecoEntrega}</p>
+                            )}
                           </div>
                           <div className="text-right flex-shrink-0">
                             <p className="text-xs text-slate-400">{p.data}</p>
@@ -878,7 +930,8 @@ function ContaPageInner() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <p className="font-bold text-slate-800 mb-4">Segurança</p>
                 <div className="space-y-3">
-                  <button className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-left">
+                  <button onClick={() => { setShowSenhaModal(true); setSenhaErro(''); setSenhaSalva(false); setSenhaAtual(''); setSenhaNova(''); setSenhaConf('') }}
+                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-left">
                     <span className="text-xl">🔑</span>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">Alterar senha</p>
@@ -958,6 +1011,66 @@ function ContaPageInner() {
         </div>
       )}
 
+      {/* Modal alterar senha */}
+      {showSenhaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 animate-fadein">
+            <div className="text-3xl text-center mb-3">🔑</div>
+            <h3 className="font-black text-slate-800 text-center text-lg mb-4">Alterar senha</h3>
+            {senhaSalva ? (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-3">✅</div>
+                <p className="font-semibold text-green-700 mb-1">Senha alterada com sucesso!</p>
+                <p className="text-xs text-slate-400 mb-4">Use sua nova senha no próximo acesso.</p>
+                <button onClick={() => setShowSenhaModal(false)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {senhaErro && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600">{senhaErro}</div>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Senha atual</label>
+                  <input type="password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Nova senha</label>
+                  <input type="password" value={senhaNova} onChange={e => setSenhaNova(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Confirmar nova senha</label>
+                  <input type="password" value={senhaConf} onChange={e => setSenhaConf(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setShowSenhaModal(false)}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">
+                    Cancelar
+                  </button>
+                  <button onClick={() => {
+                    if (!senhaAtual)               { setSenhaErro('Informe a senha atual.'); return }
+                    if (senhaNova.length < 8)      { setSenhaErro('Nova senha deve ter ao menos 8 caracteres.'); return }
+                    if (senhaNova !== senhaConf)   { setSenhaErro('As senhas não coincidem.'); return }
+                    setSenhaErro('')
+                    setSenhaSalva(true)
+                  }} className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors">
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal excluir conta */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -968,7 +1081,8 @@ function ContaPageInner() {
               Esta ação é <strong>irreversível</strong>. Todos os seus anúncios, histórico e dados serão apagados permanentemente.
             </p>
             <div className="space-y-2">
-              <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
+              <button onClick={async () => { await signOut(); router.push('/') }}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 Sim, excluir minha conta
               </button>
               <button

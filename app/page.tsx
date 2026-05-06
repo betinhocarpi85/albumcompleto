@@ -77,12 +77,11 @@ export default function Home() {
                     <StickerSquare key={s.number} number={s.number} status={s.status} stickerType={s.type} size="md" />
                   ))}
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-1.5">
+                <div className="mt-4 grid grid-cols-3 gap-1.5">
                   {[
                     { color: 'bg-green-500',  label: 'Venda' },
                     { color: 'bg-blue-500',   label: 'Troca' },
                     { color: 'bg-purple-500', label: 'Doação' },
-                    { color: 'bg-red-500',    label: 'Preciso' },
                   ].map((l) => (
                     <div key={l.label} className="flex items-center gap-1.5">
                       <span className={`w-2.5 h-2.5 rounded-full ${l.color} flex-shrink-0`} />
@@ -222,14 +221,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Com álbum completo */}
+          {/* Com completando */}
           <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-black px-2 py-1 rounded-full">
               RECOMENDADO
             </div>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">🚀</span>
-              <span className="font-black text-green-700 text-lg">Com álbum completo</span>
+              <span className="font-black text-green-700 text-lg">Com completando.com.br</span>
             </div>
             <div className="text-5xl font-black text-green-600 mb-1">≈ R$ 1.040</div>
             <p className="text-green-600 text-sm font-medium mb-1">com rede grande de trocas (Prof. Gilcione Costa, UFMG)</p>
@@ -245,13 +244,13 @@ export default function Home() {
 
         {/* Barra de economia */}
         <div className="bg-slate-800 rounded-2xl p-6 md:p-8 text-white text-center">
-          <p className="text-slate-400 text-sm mb-1">Economia média usando o álbum completo</p>
+          <p className="text-slate-400 text-sm mb-1">Economia média usando o completando.com.br</p>
           <div className="text-4xl md:text-5xl font-black text-green-400 mb-4">até 85% mais barato</div>
 
           {/* Barra visual */}
           <div className="max-w-lg mx-auto mb-2">
             <div className="flex justify-between text-xs text-slate-400 mb-1">
-              <span>álbumcompleto.com.br ≈ R$ 1.040</span>
+              <span>completando.com.br ≈ R$ 1.040</span>
               <span>Só pacotes ≈ R$ 7.098</span>
             </div>
             <div className="bg-slate-700 rounded-full h-5 overflow-hidden flex">
@@ -291,15 +290,29 @@ export default function Home() {
         <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 rounded-2xl p-6 md:p-10">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="text-6xl">🛡️</div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-xl md:text-2xl font-black text-slate-800 mb-2">
                 Compra e venda com total segurança
               </h2>
-              <p className="text-slate-600 leading-relaxed max-w-xl">
-                Nas vendas, o pagamento fica <strong>retido na plataforma</strong> até você confirmar o recebimento.
-                O vendedor só recebe depois que você aprovar. Em caso de problema, nossa equipe resolve em até 15 dias úteis.
+              <p className="text-slate-600 leading-relaxed max-w-xl mb-4">
+                Todas as transações são processadas pelo <strong>Mercado Pago</strong> — o maior meio de pagamento da América Latina.
+                O dinheiro fica <strong>retido</strong> até você confirmar o recebimento. O vendedor só recebe depois da sua aprovação.
               </p>
-              <div className="flex flex-wrap gap-2 mt-4">
+
+              {/* Logo Mercado Pago */}
+              <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 mb-4 w-fit">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="16" r="16" fill="#009EE3"/>
+                  <path d="M8 16.5c0-4.142 3.358-7.5 7.5-7.5s7.5 3.358 7.5 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                  <circle cx="16" cy="19" r="2.5" fill="white"/>
+                </svg>
+                <div>
+                  <p className="text-xs font-black text-slate-800 leading-none">Mercado Pago</p>
+                  <p className="text-[10px] text-slate-500">Pagamento protegido e garantido</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
                 {['Pagamento protegido', 'Rastreio obrigatório', 'Sistema de reputação', 'Mediação de disputas'].map((item) => (
                   <span key={item} className="flex items-center gap-1.5 text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
                     ✓ {item}
@@ -309,6 +322,123 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── PLANOS ── */}
+      <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-black text-slate-800">Escolha seu plano</h2>
+          <p className="text-slate-500 mt-2">Comece grátis. Faça upgrade quando quiser.</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5 items-start">
+
+          {/* GRÁTIS */}
+          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 flex flex-col">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Grátis</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-black text-slate-800">R$ 0</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-6">Para sempre gratuito</p>
+
+            <Link href="/cadastro" className="block text-center border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors mb-6">
+              Criar conta grátis
+            </Link>
+
+            <div className="space-y-3 flex-1">
+              {[
+                { ok: true,  text: 'Controle do álbum (marcar coladas/faltando)' },
+                { ok: true,  text: 'Ver matches disponíveis' },
+                { ok: true,  text: 'Comprar figurinhas avulsas' },
+                { ok: true,  text: 'Realizar doações' },
+                { ok: false, text: 'Anunciar figurinhas' },
+                { ok: false, text: 'Realizar trocas' },
+                { ok: false, text: 'Match automático bidirecional' },
+              ].map((f, i) => (
+                <div key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className={`flex-shrink-0 mt-0.5 ${f.ok ? 'text-green-500' : 'text-slate-300'}`}>
+                    {f.ok ? '✓' : '✕'}
+                  </span>
+                  <span className={f.ok ? 'text-slate-700' : 'text-slate-400'}>{f.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* MENSAL */}
+          <div className="bg-slate-800 rounded-2xl border-2 border-green-500 p-6 flex flex-col relative shadow-xl shadow-green-500/10">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
+              Mais popular
+            </div>
+            <p className="text-xs font-bold text-green-400 uppercase tracking-wide mb-1">Mensal</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-black text-white">R$ 4</span>
+              <span className="text-2xl font-black text-white mb-0.5">,99</span>
+              <span className="text-slate-400 text-sm mb-1">/mês</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-6">Cancele quando quiser</p>
+
+            <Link href="/cadastro" className="block text-center bg-green-500 hover:bg-green-400 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6 shadow-lg shadow-green-500/30">
+              Começar agora →
+            </Link>
+
+            <div className="space-y-3 flex-1">
+              {[
+                'Controle do álbum (marcar coladas/faltando)',
+                'Anunciar figurinhas para venda, troca e doação',
+                'Realizar trocas e doações',
+                'Match automático bidirecional',
+                'Comprar figurinhas avulsas',
+                'Sistema de reputação e badges',
+                'Suporte prioritário',
+              ].map((f, i) => (
+                <div key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className="text-green-400 flex-shrink-0 mt-0.5">✓</span>
+                  <span className="text-slate-300">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ANUAL */}
+          <div className="bg-white rounded-2xl border-2 border-amber-300 p-6 flex flex-col relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
+              Melhor preço
+            </div>
+            <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-1">Anual</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-black text-slate-800">R$ 49</span>
+              <span className="text-2xl font-black text-slate-800 mb-0.5">,99</span>
+              <span className="text-slate-400 text-sm mb-1">/ano</span>
+            </div>
+            <p className="text-xs text-amber-600 font-semibold mb-6">
+              ≈ R$ 4,16/mês · Economize R$ 9,89 vs mensal
+            </p>
+
+            <Link href="/cadastro" className="block text-center bg-amber-400 hover:bg-amber-500 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6">
+              Assinar anual →
+            </Link>
+
+            <div className="space-y-3 flex-1">
+              {[
+                'Tudo do plano Mensal',
+                '2 meses grátis vs mensal',
+                'Badge exclusivo "Colecionador Pro"',
+                'Acesso antecipado a novos álbuns',
+              ].map((f, i) => (
+                <div key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className="text-amber-500 flex-shrink-0 mt-0.5">✓</span>
+                  <span className="text-slate-700">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        <p className="text-center text-xs text-slate-400 mt-6">
+          Pagamento seguro via Mercado Pago · Cancele a qualquer momento · Sem multa
+        </p>
       </section>
 
       {/* ── CTA ── */}
@@ -326,7 +456,7 @@ export default function Home() {
 
       {/* ── FOOTER ── */}
       <footer className="bg-slate-900 text-slate-400 text-center py-6 text-xs">
-        <p>© 2026 albumcompleto.com.br · Todos os direitos reservados</p>
+        <p>© 2026 completando.com.br · Todos os direitos reservados</p>
         <p className="mt-1">Feito com ❤️ para colecionadores brasileiros</p>
       </footer>
     </div>

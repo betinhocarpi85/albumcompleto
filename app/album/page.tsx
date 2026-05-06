@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { albumCopa2026, TOTAL_STICKERS, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
-import { getColadas, saveColadas, type AlbumId } from '@/lib/store'
+import { type AlbumId } from '@/lib/store'
+import { dbGetColadas, dbColaSticker, dbDescolaSticker } from '@/lib/db'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 
 // coladas = Set de IDs únicos ex: "BRA-14", "FWC-3"
@@ -20,12 +22,13 @@ export default function AlbumPage() {
   const [hydrated, setHydrated]     = useState(false)
   const [mostrarSeletor, setMostrarSeletor] = useState(false)
 
-  // Hidrata do localStorage após mount ou troca de álbum
+  // Hidrata do DB após mount ou troca de álbum
   useEffect(() => {
     setHydrated(false)
-    const saved = getColadas(albumId)
-    setColadas(new Set(albumId === 'copa-2026' && !saved.length ? SEED : saved))
-    setHydrated(true)
+    dbGetColadas(albumId).then(saved => {
+      setColadas(new Set(albumId === 'copa-2026' && !saved.length ? SEED : saved))
+      setHydrated(true)
+    })
     setOpenCats(new Set(['fwc']))
     setSearch('')
   }, [albumId])
@@ -41,8 +44,13 @@ export default function AlbumPage() {
   function toggleColada(id: string) {
     setColadas(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      saveColadas(albumId, Array.from(next))
+      if (next.has(id)) {
+        next.delete(id)
+        dbDescolaSticker(albumId, id)
+      } else {
+        next.add(id)
+        dbColaSticker(albumId, id)
+      }
       return next
     })
   }
@@ -56,9 +64,6 @@ export default function AlbumPage() {
       return next
     })
   }
-
-  const allStickers = useMemo(() =>
-    albumCopa2026.categories.flatMap(c => c.stickers), [])
 
   return (
     <div className="max-w-4xl mx-auto px-3 py-4 animate-fadein">
@@ -158,12 +163,32 @@ export default function AlbumPage() {
         </button>
       </div>
 
+      {/* ── ÁLBUM NÃO DISPONÍVEL ── */}
+      {albumId !== 'copa-2026' && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
+          <p className="text-5xl mb-4">{albumMeta.emoji}</p>
+          <p className="font-black text-slate-800 text-lg mb-2">Em breve!</p>
+          <p className="text-sm text-slate-500 mb-1">
+            O catálogo digital do <span className="font-semibold">{albumMeta.name}</span> está sendo preparado.
+          </p>
+          <p className="text-xs text-slate-400 mb-6">
+            Você já pode anunciar e trocar figurinhas deste álbum agora.
+          </p>
+          <Link href="/anuncios" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+            Anunciar figurinhas →
+          </Link>
+        </div>
+      )}
+
       {/* ── DICA ── */}
-      <p className="text-xs text-slate-400 text-center mb-4">
-        Toque na figurinha para marcar como colada · toque de novo para desmarcar
-      </p>
+      {albumId === 'copa-2026' && (
+        <p className="text-xs text-slate-400 text-center mb-4">
+          Toque na figurinha para marcar como colada · toque de novo para desmarcar
+        </p>
+      )}
 
       {/* ── CATEGORIAS ── */}
+      {albumId === 'copa-2026' && (
       <div className="space-y-2">
         {albumCopa2026.categories.map(cat => {
           const isOpen = openCats.has(cat.id)
@@ -194,7 +219,7 @@ export default function AlbumPage() {
               >
                 <span className="text-lg">{cat.flag ?? '📌'}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800">{cat.name.replace(/^\p{Emoji_Presentation}\s*/u, '')}</p>
+                  <p className="font-bold text-sm text-slate-800">{cat.name.replace(/^[^\p{L}]+/u, '')}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                       <div
@@ -262,6 +287,7 @@ export default function AlbumPage() {
           )
         })}
       </div>
+      )}
 
     </div>
   )

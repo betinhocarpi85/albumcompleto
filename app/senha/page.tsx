@@ -24,10 +24,10 @@ export default function SenhaPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-              <span className="text-white text-base font-black">AC</span>
+              <span className="text-white text-base font-black">C</span>
             </div>
             <span className="font-black text-white text-xl tracking-tight">
-              álbum<span className="text-green-400">completo</span>
+              completan<span className="text-green-400">do</span>
             </span>
           </Link>
           <p className="text-slate-400 text-sm mt-1">Recuperar senha</p>

@@ -1,17 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { setLoggedIn } from '@/lib/store'
+import { signIn, signInWithGoogle, getSession } from '@/lib/db'
 
 export default function EntrarPage() {
   const router = useRouter()
-  const [email, setEmail]       = useState('')
-  const [senha, setSenha]       = useState('')
-  const [erro, setErro]         = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [email, setEmail]         = useState('')
+  const [senha, setSenha]         = useState('')
+  const [erro, setErro]           = useState('')
+  const [loading, setLoading]     = useState(false)
   const [showSenha, setShowSenha] = useState(false)
+
+  useEffect(() => {
+    getSession().then(s => {
+      if (s) router.replace('/album')
+    })
+  }, [router])
 
   function validar() {
     if (!email.includes('@')) return 'E-mail inválido.'
@@ -25,16 +31,19 @@ export default function EntrarPage() {
     if (err) { setErro(err); return }
     setErro('')
     setLoading(true)
-    // Simula chamada de API
-    await new Promise(r => setTimeout(r, 800))
-    setLoggedIn(true)
+    const { error } = await signIn(email, senha)
+    if (error) {
+      setErro('E-mail ou senha incorretos.')
+      setLoading(false)
+      return
+    }
     router.push('/album')
   }
 
-  function handleGoogle() {
-    // Em produção: iniciar fluxo OAuth
-    setLoggedIn(true)
-    router.push('/album')
+  async function handleGoogle() {
+    setLoading(true)
+    await signInWithGoogle()
+    // Redireciona via /auth/callback
   }
 
   return (
@@ -45,10 +54,10 @@ export default function EntrarPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-              <span className="text-white text-base font-black">AC</span>
+              <span className="text-white text-base font-black">C</span>
             </div>
             <span className="font-black text-white text-xl tracking-tight">
-              álbum<span className="text-green-400">completo</span>
+              completan<span className="text-green-400">do</span>
             </span>
           </Link>
           <p className="text-slate-400 text-sm mt-1">Entre na sua conta</p>
@@ -60,7 +69,8 @@ export default function EntrarPage() {
           {/* Google */}
           <button
             onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3.5 rounded-xl transition-all text-sm mb-4"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-3.5 rounded-xl transition-all text-sm mb-4 disabled:opacity-60"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
