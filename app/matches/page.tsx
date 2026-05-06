@@ -34,9 +34,19 @@ function pronome(gender: 'M' | 'F') {
   }
 }
 
-const MATCHES: never[] = []
-const DOACOES: never[] = []
-const VENDAS:  never[] = []
+type StickerTipo = 'normal' | 'brilhante' | 'escudo' | 'especial'
+type MatchType   = 'exato' | 'parcial'
+type Gender      = 'M' | 'F'
+
+interface MatchUser    { name: string; city: string; avatar: string; avatarColor: string; rating: number; trades: number; gender: Gender }
+interface VendaUser    { name: string; city: string; avatar: string; avatarColor: string; rating: number; sales: number }
+interface MatchRecord  { id: string; user: MatchUser; type: MatchType; temParaMim: number[]; euTenhoPara: number[]; balance: number }
+interface DoacaoRecord { id: string; user: MatchUser; stickers: number[] }
+interface VendaRecord  { id: string; user: VendaUser; items: { num: number; preco: number; tipo: StickerTipo }[] }
+
+const MATCHES: MatchRecord[]  = []
+const DOACOES: DoacaoRecord[] = []
+const VENDAS:  VendaRecord[]  = []
 
 const POR_PAGINA = 10
 
