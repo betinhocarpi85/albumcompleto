@@ -107,9 +107,6 @@ export function isMaiorDeIdade(): boolean {
 
 // ─── Chaves ───────────────────────────────────────────────────────────────────
 
-// Versão do seed — incrementar aqui força re-seed dos mocks no browser
-const SEED_VERSION = '3'
-
 const K = {
   COLADAS:            (id: AlbumId) => `ac_coladas_${id}`,
   ANUNCIOS:           (tipo: TipoAnuncio) => `ac_anuncios_${tipo}`,
@@ -120,7 +117,6 @@ const K = {
   PROPS_RECEBIDAS:    'ac_props_recv',
   PEDIDOS:            'ac_pedidos',
   NOTIFS_VISTAS:      'ac_notifs_seen',
-  SEED_VERSION:       'ac_seed_v',
   ACTIVE_ALBUMS:      'ac_active_albums',
 }
 
@@ -197,15 +193,7 @@ export function savePropostasEnviadas(items: PropostaEnviada[]): void {
 }
 
 export function getPropostasRecebidas(): PropostaRecebida[] {
-  // Re-seed se versão desatualizada (ex: dados mock antigos no browser)
-  if (typeof window !== 'undefined') {
-    const storedV = localStorage.getItem(K.SEED_VERSION)
-    if (storedV !== SEED_VERSION) {
-      localStorage.removeItem(K.PROPS_RECEBIDAS)
-      localStorage.setItem(K.SEED_VERSION, SEED_VERSION)
-    }
-  }
-  return read<PropostaRecebida[]>(K.PROPS_RECEBIDAS, MOCK_PROPOSTAS_RECEBIDAS)
+  return read<PropostaRecebida[]>(K.PROPS_RECEBIDAS, [])
 }
 export function savePropostasRecebidas(items: PropostaRecebida[]): void {
   write(K.PROPS_RECEBIDAS, items)
@@ -214,7 +202,7 @@ export function savePropostasRecebidas(items: PropostaRecebida[]): void {
 // ─── Pedidos ─────────────────────────────────────────────────────────────────
 
 export function getPedidos(): Pedido[] {
-  return read<Pedido[]>(K.PEDIDOS, MOCK_PEDIDOS)
+  return read<Pedido[]>(K.PEDIDOS, [])
 }
 export function savePedidos(items: Pedido[]): void {
   write(K.PEDIDOS, items)
@@ -243,58 +231,6 @@ export function markNotifSeen(id: string): void {
   if (!prev.includes(id)) write(K.NOTIFS_VISTAS, [...prev, id])
 }
 
-// ─── Mock data (seeds iniciais) ───────────────────────────────────────────────
+// ─── Notificações (sem mocks — virão do banco futuramente) ───────────────────
 
-const MOCK_PROPOSTAS_RECEBIDAS: PropostaRecebida[] = [
-  {
-    id: 'pr1',
-    de: 'Ana Lima', deAvatar: 'AL', deAvatarColor: 'from-pink-400 to-purple-500',
-    deCity: 'Rio de Janeiro, RJ', deRating: 4.9, deGender: 'F',
-    eleOferece: [28, 42],
-    elePede: [17, 29],
-    status: 'pendente',
-    data: '04/05/2026',
-  },
-  {
-    id: 'pr2',
-    de: 'Pedro S.', deAvatar: 'PS', deAvatarColor: 'from-orange-400 to-red-500',
-    deCity: 'Curitiba, PR', deRating: 4.6, deGender: 'M',
-    eleOferece: [19, 65, 88],
-    elePede: [22, 45, 67],
-    status: 'pendente',
-    data: '03/05/2026',
-  },
-  {
-    id: 'pr3',
-    de: 'Julia F.', deAvatar: 'JF', deAvatarColor: 'from-teal-400 to-green-500',
-    deCity: 'Belo Horizonte, MG', deRating: 5.0, deGender: 'F',
-    eleOferece: [40, 76, 78],
-    elePede: [33, 89, 22],
-    status: 'aceita',
-    data: '01/05/2026',
-    // Julia escolheu agência — você precisa enviar para lá
-    enviarPara: {
-      tipo: 'agencia',
-      destino: 'Ponto Mercado Envios — Savassi · Av. do Contorno, 6594 · Savassi · Belo Horizonte/MG · CEP 30110-042 · Seg–Sex 9h–20h · Sáb 9h–14h',
-    },
-  },
-]
-
-const MOCK_PEDIDOS: Pedido[] = [
-  { id: 'p1', data: '02/05/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Ana Lima',    fig: 'BRA-14 · Vinicius Jr.', enderecoEntrega: 'Rua das Flores, 12 · Rio de Janeiro/RJ · CEP 20040-010' },
-  { id: 'p2', data: '01/05/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Pedro S.',    fig: 'ARG-17 · Messi',        valor: 12, enderecoEntrega: 'Av. Batel, 800 · Curitiba/PR · CEP 80420-090' },
-  { id: 'p3', data: '30/04/2026', tipo: 'doacao', status: 'concluido', contraparte: 'Julia F.',    fig: 'ESP-15 · Yamal' },
-  { id: 'p4', data: '29/04/2026', tipo: 'troca',  status: 'concluido', contraparte: 'Marcos T.',   fig: 'FRA-20 · Mbappé',       enderecoEntrega: 'Rua Augusta, 500 · São Paulo/SP · CEP 01305-000' },
-  { id: 'p5', data: '28/04/2026', tipo: 'venda',  status: 'concluido', contraparte: 'Fernanda R.', fig: 'ENG-18 · Kane',         valor: 3,  enderecoEntrega: 'Rua XV de Novembro, 200 · Florianópolis/SC · CEP 88010-400' },
-  { id: 'p6', data: '26/04/2026', tipo: 'troca',  status: 'pendente',  contraparte: 'Carlos M.',   fig: 'BRA-5 · Endrick',       enderecoEntrega: 'Av. Paulista, 1000 · São Paulo/SP · CEP 01310-100' },
-  { id: 'p7', data: '25/04/2026', tipo: 'venda',  status: 'pendente',  contraparte: 'Luciana T.',  fig: 'ARG-10 · Di María',     valor: 8,  enderecoEntrega: 'Rua Sete de Setembro, 45 · Porto Alegre/RS · CEP 90010-190' },
-]
-
-export const MOCK_NOTIFICACOES = [
-  { id: 'n1', icon: '🔁', titulo: 'Nova proposta de troca',     desc: 'Ana Lima quer trocar figurinhas com você.',        data: '04/05/2026', link: '/propostas' },
-  { id: 'n2', icon: '🔁', titulo: 'Nova proposta de troca',     desc: 'Pedro S. enviou uma proposta de troca.',           data: '03/05/2026', link: '/propostas' },
-  { id: 'n3', icon: '✅', titulo: 'Proposta aceita!',            desc: 'Julia F. aceitou sua proposta. Prepare o envio.',  data: '02/05/2026', link: '/propostas' },
-  { id: 'n4', icon: '⭐', titulo: 'Nova avaliação recebida',    desc: 'Marcos T. avaliou você com 5 estrelas.',           data: '01/05/2026', link: '/conta' },
-  { id: 'n5', icon: '📦', titulo: 'Pedido enviado',             desc: 'Sua compra de Fernanda R. foi enviada.',           data: '30/04/2026', link: '/conta?s=historico' },
-  { id: 'n6', icon: '🏆', titulo: 'Novo badge desbloqueado!',   desc: 'Você ganhou o badge "Top Trocador".',              data: '28/04/2026', link: '/conta?s=gamificacao' },
-]
+export const MOCK_NOTIFICACOES: { id: string; icon: string; titulo: string; desc: string; data: string; link: string }[] = []

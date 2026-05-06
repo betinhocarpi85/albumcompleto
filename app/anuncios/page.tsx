@@ -37,11 +37,6 @@ interface AtivoItem {
   anuncio: string; preco: string; qtd: number
 }
 
-const ATIVOS_INICIAL: AtivoItem[] = [
-  { id: 'BRA-14', nome: 'Vinicius Jr.',  seleção: '🇧🇷 Brasil',    tipo: 'brilhante', anuncio: 'venda', preco: 'R$ 15,00', qtd: 2 },
-  { id: 'ARG-10', nome: 'Lionel Messi',  seleção: '🇦🇷 Argentina', tipo: 'brilhante', anuncio: 'venda', preco: 'R$ 20,00', qtd: 1 },
-  { id: 'FRA-10', nome: 'Kylian Mbappé', seleção: '🇫🇷 França',    tipo: 'brilhante', anuncio: 'troca', preco: '—',        qtd: 1 },
-]
 
 type Tab = 'configurar' | 'ativos'
 
@@ -74,19 +69,15 @@ export default function AnunciosPage() {
         dbGetAnuncios('tenho'),
       ]).then(([coladas, saved]) => {
         setColadasSet(new Set(coladas))
-        if (saved.length) {
-          setAtivos(saved.map(a => ({
-            id:      a.sid,
-            nome:    a.nome,
-            seleção: '',
-            tipo:    a.tipo,
-            anuncio: 'venda',
-            preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
-            qtd:     a.qty,
-          })))
-        } else {
-          setAtivos(ATIVOS_INICIAL)
-        }
+        setAtivos(saved.map(a => ({
+          id:      a.sid,
+          nome:    a.nome,
+          seleção: '',
+          tipo:    a.tipo,
+          anuncio: 'venda',
+          preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
+          qtd:     a.qty,
+        })))
       })
     })
   }, [])

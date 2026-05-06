@@ -2,17 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { MOCK_NOTIFICACOES, getNotifsSeen } from '@/lib/store'
-
 export default function BottomNav() {
   const path = usePathname()
-  const [notifCount, setNotifCount] = useState(0)
-
-  useEffect(() => {
-    const vistas = getNotifsSeen()
-    setNotifCount(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
-  }, [])
+  const notifCount = 0
 
   const ITEMS = [
     { href: '/',              icon: '🏠', label: 'Início'   },

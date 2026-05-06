@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { MOCK_NOTIFICACOES, getNotifsSeen } from '@/lib/store'
 import { getSession, dbGetProfile } from '@/lib/db'
 
 function iniciais(nome?: string) {
@@ -19,8 +18,6 @@ export default function Navbar() {
   const [nomeUsuario, setNomeUsuario] = useState('')
 
   useEffect(() => {
-    const vistas = getNotifsSeen()
-    setNotifCount(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
     getSession().then(session => {
       setLogado(!!session)
       if (session) dbGetProfile().then(p => setNomeUsuario(p.nome ?? ''))

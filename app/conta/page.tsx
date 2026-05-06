@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
-  getPedidos, getPropostasRecebidas, MOCK_NOTIFICACOES, getNotifsSeen,
+  getPedidos, getPropostasRecebidas,
   savePedidos, getCarrinho, saveCarrinho,
   getActiveAlbums, saveActiveAlbums,
   type Pedido, type CarrinhoItem, type UserProfile,
@@ -88,8 +88,6 @@ function ContaPageInner() {
     setCarrinho(getCarrinho())
     const rec = getPropostasRecebidas()
     setPropostasPendentes(rec.filter(p => p.status === 'pendente').length)
-    const vistas = getNotifsSeen()
-    setNotifNaoVistas(MOCK_NOTIFICACOES.filter(n => !vistas.includes(n.id)).length)
     dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
     setActiveAlbums(new Set(getActiveAlbums() as AlbumId[]))
     // Progresso real dos álbuns (carrega coladas do DB em paralelo)

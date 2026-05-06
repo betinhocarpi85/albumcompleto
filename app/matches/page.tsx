@@ -34,35 +34,9 @@ function pronome(gender: 'M' | 'F') {
   }
 }
 
-const MATCHES = [
-  { id: '1', user: { name: 'Ana Lima',  city: 'Rio de Janeiro, RJ', avatar: 'AL', avatarColor: 'from-pink-400 to-purple-500', rating: 4.9, trades: 142, gender: 'F' as const }, type: 'parcial' as const, temParaMim: [28, 42, 53], euTenhoPara: [17, 29], balance: -1 },
-  { id: '2', user: { name: 'Pedro S.',  city: 'Curitiba, PR',        avatar: 'PS', avatarColor: 'from-orange-400 to-red-500',  rating: 4.6, trades: 57,  gender: 'M' as const }, type: 'parcial' as const, temParaMim: [19, 65],    euTenhoPara: [22, 45, 67], balance: 1 },
-  { id: '3', user: { name: 'Julia F.',  city: 'Belo Horizonte, MG',  avatar: 'JF', avatarColor: 'from-teal-400 to-green-500', rating: 5.0, trades: 203, gender: 'F' as const }, type: 'exato'  as const, temParaMim: [40, 76, 78], euTenhoPara: [33, 89, 22], balance: 0 },
-  { id: '4', user: { name: 'Carlos M.', city: 'São Paulo, SP',        avatar: 'CM', avatarColor: 'from-green-400 to-blue-500', rating: 4.8, trades: 89,  gender: 'M' as const }, type: 'parcial' as const, temParaMim: [88],         euTenhoPara: [67], balance: 0 },
-]
-
-const DOACOES = [
-  { id: 'd1', user: { name: 'Fernanda R.', city: 'Porto Alegre, RS', avatar: 'FR', avatarColor: 'from-violet-400 to-pink-500', rating: 4.5, trades: 78, gender: 'F' as const }, stickers: [21, 101] },
-  { id: 'd2', user: { name: 'Marcos T.',   city: 'Fortaleza, CE',    avatar: 'MT', avatarColor: 'from-blue-400 to-indigo-500', rating: 4.7, trades: 31, gender: 'M' as const }, stickers: [90] },
-]
-
-const VENDAS = [
-  { id: 'v01', user: { name: 'Ricardo B.',   city: 'São Paulo, SP',        avatar: 'RB', avatarColor: 'from-green-400 to-teal-500',   rating: 4.8, sales: 64  }, items: [{ num: 19, preco: 2.00,  tipo: 'normal'    as const }, { num: 21,  preco: 2.00,  tipo: 'normal'    as const }, { num: 40,  preco: 12.00, tipo: 'brilhante' as const }, { num: 53,  preco: 2.00,  tipo: 'normal' as const }] },
-  { id: 'v02', user: { name: 'Camila T.',    city: 'Belo Horizonte, MG',   avatar: 'CT', avatarColor: 'from-rose-400 to-pink-500',    rating: 5.0, sales: 128 }, items: [{ num: 65, preco: 2.00,  tipo: 'normal'    as const }, { num: 76,  preco: 8.00,  tipo: 'escudo'    as const }, { num: 88,  preco: 2.00,  tipo: 'normal'    as const }, { num: 90,  preco: 15.00, tipo: 'brilhante' as const }] },
-  { id: 'v03', user: { name: 'Leandro P.',   city: 'Recife, PE',            avatar: 'LP', avatarColor: 'from-amber-400 to-orange-500', rating: 4.6, sales: 33  }, items: [{ num: 101, preco: 2.00, tipo: 'normal'    as const }, { num: 78,  preco: 5.00,  tipo: 'escudo'    as const }, { num: 28,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v04', user: { name: 'Patrícia M.',  city: 'Curitiba, PR',          avatar: 'PM', avatarColor: 'from-purple-400 to-violet-500',rating: 4.7, sales: 91  }, items: [{ num: 42, preco: 2.00,  tipo: 'normal'    as const }, { num: 65,  preco: 2.00,  tipo: 'normal'    as const }, { num: 19,  preco: 2.50,  tipo: 'normal'    as const }, { num: 101, preco: 2.00,  tipo: 'normal' as const }, { num: 78,  preco: 5.00,  tipo: 'escudo' as const }] },
-  { id: 'v05', user: { name: 'Fábio N.',     city: 'Porto Alegre, RS',      avatar: 'FN', avatarColor: 'from-sky-400 to-blue-500',     rating: 4.5, sales: 17  }, items: [{ num: 76, preco: 7.00,  tipo: 'escudo'    as const }, { num: 88,  preco: 2.00,  tipo: 'normal'    as const }, { num: 53,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v06', user: { name: 'Roberta S.',   city: 'Fortaleza, CE',         avatar: 'RS', avatarColor: 'from-fuchsia-400 to-pink-500', rating: 4.9, sales: 210 }, items: [{ num: 40, preco: 10.00, tipo: 'brilhante' as const }, { num: 21,  preco: 2.00,  tipo: 'normal'    as const }, { num: 90,  preco: 14.00, tipo: 'brilhante' as const }, { num: 42,  preco: 2.00,  tipo: 'normal' as const }] },
-  { id: 'v07', user: { name: 'Thiago C.',    city: 'Salvador, BA',          avatar: 'TC', avatarColor: 'from-lime-400 to-green-500',   rating: 4.3, sales: 55  }, items: [{ num: 28, preco: 2.00,  tipo: 'normal'    as const }, { num: 101, preco: 2.00,  tipo: 'normal'    as const }, { num: 19,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v08', user: { name: 'Mariana L.',   city: 'Manaus, AM',            avatar: 'ML', avatarColor: 'from-cyan-400 to-teal-500',    rating: 4.6, sales: 38  }, items: [{ num: 65, preco: 2.00,  tipo: 'normal'    as const }, { num: 78,  preco: 6.00,  tipo: 'escudo'    as const }, { num: 88,  preco: 2.00,  tipo: 'normal'    as const }, { num: 21,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v09', user: { name: 'Daniel F.',    city: 'Natal, RN',             avatar: 'DF', avatarColor: 'from-orange-400 to-amber-500', rating: 4.8, sales: 77  }, items: [{ num: 53, preco: 2.00,  tipo: 'normal'    as const }, { num: 40,  preco: 13.00, tipo: 'brilhante' as const }, { num: 76,  preco: 8.00,  tipo: 'escudo'    as const }] },
-  { id: 'v10', user: { name: 'Isabela C.',   city: 'Florianópolis, SC',     avatar: 'IC', avatarColor: 'from-pink-400 to-rose-500',    rating: 5.0, sales: 153 }, items: [{ num: 90, preco: 12.00, tipo: 'brilhante' as const }, { num: 101, preco: 2.00,  tipo: 'normal'    as const }, { num: 42,  preco: 2.00,  tipo: 'normal'    as const }, { num: 65,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v11', user: { name: 'André M.',     city: 'Goiânia, GO',           avatar: 'AM', avatarColor: 'from-indigo-400 to-blue-500',  rating: 4.4, sales: 22  }, items: [{ num: 19, preco: 2.00,  tipo: 'normal'    as const }, { num: 28,  preco: 2.00,  tipo: 'normal'    as const }, { num: 88,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v12', user: { name: 'Juliana R.',   city: 'Belém, PA',             avatar: 'JR', avatarColor: 'from-teal-400 to-cyan-500',    rating: 4.7, sales: 49  }, items: [{ num: 78, preco: 5.00,  tipo: 'escudo'    as const }, { num: 53,  preco: 2.00,  tipo: 'normal'    as const }, { num: 21,  preco: 2.00,  tipo: 'normal'    as const }, { num: 76,  preco: 7.50,  tipo: 'escudo'    as const }] },
-  { id: 'v13', user: { name: 'Bruno K.',     city: 'Brasília, DF',          avatar: 'BK', avatarColor: 'from-red-400 to-orange-500',   rating: 4.5, sales: 61  }, items: [{ num: 42, preco: 2.00,  tipo: 'normal'    as const }, { num: 90,  preco: 16.00, tipo: 'brilhante' as const }, { num: 65,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v14', user: { name: 'Letícia P.',   city: 'Vitória, ES',           avatar: 'LP', avatarColor: 'from-violet-400 to-purple-500',rating: 4.9, sales: 88  }, items: [{ num: 40, preco: 11.00, tipo: 'brilhante' as const }, { num: 101, preco: 2.00,  tipo: 'normal'    as const }, { num: 88,  preco: 2.00,  tipo: 'normal'    as const }] },
-  { id: 'v15', user: { name: 'Gustavo A.',   city: 'Campo Grande, MS',      avatar: 'GA', avatarColor: 'from-green-400 to-emerald-500',rating: 4.6, sales: 30  }, items: [{ num: 19, preco: 2.00,  tipo: 'normal'    as const }, { num: 78,  preco: 5.00,  tipo: 'escudo'    as const }, { num: 21,  preco: 2.00,  tipo: 'normal'    as const }, { num: 53,  preco: 2.00,  tipo: 'normal'    as const }] },
-]
+const MATCHES: never[] = []
+const DOACOES: never[] = []
+const VENDAS:  never[] = []
 
 const POR_PAGINA = 10
 
@@ -318,13 +292,27 @@ export default function MatchesPage() {
       </div>
 
       {/* Aviso de match */}
-      <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
-        <span className="text-2xl">🔥</span>
-        <div>
-          <p className="text-sm font-bold text-green-800">{MATCHES.length + VENDAS.length + DOACOES.length} matches encontrados!</p>
-          <p className="text-xs text-green-600">Trocas, vendas e doações com figurinhas que você precisa</p>
+      {MATCHES.length + VENDAS.length + DOACOES.length > 0 ? (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
+          <span className="text-2xl">🔥</span>
+          <div>
+            <p className="text-sm font-bold text-green-800">{MATCHES.length + VENDAS.length + DOACOES.length} matches encontrados!</p>
+            <p className="text-xs text-green-600">Trocas, vendas e doações com figurinhas que você precisa</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-5 mb-4 text-center">
+          <p className="text-3xl mb-2">🔍</p>
+          <p className="text-sm font-bold text-slate-700 mb-1">Nenhum match ainda</p>
+          <p className="text-xs text-slate-500 mb-3">
+            Marque suas figurinhas no álbum e publique anúncios para o sistema encontrar matches automaticamente.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <a href="/album" className="text-xs bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-xl transition-colors">📋 Marcar álbum</a>
+            <a href="/anuncios" className="text-xs bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl transition-colors">📢 Publicar anúncio</a>
+          </div>
+        </div>
+      )}
 
       {/* Abas */}
       <div className="flex gap-1.5 mb-4">

@@ -13,8 +13,6 @@ type ColadasSet = Set<string>
 // Mapa global gerado uma vez
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 
-// Seed inicial para novos usuários
-const SEED: string[] = ['FWC-3','FWC-5','ALG-10','ARG-2','ARG-10','BRA-10','BRA-14','FRA-10','ESP-10','ENG-10']
 
 export default function AlbumPage() {
   const [albumId, setAlbumId]       = useState<AlbumId>('copa-2026')
@@ -26,7 +24,7 @@ export default function AlbumPage() {
   useEffect(() => {
     setHydrated(false)
     dbGetColadas(albumId).then(saved => {
-      setColadas(new Set(albumId === 'copa-2026' && !saved.length ? SEED : saved))
+      setColadas(new Set(saved))
       setHydrated(true)
     })
     setOpenCats(new Set(['fwc']))
