@@ -2,18 +2,22 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { dbResetPassword } from '@/lib/db'
 
 export default function SenhaPage() {
-  const [email, setEmail]   = useState('')
+  const [email, setEmail]     = useState('')
   const [enviado, setEnviado] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [erro, setErro]       = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.includes('@')) return
+    if (!email.includes('@')) { setErro('E-mail inválido.'); return }
+    setErro('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
+    const { error } = await dbResetPassword(email)
     setLoading(false)
+    if (error) { setErro('Erro ao enviar. Verifique o e-mail informado.'); return }
     setEnviado(true)
   }
 
@@ -48,6 +52,9 @@ export default function SenhaPage() {
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                   />
                 </div>
+                {erro && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">{erro}</div>
+                )}
                 <button type="submit" disabled={loading}
                   className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold py-3.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
                   {loading
@@ -64,7 +71,7 @@ export default function SenhaPage() {
                 Verifique a caixa de entrada de <span className="font-semibold">{email}</span> e siga as instruções para redefinir sua senha.
               </p>
               <p className="text-xs text-slate-400">Não recebeu? Cheque o spam ou</p>
-              <button onClick={() => setEnviado(false)} className="text-xs text-green-600 font-semibold hover:underline">
+              <button onClick={() => { setEnviado(false); setErro('') }} className="text-xs text-green-600 font-semibold hover:underline">
                 tente novamente
               </button>
             </div>

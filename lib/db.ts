@@ -50,6 +50,14 @@ export async function dbUpdatePassword(novaSenha: string): Promise<{ error: stri
   return { error: error?.message ?? null }
 }
 
+export async function dbResetPassword(email: string): Promise<{ error: string | null }> {
+  const sb = createClient()
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset`,
+  })
+  return { error: error?.message ?? null }
+}
+
 // ─── Perfil ───────────────────────────────────────────────────────────────────
 
 export async function dbGetProfile(): Promise<Partial<UserProfile>> {
