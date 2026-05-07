@@ -9,7 +9,7 @@ import {
   getColadas,
   type CarrinhoItem,
 } from '@/lib/store'
-import { getSession, dbGetProfile, dbGetColadas } from '@/lib/db'
+import { getSession, dbGetProfile, dbGetColadas, dbGetMatches, type MatchTroca, type MatchVenda, type MatchDoacao } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 // Mapa globalNumber → info da figurinha (nome, código, tipo)
@@ -44,9 +44,31 @@ interface MatchRecord  { id: string; user: MatchUser; type: MatchType; temParaMi
 interface DoacaoRecord { id: string; user: MatchUser; stickers: number[] }
 interface VendaRecord  { id: string; user: VendaUser; items: { num: number; preco: number; tipo: StickerTipo }[] }
 
-const MATCHES: MatchRecord[]  = []
-const DOACOES: DoacaoRecord[] = []
-const VENDAS:  VendaRecord[]  = []
+const AVATAR_COLORS = [
+  'from-green-400 to-blue-500', 'from-purple-400 to-pink-500',
+  'from-orange-400 to-red-500', 'from-cyan-400 to-teal-500',
+  'from-indigo-400 to-purple-500', 'from-rose-400 to-orange-500',
+]
+
+function toMatchUser(u: { id: string; nome: string; cidade: string }): MatchUser {
+  const parts = (u.nome ?? '').trim().split(' ').filter(Boolean)
+  const avatar = ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase() || '?'
+  const colorIdx = u.id.charCodeAt(0) % AVATAR_COLORS.length
+  return {
+    name: u.nome || 'Usuário',
+    city: u.cidade || '',
+    avatar,
+    avatarColor: AVATAR_COLORS[colorIdx],
+    rating: 5.0,
+    trades: 0,
+    gender: 'M' as Gender,
+  }
+}
+
+function toVendaUser(u: { id: string; nome: string; cidade: string }): VendaUser {
+  const m = toMatchUser(u)
+  return { name: m.name, city: m.city, avatar: m.avatar, avatarColor: m.avatarColor, rating: m.rating, sales: 0 }
+}
 
 const POR_PAGINA = 10
 
@@ -82,12 +104,19 @@ export default function MatchesPage() {
   const [adulto, setAdulto]             = useState(true)
   const [meuPrecisoSet, setMeuPrecisoSet] = useState<Set<number>>(new Set())
   const [meuTenhoSet,   setMeuTenhoSet]   = useState<Set<number>>(new Set())
+  const [matches,  setMatches]  = useState<MatchRecord[]>([])
+  const [vendas,   setVendas]   = useState<VendaRecord[]>([])
+  const [doacoes,  setDoacoes]  = useState<DoacaoRecord[]>([])
+  const [loadingMatches, setLoadingMatches] = useState(true)
 
   useEffect(() => {
     getSession().then(session => {
-      if (!session) { setAdulto(true); return }
+      if (!session) { setAdulto(true); setLoadingMatches(false); return }
       dbGetProfile().then(p => setAdulto(!!p.maior18))
-      dbGetColadas('copa-2026').then(coladas => {
+      Promise.all([
+        dbGetColadas('copa-2026'),
+        dbGetMatches('copa-2026'),
+      ]).then(([coladas, result]) => {
         const coladasSet = new Set(coladas)
         const tenho   = new Set<number>()
         const preciso = new Set<number>()
@@ -97,13 +126,40 @@ export default function MatchesPage() {
         }
         setMeuTenhoSet(tenho)
         setMeuPrecisoSet(preciso)
+
+        setMatches(result.trocas.map(t => ({
+          id:          t.id,
+          user:        toMatchUser(t),
+          type:        (t.tem_para_mim.length === t.eu_tenho_para.length ? 'exato' : 'parcial') as MatchType,
+          temParaMim:  t.tem_para_mim,
+          euTenhoPara: t.eu_tenho_para,
+          balance:     t.eu_tenho_para.length - t.tem_para_mim.length,
+        })))
+
+        setVendas(result.vendas.map(v => ({
+          id:   v.id,
+          user: toVendaUser(v),
+          items: v.items.map(i => ({
+            num:   i.gnum,
+            preco: i.preco,
+            tipo:  (i.tipo ?? 'normal') as StickerTipo,
+          })),
+        })))
+
+        setDoacoes(result.doacoes.map(d => ({
+          id:       d.id,
+          user:     toMatchUser(d),
+          stickers: d.gnums,
+        })))
+
+        setLoadingMatches(false)
       })
     })
   }, [])
 
   // ── Filtros / Ordenação (Vendas) ──────────────────────────────
   const vendasFiltradas = useMemo(() => {
-    let lista = [...VENDAS]
+    let lista = [...vendas]
     if (filtroTipo !== 'todos') {
       lista = lista.filter(v => v.items.some(i => i.tipo === filtroTipo))
     }
@@ -121,7 +177,7 @@ export default function MatchesPage() {
   const { totalItens, totalValor } = useMemo(() => {
     let itens = 0
     let valor = 0
-    for (const v of VENDAS) {
+    for (const v of vendas) {
       const sel = carrinho[v.id] ?? new Set<number>()
       for (const item of v.items) {
         if (sel.has(item.num)) { itens++; valor += item.preco }
@@ -162,7 +218,7 @@ export default function MatchesPage() {
 
     // Verifica se está marcado em outro vendedor
     if (!force) {
-      for (const v of VENDAS) {
+      for (const v of vendas) {
         if (v.id === vendaId) continue
         if ((carrinho[v.id] ?? new Set()).has(num)) {
           setAviso({ vendaId, num, outroVendedor: v.user.name })
@@ -192,7 +248,7 @@ export default function MatchesPage() {
     setCarrinho(prev => ({ ...prev, [vendaId]: new Set() }))
   }
 
-  function enviarProposta(match: typeof MATCHES[0], oferta: number[], recebe: number[]) {
+  function enviarProposta(match: MatchRecord, oferta: number[], recebe: number[]) {
     const prev = getPropostasEnviadas()
     savePropostasEnviadas([
       {
@@ -214,7 +270,7 @@ export default function MatchesPage() {
   function finalizarCompra() {
     // Serializa carrinho para localStorage antes de ir ao checkout
     const items: CarrinhoItem[] = []
-    for (const v of VENDAS) {
+    for (const v of vendas) {
       const sel = carrinho[v.id] ?? new Set<number>()
       if (sel.size === 0) continue
       items.push({
@@ -302,11 +358,16 @@ export default function MatchesPage() {
       </div>
 
       {/* Aviso de match */}
-      {MATCHES.length + VENDAS.length + DOACOES.length > 0 ? (
+      {loadingMatches ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-5 mb-4 text-center">
+          <span className="w-6 h-6 border-2 border-green-400 border-t-transparent rounded-full animate-spin inline-block mb-2" />
+          <p className="text-sm text-slate-400">Buscando matches...</p>
+        </div>
+      ) : matches.length + vendas.length + doacoes.length > 0 ? (
         <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
           <span className="text-2xl">🔥</span>
           <div>
-            <p className="text-sm font-bold text-green-800">{MATCHES.length + VENDAS.length + DOACOES.length} matches encontrados!</p>
+            <p className="text-sm font-bold text-green-800">{matches.length + vendas.length + doacoes.length} matches encontrados!</p>
             <p className="text-xs text-green-600">Trocas, vendas e doações com figurinhas que você precisa</p>
           </div>
         </div>
@@ -327,9 +388,9 @@ export default function MatchesPage() {
       {/* Abas */}
       <div className="flex gap-1.5 mb-4">
         {([
-          { key: 'trocas',  label: `🔁 Trocas (${MATCHES.length})` },
-          { key: 'vendas',  label: `💰 Vendas (${VENDAS.length})` },
-          { key: 'doacoes', label: `💜 Doações (${DOACOES.length})` },
+          { key: 'trocas',  label: `🔁 Trocas (${matches.length})` },
+          { key: 'vendas',  label: `💰 Vendas (${vendas.length})` },
+          { key: 'doacoes', label: `💜 Doações (${doacoes.length})` },
         ] as const).map(t => (
           <button
             key={t.key}
@@ -366,7 +427,7 @@ export default function MatchesPage() {
             ))}
           </div>
 
-          {MATCHES.filter(match => {
+          {matches.filter(match => {
             const rem    = removidos[match.id]     ?? new Set<number>()
             const remDel = removidosDele[match.id] ?? new Set<number>()
             const bal    = match.euTenhoPara.filter(n => !rem.has(n)).length
@@ -784,7 +845,7 @@ export default function MatchesPage() {
 
       {tab === 'doacoes' && (
         <div className="space-y-3 animate-fadein">
-          {DOACOES.map(d => (
+          {doacoes.map(d => (
             <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Link href={`/perfil/${d.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">

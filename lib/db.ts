@@ -267,6 +267,43 @@ export async function dbUpdatePedidoStatus(id: string, status: Pedido['status'])
   await sb.from('pedidos').update({ status }).eq('id', id).eq('user_id', uid)
 }
 
+// ─── Matches ─────────────────────────────────────────────────────────────────
+
+export interface MatchTroca {
+  id:           string
+  nome:         string
+  cidade:       string
+  tem_para_mim: number[]
+  eu_tenho_para: number[]
+}
+
+export interface MatchVenda {
+  id:     string
+  nome:   string
+  cidade: string
+  items:  { gnum: number; preco: number; tipo: string }[]
+}
+
+export interface MatchDoacao {
+  id:    string
+  nome:  string
+  cidade: string
+  gnums: number[]
+}
+
+export interface MatchResult {
+  trocas:  MatchTroca[]
+  vendas:  MatchVenda[]
+  doacoes: MatchDoacao[]
+}
+
+export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
+  const sb = createClient()
+  const { data, error } = await sb.rpc('get_matches_for_album', { p_album_id: albumId })
+  if (error || !data) return { trocas: [], vendas: [], doacoes: [] }
+  return data as MatchResult
+}
+
 // ─── Preferências ─────────────────────────────────────────────────────────────
 
 export async function dbGetActiveAlbums(): Promise<AlbumId[]> {

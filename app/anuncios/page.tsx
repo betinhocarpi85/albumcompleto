@@ -74,8 +74,8 @@ export default function AnunciosPage() {
           nome:    a.nome,
           seleção: '',
           tipo:    a.tipo,
-          anuncio: 'venda',
-          preco:   a.preco ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
+          anuncio: a.preco != null && a.preco > 0 ? 'venda' : a.preco === 0 ? 'doacao' : 'troca',
+          preco:   a.preco != null && a.preco > 0 ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
           qtd:     a.qty,
         })))
       })
@@ -158,7 +158,9 @@ export default function AnunciosPage() {
       nome:  a.nome,
       qty:   a.qtd,
       tipo:  a.tipo as StickerType,
-      preco: a.preco !== '—' ? parseFloat(a.preco.replace('R$ ', '').replace(',', '.')) : undefined,
+      preco: a.anuncio === 'venda' && a.preco !== '—'
+        ? parseFloat(a.preco.replace('R$ ', '').replace(',', '.'))
+        : a.anuncio === 'doacao' ? 0 : undefined,
     })))
   }
 
