@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn, signInWithGoogle, getSession } from '@/lib/db'
+import { signIn, signInWithGoogle, getSession, dbGetProfile } from '@/lib/db'
 
 export default function EntrarPage() {
   const router = useRouter()
@@ -37,7 +37,9 @@ export default function EntrarPage() {
       setLoading(false)
       return
     }
-    router.push('/album')
+    const perfil = await dbGetProfile()
+    const completo = perfil.cpf && perfil.cep && perfil.aceitouTermos && perfil.aceitouPrivacidade
+    router.push(completo ? '/album' : '/completar-cadastro')
   }
 
   async function handleGoogle() {

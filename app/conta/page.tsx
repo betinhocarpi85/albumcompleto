@@ -83,7 +83,10 @@ function ContaPageInner() {
     setPropostasPendentes(rec.filter(p => p.status === 'pendente').length)
     dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
     getUserId().then(id => setUserId(id))
-    dbGetActiveAlbums().then(ids => setActiveAlbums(new Set(ids)))
+    dbGetActiveAlbums().then(ids => {
+      setActiveAlbums(new Set(ids))
+      if (ids.length > 0) setActiveAlbumView(ids[0])
+    })
     // Progresso real dos álbuns (carrega coladas do DB em paralelo)
     import('@/data/albums-registry').then(async ({ ALBUMS_REGISTRY }) => {
       const prog: Record<string, number> = {}
@@ -114,8 +117,8 @@ function ContaPageInner() {
   const [senhaErro, setSenhaErro]                 = useState('')
   const [senhaSalva, setSenhaSalva]               = useState(false)
   const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set())
-  const [userId, setUserId] = useState<string | null>(null)
   const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
+  const [userId, setUserId] = useState<string | null>(null)
 
   const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
   const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
@@ -1027,12 +1030,6 @@ function ContaPageInner() {
                 {senhaErro && (
                   <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600">{senhaErro}</div>
                 )}
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Senha atual</label>
-                  <input type="password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Nova senha</label>
                   <input type="password" value={senhaNova} onChange={e => setSenhaNova(e.target.value)}
