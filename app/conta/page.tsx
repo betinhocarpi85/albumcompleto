@@ -9,7 +9,7 @@ import {
   savePedidos, getCarrinho, saveCarrinho,
   type Pedido, type CarrinhoItem, type UserProfile,
 } from '@/lib/store'
-import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword } from '@/lib/db'
+import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
 
 
 type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
@@ -53,6 +53,20 @@ function ContaPageInner() {
   const [estrelas, setEstrelas] = useState(5)
   const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
   const [albumProgress, setAlbumProgress] = useState<Record<AlbumId, number>>(ALBUM_PROGRESS_FALLBACK)
+  const [editDados, setEditDados] = useState(false)
+  const [editEndereco, setEditEndereco] = useState(false)
+  const [perfil, setPerfil] = useState<Partial<UserProfile>>({})
+  const [perfilEdit, setPerfilEdit] = useState<Partial<UserProfile>>({})
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSenhaModal, setShowSenhaModal]       = useState(false)
+  const [senhaAtual, setSenhaAtual]               = useState('')
+  const [senhaNova, setSenhaNova]                 = useState('')
+  const [senhaConf, setSenhaConf]                 = useState('')
+  const [senhaErro, setSenhaErro]                 = useState('')
+  const [senhaSalva, setSenhaSalva]               = useState(false)
+  const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set())
+  const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
+  const [userId, setUserId] = useState<string | null>(null)
 
   async function sair() {
     await signOut()
@@ -73,14 +87,15 @@ function ContaPageInner() {
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
     const valid: Section[] = ['visao-geral','albuns','carrinho','propostas','gamificacao','dados','endereco','historico','seguranca']
-    if (s && valid.includes(s)) setSection(s)
+    if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
   useEffect(() => {
-    setPedidos(getPedidos())
-    setCarrinho(getCarrinho())
+    queueMicrotask(() => setPedidos(getPedidos()))
+    queueMicrotask(() => setCarrinho(getCarrinho()))
     const rec = getPropostasRecebidas()
-    setPropostasPendentes(rec.filter(p => p.status === 'pendente').length)
+    const pend = rec.filter(p => p.status === 'pendente').length
+    queueMicrotask(() => setPropostasPendentes(pend))
     dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
     getUserId().then(id => setUserId(id))
     dbGetActiveAlbums().then(ids => {
@@ -104,21 +119,6 @@ function ContaPageInner() {
     if (m.key === 'carrinho')  return { ...m, badge: carrinhoItens > 0 ? carrinhoItens : undefined }
     return m
   })
-
-  const [editDados, setEditDados] = useState(false)
-  const [editEndereco, setEditEndereco] = useState(false)
-  const [perfil, setPerfil] = useState<Partial<UserProfile>>({})
-  const [perfilEdit, setPerfilEdit] = useState<Partial<UserProfile>>({})
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showSenhaModal, setShowSenhaModal]       = useState(false)
-  const [senhaAtual, setSenhaAtual]               = useState('')
-  const [senhaNova, setSenhaNova]                 = useState('')
-  const [senhaConf, setSenhaConf]                 = useState('')
-  const [senhaErro, setSenhaErro]                 = useState('')
-  const [senhaSalva, setSenhaSalva]               = useState(false)
-  const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set())
-  const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
-  const [userId, setUserId] = useState<string | null>(null)
 
   const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
   const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
@@ -1071,10 +1071,18 @@ function ContaPageInner() {
             <div className="text-4xl text-center mb-3">⚠️</div>
             <h3 className="font-black text-slate-800 text-center text-lg mb-2">Excluir conta?</h3>
             <p className="text-sm text-slate-500 text-center mb-5">
-              Esta ação é <strong>irreversível</strong>. Todos os seus anúncios, histórico e dados serão apagados permanentemente.
+              Esta ação é <strong>irreversível</strong>. Seus dados serão removidos e o acesso será encerrado.
             </p>
             <div className="space-y-2">
-              <button onClick={async () => { await signOut(); router.push('/') }}
+              <button onClick={async () => {
+                const { error } = await dbDeleteAccount()
+                if (error) {
+                  alert(`Não foi possível excluir agora: ${error}`)
+                  return
+                }
+                await signOut()
+                router.push('/')
+              }}
                 className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 Sim, excluir minha conta
               </button>

@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AlbumId } from '@/data/albums-registry'
 import type { AnuncioItem, Pedido, PreferenciaEntrega, UserProfile } from '@/lib/store'
+import { buildMatchResultFromAnuncios, type MatchResult } from '@/lib/match-engine'
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -176,7 +177,10 @@ export async function dbSaveColadas(albumId: AlbumId, ids: string[]): Promise<vo
 
 // ─── Anúncios ─────────────────────────────────────────────────────────────────
 
-export async function dbGetAnuncios(tipo: 'tenho' | 'preciso'): Promise<AnuncioItem[]> {
+export async function dbGetAnuncios(
+  albumId: AlbumId,
+  tipo: 'tenho' | 'preciso'
+): Promise<AnuncioItem[]> {
   const uid = await getUserId()
   if (!uid) return []
   const sb = createClient()
@@ -184,6 +188,7 @@ export async function dbGetAnuncios(tipo: 'tenho' | 'preciso'): Promise<AnuncioI
     .from('anuncios')
     .select('*')
     .eq('user_id', uid)
+    .eq('album_id', albumId)
     .eq('tipo', tipo)
   return (data ?? []).map(r => ({
     sid:   r.sid,
@@ -195,13 +200,22 @@ export async function dbGetAnuncios(tipo: 'tenho' | 'preciso'): Promise<AnuncioI
   }))
 }
 
-export async function dbSaveAnuncios(tipo: 'tenho' | 'preciso', items: AnuncioItem[]): Promise<void> {
+export async function dbSaveAnuncios(
+  albumId: AlbumId,
+  tipo: 'tenho' | 'preciso',
+  items: AnuncioItem[]
+): Promise<void> {
   const uid = await getUserId()
   if (!uid) return
   const sb = createClient()
 
   // Substitui todos os anúncios do tipo
-  await sb.from('anuncios').delete().eq('user_id', uid).eq('tipo', tipo)
+  await sb
+    .from('anuncios')
+    .delete()
+    .eq('user_id', uid)
+    .eq('album_id', albumId)
+    .eq('tipo', tipo)
 
   if (items.length === 0) return
 
@@ -209,6 +223,7 @@ export async function dbSaveAnuncios(tipo: 'tenho' | 'preciso', items: AnuncioIt
     items.map(a => ({
       user_id:      uid,
       tipo,
+      album_id:     albumId,
       sid:          a.sid,
       g_num:        typeof a.gNum === 'number' ? a.gNum : null,
       nome:         a.nome,
@@ -291,17 +306,36 @@ export interface MatchDoacao {
   gnums: number[]
 }
 
-export interface MatchResult {
-  trocas:  MatchTroca[]
-  vendas:  MatchVenda[]
-  doacoes: MatchDoacao[]
-}
-
 export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
   const sb = createClient()
   const { data, error } = await sb.rpc('get_matches_for_album', { p_album_id: albumId })
-  if (error || !data) return { trocas: [], vendas: [], doacoes: [] }
-  return data as MatchResult
+  if (!error && data) return data as MatchResult
+
+  const uid = await getUserId()
+  if (!uid) return { trocas: [], vendas: [], doacoes: [] }
+
+  const [myTenhoRes, myPrecisoRes, othersTenhoRes, othersPrecisoRes, profilesRes] = await Promise.all([
+    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo').eq('user_id', uid).eq('album_id', albumId).eq('tipo', 'tenho'),
+    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo').eq('user_id', uid).eq('album_id', albumId).eq('tipo', 'preciso'),
+    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo').neq('user_id', uid).eq('album_id', albumId).eq('tipo', 'tenho'),
+    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo').neq('user_id', uid).eq('album_id', albumId).eq('tipo', 'preciso'),
+    sb.from('profiles').select('id,nome,cidade'),
+  ])
+
+  return buildMatchResultFromAnuncios({
+    myUserId: uid,
+    myTenho: myTenhoRes.data ?? [],
+    myPreciso: myPrecisoRes.data ?? [],
+    othersTenho: othersTenhoRes.data ?? [],
+    othersPreciso: othersPrecisoRes.data ?? [],
+    profiles: profilesRes.data ?? [],
+  })
+}
+
+export async function dbRequestAccountDeletion(): Promise<{ error: string | null }> {
+  const sb = createClient()
+  const { error } = await sb.rpc('delete_my_account')
+  return { error: error?.message ?? null }
 }
 
 // ─── Preferências ─────────────────────────────────────────────────────────────
@@ -373,4 +407,12 @@ export async function dbUpdateProposta(
 ): Promise<void> {
   const sb = createClient()
   await sb.from('propostas').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
+}
+
+// ─── Conta ────────────────────────────────────────────────────────────────────
+
+export async function dbDeleteAccount(): Promise<{ error: string | null }> {
+  const sb = createClient()
+  const { error } = await sb.rpc('delete_my_account')
+  return { error: error?.message ?? null }
 }
