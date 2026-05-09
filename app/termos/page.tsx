@@ -19,7 +19,7 @@ export default function TermosPage() {
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">2. O que é o Completando</h2>
-          <p className="text-sm leading-relaxed">O Completando é uma plataforma de marketplace para troca, venda e doação de figurinhas de álbuns esportivos entre colecionadores. Não somos vendedores — facilitamos a conexão entre usuários.</p>
+          <p className="text-sm leading-relaxed">O Completando é uma plataforma de anúncios para troca e venda de figurinhas de álbuns esportivos entre colecionadores. Não somos vendedores — facilitamos a conexão entre usuários para que combinem diretamente.</p>
         </section>
 
         <section>
@@ -39,7 +39,7 @@ export default function TermosPage() {
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">5. Taxas e Pagamentos</h2>
-          <p className="text-sm leading-relaxed">O Completando cobra uma <strong>taxa de serviço de 10%</strong> sobre o valor das figurinhas em transações de compra e venda. Trocas e doações são gratuitas. Pagamentos são processados pelo <strong>Mercado Pago</strong>, sujeitos aos termos deste.</p>
+          <p className="text-sm leading-relaxed">O Completando cobra uma <strong>assinatura mensal ou anual</strong> para acesso aos anúncios e ao sistema de matches. O controle do álbum é gratuito. Não intermediamos pagamentos — as transações entre usuários são combinadas diretamente.</p>
         </section>
 
         <section>

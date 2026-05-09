@@ -2,7 +2,7 @@
 
 import { StickerType } from '@/data/album-copa-2026'
 
-export type StickerStatus = 'colada' | 'venda' | 'troca' | 'doacao' | 'preciso' | 'repetida'
+export type StickerStatus = 'colada' | 'venda' | 'troca' | 'preciso' | 'repetida'
 
 interface StickerSquareProps {
   number: number
@@ -20,7 +20,6 @@ const STATUS_CONFIG = {
   repetida:{ bg: 'bg-amber-500',  border: 'border-amber-600',  text: '+', label: 'Repetida', ring: 'ring-amber-400' },
   venda:   { bg: 'bg-green-500',  border: 'border-green-600',  text: 'V', label: 'Venda',    ring: 'ring-green-400' },
   troca:   { bg: 'bg-blue-500',   border: 'border-blue-600',   text: 'T', label: 'Troca',    ring: 'ring-blue-400' },
-  doacao:  { bg: 'bg-purple-500', border: 'border-purple-600', text: 'D', label: 'Doação',   ring: 'ring-purple-400' },
   preciso: { bg: 'bg-red-500',    border: 'border-red-600',    text: 'P', label: 'Preciso',  ring: 'ring-red-400' },
 }
 

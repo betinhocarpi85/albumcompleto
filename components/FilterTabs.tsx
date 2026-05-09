@@ -1,6 +1,6 @@
 'use client'
 
-export type FilterType = 'todos' | 'venda' | 'troca' | 'doacao' | 'preciso'
+export type FilterType = 'todos' | 'venda' | 'troca' | 'preciso'
 
 interface Tab {
   key: FilterType
@@ -20,8 +20,7 @@ const TABS: Tab[] = [
   { key: 'todos',  label: 'Todos',  color: 'text-slate-500', activeColor: 'bg-slate-700 text-white' },
   { key: 'venda',  label: 'Venda',  color: 'text-green-600',  activeColor: 'bg-green-500 text-white' },
   { key: 'troca',  label: 'Troca',  color: 'text-blue-600',   activeColor: 'bg-blue-500 text-white' },
-  { key: 'doacao', label: 'Doação', color: 'text-purple-600', activeColor: 'bg-purple-500 text-white' },
-  { key: 'preciso',label: 'Preciso',color: 'text-red-600',    activeColor: 'bg-red-500 text-white' },
+  { key: 'preciso', label: 'Preciso', color: 'text-red-600', activeColor: 'bg-red-500 text-white' },
 ]
 
 export default function FilterTabs({ active, onChange, counts }: FilterTabsProps) {
