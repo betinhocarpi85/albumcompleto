@@ -67,7 +67,8 @@ function ContaPageInner() {
 
   async function sair() {
     await signOut()
-    router.push('/entrar')
+    await fetch('/auth/signout', { method: 'POST' })
+    window.location.href = '/entrar'
   }
 
   function enviarAvaliacao() {
@@ -954,7 +955,7 @@ function ContaPageInner() {
                   return
                 }
                 await signOut()
-                router.push('/')
+                window.location.href = '/'
               }}
                 className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 Sim, excluir minha conta
