@@ -21,7 +21,6 @@ const STATUS_CONFIG = {
 const TIPO_CONFIG: Record<TipoProposta, { label: string; emoji: string }> = {
   troca:  { label: 'Troca',  emoji: '🔄' },
   compra: { label: 'Compra', emoji: '🛒' },
-  doacao: { label: 'Doação', emoji: '🎁' },
 }
 
 function formatDate(iso: string): string {
@@ -274,7 +273,6 @@ export default function PropostasPage() {
                       <p className="text-sm font-bold text-green-700">
                         {p.tipo === 'troca'  && 'Troca aceita!'}
                         {p.tipo === 'compra' && 'Interesse confirmado!'}
-                        {p.tipo === 'doacao' && 'Doação aceita!'}
                         {' '}Combine diretamente com {p.contraparte_nome}.
                       </p>
                     </div>

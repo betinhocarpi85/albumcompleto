@@ -6,18 +6,17 @@ import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
   getPedidos, getPropostasRecebidas,
-  savePedidos, getCarrinho, saveCarrinho,
-  type Pedido, type CarrinhoItem, type UserProfile,
+  savePedidos,
+  type Pedido, type UserProfile,
 } from '@/lib/store'
 import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
 
 
-type Section = 'visao-geral' | 'albuns' | 'carrinho' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
 
 const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
   { key: 'albuns',      icon: '📚', label: 'Meus Álbuns' },
-  { key: 'carrinho',    icon: '🛒', label: 'Meu Carrinho' },
   { key: 'propostas',   icon: '🔁', label: 'Propostas' },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
@@ -47,7 +46,6 @@ function ContaPageInner() {
   const [pedidos, setPedidos]   = useState<Pedido[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
-  const [carrinho, setCarrinho]         = useState<CarrinhoItem[]>([])
   const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda' | 'doacao'>('todos')
   const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
   const [estrelas, setEstrelas] = useState(5)
@@ -86,13 +84,12 @@ function ContaPageInner() {
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
-    const valid: Section[] = ['visao-geral','albuns','carrinho','propostas','gamificacao','dados','endereco','historico','seguranca']
+    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','endereco','historico','seguranca']
     if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
   useEffect(() => {
     queueMicrotask(() => setPedidos(getPedidos()))
-    queueMicrotask(() => setCarrinho(getCarrinho()))
     const rec = getPropostasRecebidas()
     const pend = rec.filter(p => p.status === 'pendente').length
     queueMicrotask(() => setPropostasPendentes(pend))
@@ -113,24 +110,19 @@ function ContaPageInner() {
     })
   }, [])
 
-  const carrinhoItens = carrinho.reduce((a, v) => a + v.stickers.length, 0)
   const MENU = MENU_ITEMS.map(m => {
     if (m.key === 'propostas') return { ...m, badge: propostasPendentes }
-    if (m.key === 'carrinho')  return { ...m, badge: carrinhoItens > 0 ? carrinhoItens : undefined }
     return m
   })
 
   const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
   const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
-  const nDoacoes = pedidos.filter(p => p.tipo === 'doacao').length
 
   const BADGE_DEFS = [
-    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Complete 10+ vendas',       earned: nVendas  >= 10  },
-    { icon: '💜', label: 'Doador Ouro',          desc: 'Realize 10+ doações',       earned: nDoacoes >= 10  },
-    { icon: '⭐', label: 'Top Trocador',          desc: 'Complete 50+ trocas',       earned: nTrocas  >= 50  },
-    { icon: '🔥', label: '100 Trocas',            desc: 'Realize 100 trocas',        earned: nTrocas  >= 100 },
-    { icon: '💎', label: 'Doador Diamante',       desc: 'Realize 25 doações',        earned: nDoacoes >= 25  },
-    { icon: '🏆', label: 'Álbum Completo',        desc: 'Complete 100% do álbum',    earned: false           },
+    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Complete 10+ vendas',   earned: nVendas >= 10  },
+    { icon: '⭐', label: 'Top Trocador',          desc: 'Complete 50+ trocas',   earned: nTrocas >= 50  },
+    { icon: '🔥', label: '100 Trocas',            desc: 'Realize 100 trocas',    earned: nTrocas >= 100 },
+    { icon: '🏆', label: 'Álbum Completo',        desc: 'Complete 100% do álbum', earned: false          },
   ]
 
   function toggleAlbum(id: AlbumId) {
@@ -221,7 +213,6 @@ function ContaPageInner() {
                 {[
                   { label: 'Trocas',    value: pedidos.filter(p => p.tipo === 'troca').length,   color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
                   { label: 'Vendas',    value: pedidos.filter(p => p.tipo === 'venda').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
-                  { label: 'Doações',   value: pedidos.filter(p => p.tipo === 'doacao').length,  color: 'text-purple-600', bg: 'bg-purple-50', icon: '💜' },
                   { label: 'Avaliações',value: 0,                                                color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
@@ -406,123 +397,6 @@ function ContaPageInner() {
                     Ir para meus álbuns →
                   </Link>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* CARRINHO */}
-          {section === 'carrinho' && (
-            <div className="animate-fadein space-y-4">
-              {carrinho.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-14 text-center">
-                  <p className="text-4xl mb-3">🛒</p>
-                  <p className="font-bold text-slate-700 mb-1">Carrinho vazio</p>
-                  <p className="text-sm text-slate-400 mb-4">Adicione figurinhas a partir dos matches ou anúncios.</p>
-                  <Link href="/matches" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
-                    Ver matches →
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  {/* Resumo */}
-                  {(() => {
-                    const totalItens = carrinho.reduce((a, v) => a + v.stickers.length, 0)
-                    const totalValor = carrinho.reduce((a, v) => a + v.stickers.reduce((b, s) => b + s.preco, 0), 0)
-                    return (
-                      <div className="bg-slate-800 rounded-2xl p-5 text-white flex items-center gap-4">
-                        <div className="flex-1">
-                          <p className="text-slate-400 text-xs mb-0.5">Total no carrinho</p>
-                          <p className="text-3xl font-black text-green-400">
-                            {totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                          <p className="text-slate-400 text-xs mt-0.5">
-                            {totalItens} figurinha{totalItens !== 1 ? 's' : ''} · {carrinho.length} vendedor{carrinho.length !== 1 ? 'es' : ''}
-                          </p>
-                        </div>
-                        <Link
-                          href="/checkout"
-                          className="bg-green-600 hover:bg-green-500 text-white font-black px-5 py-3 rounded-xl text-sm transition-colors flex-shrink-0"
-                        >
-                          Finalizar compra →
-                        </Link>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Por vendedor */}
-                  {carrinho.map(v => {
-                    const subtotal = v.stickers.reduce((a, s) => a + s.preco, 0)
-                    function removeSticker(num: number) {
-                      const novoCarrinho = carrinho
-                        .map(c => c.vendaId === v.vendaId
-                          ? { ...c, stickers: c.stickers.filter(s => s.num !== num) }
-                          : c
-                        )
-                        .filter(c => c.stickers.length > 0)
-                      setCarrinho(novoCarrinho)
-                      saveCarrinho(novoCarrinho)
-                    }
-                    return (
-                      <div key={v.vendaId} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        {/* Header vendedor */}
-                        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${v.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                            <span className="text-white text-xs font-black">{v.avatar}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm text-slate-800">{v.vendedor}</p>
-                            <p className="text-xs text-slate-400">{v.cidade} · ⭐ {v.rating}</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-xs text-slate-400">{v.stickers.length} fig.</p>
-                            <p className="text-sm font-black text-green-700">
-                              {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Itens */}
-                        <div className="divide-y divide-slate-50">
-                          {v.stickers.map(item => (
-                            <div key={item.num} className="flex items-center gap-3 px-4 py-2.5">
-                              <div className={[
-                                'w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 text-[10px] font-black',
-                                item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-300 text-amber-700'
-                                : item.tipo === 'escudo'  ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
-                                : 'bg-slate-50 border-slate-200 text-slate-600',
-                              ].join(' ')}>
-                                {item.num}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-slate-800 truncate">#{item.num} · {item.nome}</p>
-                                <p className="text-[11px] text-slate-400">
-                                  {item.tipo === 'brilhante' ? '✨ Brilhante' : item.tipo === 'escudo' ? '🛡 Escudo' : '⬜ Normal'}
-                                </p>
-                              </div>
-                              <p className="text-sm font-black text-slate-700 flex-shrink-0">
-                                {item.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </p>
-                              <button
-                                onClick={() => removeSticker(item.num)}
-                                className="text-slate-300 hover:text-red-400 transition-colors text-lg ml-1 flex-shrink-0"
-                              >×</button>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Botão por vendedor */}
-                        <div className="px-4 py-3 bg-slate-50">
-                          <Link
-                            href="/checkout"
-                            className="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors"
-                          >
-                            🛒 Comprar de {v.vendedor.split(' ')[0]} · {subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </Link>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </>
               )}
             </div>
           )}

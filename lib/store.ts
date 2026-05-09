@@ -58,16 +58,6 @@ export interface PropostaRecebida {
   enviarPara?:     PreferenciaEntrega   // onde a outra parte quer receber (revelado após aceitar)
 }
 
-export interface CarrinhoItem {
-  vendaId:       string
-  vendedor:      string
-  avatar:        string
-  avatarColor:   string
-  cidade:        string
-  rating:        number
-  stickers:      { num: number; nome: string; preco: number; tipo: TipoSticker }[]
-}
-
 export interface Pedido {
   id:                  string
   data:                string
@@ -111,7 +101,6 @@ export function isMaiorDeIdade(): boolean {
 const K = {
   COLADAS:            (id: AlbumId) => `ac_coladas_${id}`,
   ANUNCIOS:           (tipo: TipoAnuncio) => `ac_anuncios_${tipo}`,
-  CARRINHO:           'ac_carrinho',
   AUTH:               'ac_auth',
   PROFILE:            'ac_profile',
   PROPS_ENVIADAS:     'ac_props_sent',
@@ -152,18 +141,6 @@ export function getAnuncios(tipo: TipoAnuncio): AnuncioItem[] {
 }
 export function saveAnuncios(tipo: TipoAnuncio, items: AnuncioItem[]): void {
   write(K.ANUNCIOS(tipo), items)
-}
-
-// ─── Carrinho ─────────────────────────────────────────────────────────────────
-
-export function getCarrinho(): CarrinhoItem[] {
-  return read<CarrinhoItem[]>(K.CARRINHO, [])
-}
-export function saveCarrinho(items: CarrinhoItem[]): void {
-  write(K.CARRINHO, items)
-}
-export function clearCarrinho(): void {
-  write(K.CARRINHO, [])
 }
 
 // ─── Auth (mock) ─────────────────────────────────────────────────────────────

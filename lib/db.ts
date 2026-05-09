@@ -343,7 +343,7 @@ export async function dbSaveActiveAlbums(ids: AlbumId[]): Promise<void> {
 
 // ─── Propostas ────────────────────────────────────────────────────────────────
 
-export type TipoProposta = 'troca' | 'compra' | 'doacao'
+export type TipoProposta = 'troca' | 'compra'
 
 /** Proposta enriquecida com dados de perfil da contraparte */
 export interface PropostaComPerfil {

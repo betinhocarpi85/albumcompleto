@@ -37,7 +37,6 @@ type Gender      = 'M' | 'F'
 interface MatchUser    { name: string; city: string; avatar: string; avatarColor: string; rating: number; trades: number; gender: Gender }
 interface VendaUser    { name: string; city: string; avatar: string; avatarColor: string; rating: number }
 interface MatchRecord  { id: string; user: MatchUser; type: MatchType; temParaMim: number[]; euTenhoPara: number[]; balance: number }
-interface DoacaoRecord { id: string; user: MatchUser; stickers: number[] }
 interface VendaRecord  { id: string; user: VendaUser; items: { num: number; preco: number; tipo: StickerTipo }[] }
 
 const AVATAR_COLORS = [
@@ -60,7 +59,7 @@ function toVendaUser(u: { id: string; nome: string; cidade: string }): VendaUser
 
 const POR_PAGINA = 10
 
-type Tab        = 'trocas' | 'vendas' | 'doacoes'
+type Tab        = 'trocas' | 'vendas'
 type FiltroTipo = 'todos' | 'brilhante' | 'escudo' | 'especial'
 type OrdemVenda = 'padrao' | 'preco-asc' | 'preco-desc' | 'avaliacao'
 type FiltroTroca = 'todos' | 'exato' | 'parcial'
@@ -82,7 +81,6 @@ export default function MatchesPage() {
   const [meuPrecisoSet, setMeuPrecisoSet] = useState<Set<number>>(new Set())
   const [matches,  setMatches]  = useState<MatchRecord[]>([])
   const [vendas,   setVendas]   = useState<VendaRecord[]>([])
-  const [doacoes,  setDoacoes]  = useState<DoacaoRecord[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [albumId, setAlbumId]   = useState<AlbumId>('copa-2026')
 
@@ -95,7 +93,7 @@ export default function MatchesPage() {
         setAlbumId(id)
         Promise.all([dbGetColadas(id), dbGetMatches(id)]).then(([coladas, result]) => {
           if (id !== 'copa-2026') {
-            setMatches([]); setVendas([]); setDoacoes([])
+            setMatches([]); setVendas([])
             setLoadingMatches(false); return
           }
           const coladasSet = new Set(coladas)
@@ -115,7 +113,6 @@ export default function MatchesPage() {
             id: v.id, user: toVendaUser(v),
             items: v.items.map(i => ({ num: i.gnum, preco: i.preco, tipo: (i.tipo ?? 'normal') as StickerTipo })),
           })))
-          setDoacoes(result.doacoes.map(d => ({ id: d.id, user: toMatchUser(d), stickers: d.gnums })))
           setLoadingMatches(false)
         })
       })
@@ -155,7 +152,7 @@ export default function MatchesPage() {
     setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
   }
 
-  async function enviarInteresse(userId: string, nome: string, stickers: number[], tipo: 'compra' | 'doacao') {
+  async function enviarInteresse(userId: string, nome: string, stickers: number[], tipo: 'compra') {
     const { error } = await dbEnviarProposta(userId, albumId, [], stickers, tipo)
     if (error) { alert('Não foi possível enviar. Tente novamente.'); return }
     setInteresseEnviado(prev => ({ ...prev, [userId]: true }))
@@ -220,12 +217,12 @@ export default function MatchesPage() {
             <span className="w-6 h-6 border-2 border-green-400 border-t-transparent rounded-full animate-spin inline-block mb-2" />
             <p className="text-sm text-slate-400">Buscando matches...</p>
           </div>
-        ) : matches.length + vendas.length + doacoes.length > 0 ? (
+        ) : matches.length + vendas.length > 0 ? (
           <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4 flex items-center gap-3">
             <span className="text-2xl">🔥</span>
             <div>
-              <p className="text-sm font-bold text-green-800">{matches.length + vendas.length + doacoes.length} matches encontrados!</p>
-              <p className="text-xs text-green-600">Trocas, vendas e doações com figurinhas que você precisa</p>
+              <p className="text-sm font-bold text-green-800">{matches.length + vendas.length} matches encontrados!</p>
+              <p className="text-xs text-green-600">Trocas e vendas com figurinhas que você precisa</p>
             </div>
           </div>
         ) : (
@@ -243,9 +240,8 @@ export default function MatchesPage() {
         {/* Abas */}
         <div className="flex gap-1.5 mb-4">
           {([
-            { key: 'trocas',  label: `🔁 Trocas (${matches.length})` },
-            { key: 'vendas',  label: `💰 Vendas (${vendas.length})` },
-            { key: 'doacoes', label: `💜 Doações (${doacoes.length})` },
+            { key: 'trocas', label: `🔁 Trocas (${matches.length})` },
+            { key: 'vendas', label: `💰 Vendas (${vendas.length})` },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={['flex-1 py-2.5 rounded-xl text-xs font-bold transition-all', tab === t.key ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
@@ -552,55 +548,6 @@ export default function MatchesPage() {
           </div>
         )}
 
-        {/* ── DOAÇÕES ── */}
-        {tab === 'doacoes' && (
-          <div className="space-y-3 animate-fadein">
-            <div className="bg-purple-50 border border-purple-100 rounded-xl px-3 py-2 text-center mb-3">
-              <p className="text-xs text-purple-600">💜 Ao solicitar uma doação, o doador recebe sua mensagem. Se aceitar, vocês recebem o contato um do outro para combinar.</p>
-            </div>
-            {doacoes.map(d => {
-              const jaEnviou = interesseEnviado[d.id] ?? false
-              return (
-                <div key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Link href={`/perfil/${d.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${d.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
-                        <span className="text-white text-xs font-black">{d.user.avatar}</span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-slate-800">{d.user.name}</p>
-                        <p className="text-xs text-slate-400">{d.user.city} · ⭐ {d.user.rating}</p>
-                      </div>
-                    </Link>
-                    <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2 py-1 rounded-full flex-shrink-0">💜 Doação</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {d.stickers.map(num => {
-                      const info = globalInfoMap.get(num)
-                      return <StickerSquare key={num} number={num} name={info?.name} stickerType={info?.tipo as 'normal' | 'brilhante' | 'escudo' | 'especial' | undefined} status="doacao" size="sm" />
-                    })}
-                  </div>
-                  {adulto ? (
-                    jaEnviou ? (
-                      <div className="w-full py-2.5 rounded-xl text-sm text-center bg-purple-50 border border-purple-200 text-purple-700 font-bold">
-                        ✓ Solicitação enviada! Aguardando {d.user.name.split(' ')[0]} aceitar.
-                      </div>
-                    ) : (
-                      <button onClick={() => enviarInteresse(d.id, d.user.name, d.stickers, 'doacao')}
-                        className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                        💜 Solicitar doação
-                      </button>
-                    )
-                  ) : (
-                    <div className="w-full py-2.5 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
-                      🔒 Doações disponíveis apenas para maiores de 18
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
     </div>
   )

@@ -6,10 +6,10 @@ const DEMO_STICKERS = [
   { number: 17,  status: 'venda'  as const, type: 'brilhante' as const },
   { number: 29,  status: 'troca'  as const, type: 'brilhante' as const },
   { number: 16,  status: 'troca'  as const, type: 'escudo'    as const },
-  { number: 28,  status: 'doacao' as const, type: 'escudo'    as const },
+  { number: 28,  status: 'troca'  as const, type: 'escudo'    as const },
   { number: 52,  status: 'venda'  as const, type: 'escudo'    as const },
   { number: 22,  status: 'troca'  as const, type: 'normal'    as const },
-  { number: 33,  status: 'doacao' as const, type: 'normal'    as const },
+  { number: 33,  status: 'troca'  as const, type: 'normal'    as const },
   { number: 67,  status: 'venda'  as const, type: 'normal'    as const },
   { number: 89,  status: 'troca'  as const, type: 'brilhante' as const },
   { number: 41,  status: 'colada' as const, type: 'brilhante' as const },
@@ -21,19 +21,18 @@ const STATS = [
   { value: '0', label: 'Colecionadores' },
   { value: '0', label: 'Figurinhas anunciadas' },
   { value: '0', label: 'Trocas concluídas' },
-  { value: '0', label: 'Doações realizadas' },
+  { value: '0', label: 'Vendas realizadas' },
 ]
 
 const STEPS = [
   { icon: '📋', title: 'Monte seu álbum', desc: 'Marque as figurinhas que você tem e as que ainda precisa para completar sua coleção.' },
   { icon: '🔁', title: 'Receba matches',  desc: 'O sistema encontra automaticamente quem tem o que você precisa e precisa do que você tem.' },
-  { icon: '📦', title: 'Troque com segurança', desc: 'Nas vendas o pagamento fica retido até você confirmar o recebimento. Sem golpes.' },
+  { icon: '📱', title: 'Combine diretamente', desc: 'Quando ambos aceitam, vocês recebem o contato um do outro e combinam o encontro.' },
 ]
 
 const FEATURES = [
-  { icon: '🟢', color: 'bg-green-500',  title: 'Venda',  desc: 'Defina seu preço e venda figurinhas repetidas com pagamento protegido.' },
+  { icon: '🟢', color: 'bg-green-500',  title: 'Venda',  desc: 'Anuncie figurinhas repetidas. Quando alguém aceitar, combinem o encontro diretamente.' },
   { icon: '🔵', color: 'bg-blue-500',   title: 'Troca',  desc: 'Proponha trocas justas. O sistema equilibra a quantidade automaticamente.' },
-  { icon: '🟣', color: 'bg-purple-500', title: 'Doação', desc: 'Doe figurinhas para quem precisa e ganhe badges exclusivos.' },
   { icon: '✅', color: 'bg-green-700',  title: 'Colada', desc: 'Marque o que já tem no álbum. O que não estiver marcado é faltando.' },
 ]
 
@@ -62,8 +61,8 @@ export default function Home() {
                 <span className="text-green-400">sem estresse</span>
               </h1>
               <p className="text-slate-300 text-lg mb-8 max-w-md mx-auto md:mx-0">
-                Troque, venda e doe figurinhas com segurança.
-                Match automático, pagamento protegido, sem golpes.
+                Troque e venda figurinhas com quem está perto de você.
+                Match automático — combine o encontro diretamente.
               </p>
               <HomeCTA />
             </div>
@@ -77,11 +76,10 @@ export default function Home() {
                     <StickerSquare key={s.number} number={s.number} status={s.status} stickerType={s.type} size="md" />
                   ))}
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-1.5">
+                <div className="mt-4 grid grid-cols-2 gap-1.5">
                   {[
-                    { color: 'bg-green-500',  label: 'Venda' },
-                    { color: 'bg-blue-500',   label: 'Troca' },
-                    { color: 'bg-purple-500', label: 'Doação' },
+                    { color: 'bg-green-500', label: 'Venda' },
+                    { color: 'bg-blue-500',  label: 'Troca' },
                   ].map((l) => (
                     <div key={l.label} className="flex items-center gap-1.5">
                       <span className={`w-2.5 h-2.5 rounded-full ${l.color} flex-shrink-0`} />
@@ -133,7 +131,7 @@ export default function Home() {
       <section className="bg-slate-800 text-white">
         <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-black">4 formas de completar seu álbum</h2>
+            <h2 className="text-2xl md:text-3xl font-black">3 formas de completar seu álbum</h2>
             <p className="text-slate-400 mt-2">Você escolhe como quer participar</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -235,9 +233,9 @@ export default function Home() {
             <p className="text-green-500 text-xs mb-4">Pode ser <strong>muito menos</strong> com doações e trocas diretas</p>
             <div className="space-y-2 text-sm text-green-700">
               <div className="flex items-start gap-2"><span>✅</span><span>Troque repetidas por exatamente o que falta</span></div>
-              <div className="flex items-start gap-2"><span>✅</span><span>Compre figurinhas avulsas por R$ 1 a R$ 30</span></div>
-              <div className="flex items-start gap-2"><span>✅</span><span>Receba doações de colecionadores generosos</span></div>
+              <div className="flex items-start gap-2"><span>✅</span><span>Compre figurinhas avulsas direto com o vendedor</span></div>
               <div className="flex items-start gap-2"><span>✅</span><span>Match automático — zero esforço pra encontrar</span></div>
+              <div className="flex items-start gap-2"><span>✅</span><span>Combine local, dia e hora diretamente pelo WhatsApp</span></div>
             </div>
           </div>
         </div>
@@ -285,45 +283,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SEGURANÇA ── */}
-      <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 rounded-2xl p-6 md:p-10">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="text-6xl">🛡️</div>
-            <div className="flex-1">
-              <h2 className="text-xl md:text-2xl font-black text-slate-800 mb-2">
-                Compra e venda com total segurança
-              </h2>
-              <p className="text-slate-600 leading-relaxed max-w-xl mb-4">
-                Todas as transações são processadas pelo <strong>Mercado Pago</strong> — o maior meio de pagamento da América Latina.
-                O dinheiro fica <strong>retido</strong> até você confirmar o recebimento. O vendedor só recebe depois da sua aprovação.
-              </p>
-
-              {/* Logo Mercado Pago */}
-              <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 mb-4 w-fit">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="16" r="16" fill="#009EE3"/>
-                  <path d="M8 16.5c0-4.142 3.358-7.5 7.5-7.5s7.5 3.358 7.5 7.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                  <circle cx="16" cy="19" r="2.5" fill="white"/>
-                </svg>
-                <div>
-                  <p className="text-xs font-black text-slate-800 leading-none">Mercado Pago</p>
-                  <p className="text-[10px] text-slate-500">Pagamento protegido e garantido</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {['Pagamento protegido', 'Rastreio obrigatório', 'Sistema de reputação', 'Mediação de disputas'].map((item) => (
-                  <span key={item} className="flex items-center gap-1.5 text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
-                    ✓ {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── PLANOS ── */}
       <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
         <div className="text-center mb-10">
@@ -348,12 +307,9 @@ export default function Home() {
             <div className="space-y-3 flex-1">
               {[
                 { ok: true,  text: 'Controle do álbum (marcar coladas/faltando)' },
-                { ok: true,  text: 'Ver matches disponíveis' },
-                { ok: true,  text: 'Comprar figurinhas avulsas' },
-                { ok: true,  text: 'Realizar doações' },
-                { ok: false, text: 'Anunciar figurinhas' },
-                { ok: false, text: 'Realizar trocas' },
-                { ok: false, text: 'Match automático bidirecional' },
+                { ok: false, text: 'Anunciar figurinhas para troca e venda' },
+                { ok: false, text: 'Receber matches automáticos' },
+                { ok: false, text: 'Contato revelado ao aceitar proposta' },
               ].map((f, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm">
                   <span className={`flex-shrink-0 mt-0.5 ${f.ok ? 'text-green-500' : 'text-slate-300'}`}>
@@ -385,10 +341,9 @@ export default function Home() {
             <div className="space-y-3 flex-1">
               {[
                 'Controle do álbum (marcar coladas/faltando)',
-                'Anunciar figurinhas para venda, troca e doação',
-                'Realizar trocas e doações',
+                'Anunciar figurinhas para troca e venda',
                 'Match automático bidirecional',
-                'Comprar figurinhas avulsas',
+                'Contato revelado ao aceitar proposta',
                 'Sistema de reputação e badges',
                 'Suporte prioritário',
               ].map((f, i) => (
@@ -437,7 +392,7 @@ export default function Home() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          Pagamento seguro via Mercado Pago · Cancele a qualquer momento · Sem multa
+          Cancele a qualquer momento · Sem multa · Suporte via WhatsApp
         </p>
       </section>
 
