@@ -15,19 +15,19 @@ export default function PrivacidadePage() {
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">1. Dados que Coletamos</h2>
           <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1">
-            <li><strong>Cadastro:</strong> nome completo, e-mail, CPF, data de nascimento e endereço.</li>
-            <li><strong>Uso:</strong> figurinhas do álbum, histórico de trocas, vendas e compras.</li>
-            <li><strong>Técnicos:</strong> IP de acesso, dispositivo, horários de login (logs de segurança).</li>
+            <li><strong>Cadastro:</strong> nome completo, e-mail, número de WhatsApp/telefone e CEP.</li>
+            <li><strong>Uso da plataforma:</strong> figurinhas marcadas no álbum, anúncios publicados, histórico de propostas de troca e venda.</li>
+            <li><strong>Técnicos:</strong> IP de acesso, tipo de dispositivo e horários de login (logs de segurança).</li>
           </ul>
         </section>
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">2. Como Usamos os Dados</h2>
           <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1">
-            <li>Verificação de identidade e prevenção a fraudes.</li>
-            <li>Cálculo de frete via Correios (usamos apenas o CEP).</li>
-            <li>Processamento de pagamentos pelo Mercado Pago (CPF necessário).</li>
-            <li>Comunicação sobre pedidos, trocas e atualizações da plataforma.</li>
+            <li>Gerar matches entre colecionadores com figurinhas de interesse mútuo (usamos o CEP para priorizar matches próximos).</li>
+            <li>Revelar o WhatsApp/telefone de cada parte somente após aceitação mútua de uma proposta.</li>
+            <li>Comunicar sobre matches, propostas e atualizações da plataforma.</li>
+            <li>Garantir a segurança das contas e prevenir fraudes.</li>
           </ul>
         </section>
 
@@ -35,29 +35,29 @@ export default function PrivacidadePage() {
           <h2 className="font-black text-slate-800 text-base mb-2">3. O que Nunca Fazemos</h2>
           <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1">
             <li>Não vendemos seus dados a terceiros.</li>
-            <li>Não exibimos CPF, data de nascimento ou endereço completo a outros usuários.</li>
+            <li>Não exibimos seu telefone ou endereço a outros usuários sem sua autorização (que se dá ao aceitar uma proposta).</li>
             <li>Não enviamos spam ou comunicações não solicitadas.</li>
+            <li>Não intermediamos pagamentos — não coletamos dados de cartão ou conta bancária.</li>
           </ul>
         </section>
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">4. Compartilhamento de Dados</h2>
-          <p className="text-sm leading-relaxed">Compartilhamos dados apenas com:</p>
+          <p className="text-sm leading-relaxed">Seus dados são compartilhados apenas em duas situações:</p>
           <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1 mt-2">
-            <li><strong>Mercado Pago</strong> — para processamento de pagamentos.</li>
-            <li><strong>Correios / Mercado Envios</strong> — CEP e nome para cálculo e rastreio de frete.</li>
-            <li><strong>Autoridades</strong> — quando exigido por lei ou ordem judicial.</li>
+            <li><strong>Com o outro usuário:</strong> seu WhatsApp/telefone é revelado somente quando ambos aceitarem uma proposta de troca ou venda.</li>
+            <li><strong>Com autoridades:</strong> quando exigido por lei ou ordem judicial.</li>
           </ul>
         </section>
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">5. Armazenamento e Segurança</h2>
-          <p className="text-sm leading-relaxed">Seus dados são armazenados em servidores com criptografia em repouso e em trânsito (TLS 1.3). O acesso é restrito a colaboradores com necessidade comprovada. CPF é armazenado criptografado.</p>
+          <p className="text-sm leading-relaxed">Seus dados são armazenados na plataforma Supabase com criptografia em repouso e em trânsito (TLS). O acesso é restrito por autenticação e o telefone só é acessível via função segura do banco de dados, acionada exclusivamente após aceitação mútua de proposta.</p>
         </section>
 
         <section>
-          <h2 className="font-black text-slate-800 text-base mb-2">6. Cookies e Rastreamento</h2>
-          <p className="text-sm leading-relaxed">Usamos cookies essenciais para manter sua sessão ativa. Não utilizamos cookies de rastreamento publicitário de terceiros. Você pode desativar cookies não essenciais nas configurações do navegador.</p>
+          <h2 className="font-black text-slate-800 text-base mb-2">6. Cookies</h2>
+          <p className="text-sm leading-relaxed">Usamos cookies essenciais apenas para manter sua sessão ativa e autenticada. Não utilizamos cookies de rastreamento publicitário.</p>
         </section>
 
         <section>
@@ -66,7 +66,7 @@ export default function PrivacidadePage() {
           <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1 mt-2">
             <li>Acessar os dados que temos sobre você.</li>
             <li>Corrigir dados incompletos ou incorretos.</li>
-            <li>Solicitar a exclusão dos seus dados (salvo obrigações legais).</li>
+            <li>Solicitar a exclusão da sua conta e dados associados.</li>
             <li>Revogar consentimentos concedidos.</li>
             <li>Portabilidade dos dados em formato estruturado.</li>
           </ul>
@@ -75,12 +75,12 @@ export default function PrivacidadePage() {
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">8. Retenção de Dados</h2>
-          <p className="text-sm leading-relaxed">Mantemos seus dados enquanto sua conta estiver ativa. Após o encerramento, dados são anonimizados em até 90 dias, salvo quando a retenção for exigida por lei (ex: registros fiscais, até 5 anos).</p>
+          <p className="text-sm leading-relaxed">Mantemos seus dados enquanto sua conta estiver ativa. Após o encerramento, os dados são removidos em até 90 dias, salvo quando a retenção for exigida por lei.</p>
         </section>
 
         <section>
           <h2 className="font-black text-slate-800 text-base mb-2">9. Menores de Idade</h2>
-          <p className="text-sm leading-relaxed">Funcionalidades financeiras (compra, venda, troca) são restritas a maiores de 18 anos. Usuários menores podem usar apenas o controle do álbum. Não coletamos dados de menores de 13 anos intencionalmente.</p>
+          <p className="text-sm leading-relaxed">As funcionalidades de anúncio, match e contato são restritas a maiores de 18 anos. O controle do álbum é livre para todos. Não coletamos dados de menores de 13 anos intencionalmente.</p>
         </section>
 
         <section>
