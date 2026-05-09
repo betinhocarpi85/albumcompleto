@@ -80,10 +80,19 @@ function Checkbox({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+function formatTelefone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 2) return d.length ? `(${d}` : ''
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}
+
 interface FormData {
   nome:           string
   cpf:            string
   dataNascimento: string
+  telefone:       string
   cep:            string
   uf:             string
   logradouro:     string
@@ -100,7 +109,7 @@ export default function CompletarCadastroPage() {
   const [nomeUsuario, setNomeUsuario] = useState('')
 
   const [form, setForm] = useState<FormData>({
-    nome: '', cpf: '', dataNascimento: '', cep: '', uf: '',
+    nome: '', cpf: '', dataNascimento: '', telefone: '', cep: '', uf: '',
     logradouro: '', numero: '', complemento: '', cidade: '',
   })
 
@@ -122,6 +131,7 @@ export default function CompletarCadastroPage() {
           nome:           p.nome           ?? prev.nome,
           cpf:            p.cpf            ?? prev.cpf,
           dataNascimento: p.dataNascimento ?? prev.dataNascimento,
+          telefone:       p.telefone       ?? prev.telefone,
           cep:            p.cep            ?? prev.cep,
           uf:             p.uf             ?? prev.uf,
           logradouro:     p.logradouro     ?? prev.logradouro,
@@ -150,6 +160,7 @@ export default function CompletarCadastroPage() {
     if (!form.numero.trim())                         e.push('Informe o número.')
     if (!form.cidade.trim())                         e.push('Informe a cidade.')
     if (!form.uf.trim())                             e.push('Informe o estado (UF).')
+    if (form.telefone.replace(/\D/g, '').length < 10) e.push('Informe um WhatsApp/telefone válido.')
     if (!aceitouTermos)                              e.push('Aceite os Termos de Uso para continuar.')
     if (!aceitouPrivacidade)                         e.push('Aceite a Política de Privacidade para continuar.')
     return e
@@ -163,6 +174,7 @@ export default function CompletarCadastroPage() {
     await dbSaveProfile({
       ...form,
       nome:               form.nome.trim(),
+      telefone:           form.telefone.replace(/\D/g, ''),
       maior18,
       aceitouTermos,
       aceitouPrivacidade,
@@ -303,9 +315,28 @@ export default function CompletarCadastroPage() {
               </div>
             </div>
 
+            {/* Telefone / WhatsApp */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                WhatsApp / Telefone <span className="text-slate-400 font-normal text-[10px]">(compartilhado só em trocas aceitas)</span>
+              </label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                placeholder="(11) 99999-9999"
+                value={form.telefone}
+                onChange={e => set('telefone', formatTelefone(e.target.value))}
+                className={inp}
+                maxLength={16}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                📱 Seu número só é revelado à outra parte quando ambos aceitarem a troca/venda.
+              </p>
+            </div>
+
             {/* Endereço */}
             <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">Endereço de entrega</p>
+              <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">Cidade (para encontrar matches próximos)</p>
 
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="col-span-2">

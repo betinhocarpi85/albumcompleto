@@ -93,6 +93,7 @@ export interface UserProfile {
   numero:             string
   complemento:        string
   cidade:             string
+  telefone:           string   // WhatsApp/telefone para contato em trocas e vendas
 }
 
 export function isProfileComplete(): boolean {

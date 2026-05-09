@@ -3,48 +3,40 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
-  getPropostasRecebidas, savePropostasRecebidas,
-  getPropostasEnviadas, savePropostasEnviadas,
-  addPedido,
-  type PropostaRecebida, type PropostaEnviada, type PreferenciaEntrega, type UserProfile,
-} from '@/lib/store'
-import { getSession, dbGetProfile } from '@/lib/db'
+  getSession, dbGetProfile,
+  dbGetPropostasRecebidas, dbGetPropostasEnviadas,
+  dbUpdateProposta, dbGetPhoneForProposta,
+  type PropostaComPerfil, type TipoProposta,
+} from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type Aba = 'recebidas' | 'enviadas'
 
 const STATUS_CONFIG = {
-  pendente:  { label: 'Aguardando',  bg: 'bg-amber-100',  text: 'text-amber-700'  },
-  aceita:    { label: 'Aceita',      bg: 'bg-green-100',  text: 'text-green-700'  },
-  recusada:  { label: 'Recusada',    bg: 'bg-red-100',    text: 'text-red-700'    },
+  pendente: { label: 'Aguardando', bg: 'bg-amber-100',  text: 'text-amber-700'  },
+  aceita:   { label: 'Aceita',     bg: 'bg-green-100',  text: 'text-green-700'  },
+  recusada: { label: 'Recusada',   bg: 'bg-red-100',    text: 'text-red-700'    },
 }
 
-// Ponto Mercado Envios mais próximo por UF (mock)
-const PONTOS_MERCADO_ENVIOS: Record<string, string> = {
-  SP: 'Ponto Mercado Envios — Paulista · Av. Paulista, 695 · Bela Vista · São Paulo/SP · CEP 01311-100 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  RJ: 'Ponto Mercado Envios — Flamengo · Rua Marquês de Abrantes, 6 · Flamengo · Rio de Janeiro/RJ · CEP 22230-060 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  MG: 'Ponto Mercado Envios — Savassi · Av. do Contorno, 6594 · Savassi · Belo Horizonte/MG · CEP 30110-042 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  PR: 'Ponto Mercado Envios — Batel · R. Visconde do Rio Branco, 1490 · Batel · Curitiba/PR · CEP 80420-210 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  RS: 'Ponto Mercado Envios — Moinhos · Av. Independência, 1008 · Moinhos de Vento · Porto Alegre/RS · CEP 90035-071 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  BA: 'Ponto Mercado Envios — Pituba · Av. Antônio Carlos Magalhães, 3244 · Pituba · Salvador/BA · CEP 41825-000 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  PE: 'Ponto Mercado Envios — Boa Viagem · Av. Conselheiro Aguiar, 2900 · Boa Viagem · Recife/PE · CEP 51020-010 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  CE: 'Ponto Mercado Envios — Aldeota · Av. Santos Dumont, 3800 · Aldeota · Fortaleza/CE · CEP 60150-161 · Seg–Sex 9h–20h · Sáb 9h–14h',
-  DEFAULT: 'Ponto Mercado Envios mais próximo — consulte envios.mercadopago.com.br para encontrar o ponto mais próximo de você.',
+const TIPO_CONFIG: Record<TipoProposta, { label: string; emoji: string }> = {
+  troca:  { label: 'Troca',  emoji: '🔄' },
+  compra: { label: 'Compra', emoji: '🛒' },
+  doacao: { label: 'Doação', emoji: '🎁' },
 }
 
-function meuEndereco(p: Partial<UserProfile>): string {
-  if (!p.logradouro) return 'Endereço não cadastrado'
-  const partes = [p.logradouro, p.numero, p.complemento].filter(Boolean).join(', ')
-  return `${partes} · ${p.cidade}/${p.uf} · CEP ${p.cep}`
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    })
+  } catch { return iso }
 }
 
-function minhaCidadeUF(p: Partial<UserProfile>): string {
-  return (p.cidade && p.uf) ? `${p.cidade}, ${p.uf}` : 'São Paulo, SP'
-}
-
-function pontoPorCidade(city: string): string {
-  const uf = city.split(', ')[1]?.toUpperCase() ?? ''
-  return PONTOS_MERCADO_ENVIOS[uf] ?? PONTOS_MERCADO_ENVIOS.DEFAULT
+function formatPhone(raw: string): string {
+  const d = raw.replace(/\D/g, '')
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return raw
 }
 
 function StickerPill({ num }: { num: number }) {
@@ -55,150 +47,86 @@ function StickerPill({ num }: { num: number }) {
   )
 }
 
-function CardEnviarPara({ pref, contraparte }: { pref: PreferenciaEntrega; contraparte: string }) {
+function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
+  const digits = phone.replace(/\D/g, '')
+  const waLink = `https://wa.me/55${digits}`
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-      <div className="flex items-start gap-2">
-        <span className="text-xl flex-shrink-0">{pref.tipo === 'agencia' ? '📮' : '🏠'}</span>
-        <div>
-          <p className="text-xs font-bold text-amber-800 mb-1">
-            {pref.tipo === 'agencia'
-              ? `Envie para o ponto Mercado Envios escolhido por ${contraparte}`
-              : `Envie para o endereço de ${contraparte}`}
-          </p>
-          <p className="text-sm text-amber-900 font-medium leading-relaxed">{pref.destino}</p>
-          {pref.tipo === 'agencia' && (
-            <p className="text-[11px] text-amber-700 mt-1.5 font-medium">
-              💡 {contraparte} vai retirar no ponto Mercado Envios e poderá conferir antes de aceitar o recebimento.
-            </p>
-          )}
-          <p className="text-[11px] text-amber-600 mt-1">
-            ⚠️ O frete é por sua conta — use o serviço de envio de sua preferência.
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function SelecionarEntrega({
-  minhaCidade,
-  meuEnderecoPerfil,
-  onEscolher,
-}: {
-  minhaCidade: string
-  meuEnderecoPerfil: string
-  onEscolher: (p: PreferenciaEntrega) => void
-}) {
-  const agencia = pontoPorCidade(minhaCidade)
-
-  return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-      <p className="text-sm font-bold text-blue-800 mb-1">Como você quer receber suas figurinhas?</p>
-      <p className="text-xs text-blue-600 mb-3">
-        Sua privacidade é protegida. Escolha a opção mais conveniente.
+    <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+      <p className="text-xs font-bold text-green-800 mb-1">📞 Telefone de {nome}</p>
+      <p className="text-lg font-black text-green-900 tracking-wide mb-2">{formatPhone(phone)}</p>
+      <a
+        href={waLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+      >
+        <span>💬</span> Chamar no WhatsApp
+      </a>
+      <p className="text-[11px] text-green-600 mt-2">
+        Combine data, local e horário diretamente com {nome}.
       </p>
-      <div className="space-y-2">
-        {/* Opção agência */}
-        <button
-          onClick={() => onEscolher({ tipo: 'agencia', destino: agencia })}
-          className="w-full text-left bg-white border-2 border-blue-200 hover:border-blue-400 rounded-xl p-3 transition-all group"
-        >
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">📮</span>
-            <div>
-              <p className="font-bold text-slate-800 text-sm group-hover:text-blue-700">Ponto Mercado Envios</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Você retira no ponto e confere tudo na hora. Mais seguro — pode recusar o recebimento se estiver errado.
-              </p>
-              <p className="text-[11px] text-blue-600 mt-1 font-medium">✓ Recomendado · Sem compartilhar seu endereço</p>
-            </div>
-          </div>
-        </button>
-
-        {/* Opção endereço */}
-        <button
-          onClick={() => onEscolher({ tipo: 'endereco', destino: meuEnderecoPerfil })}
-          className="w-full text-left bg-white border-2 border-slate-200 hover:border-slate-400 rounded-xl p-3 transition-all group"
-        >
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">🏠</span>
-            <div>
-              <p className="font-bold text-slate-800 text-sm group-hover:text-slate-700">Meu endereço</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Recebe diretamente em casa. Seu endereço será compartilhado com a outra parte.
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">{meuEnderecoPerfil}</p>
-            </div>
-          </div>
-        </button>
-      </div>
     </div>
   )
 }
 
 export default function PropostasPage() {
-  const [aba, setAba]               = useState<Aba>('recebidas')
-  const [recebidas, setRecebidas]   = useState<PropostaRecebida[]>([])
-  const [enviadas, setEnviadas]     = useState<PropostaEnviada[]>([])
+  const [aba, setAba]             = useState<Aba>('recebidas')
+  const [recebidas, setRecebidas] = useState<PropostaComPerfil[]>([])
+  const [enviadas, setEnviadas]   = useState<PropostaComPerfil[]>([])
+  const [phones, setPhones]       = useState<Record<string, string>>({})
   const [confirmando, setConfirmando] = useState<{ id: string; acao: 'aceitar' | 'recusar' } | null>(null)
-  const [adulto, setAdulto]           = useState(true)
-  const [perfil, setPerfil]           = useState<Partial<UserProfile>>({})
+  const [loading, setLoading]     = useState(false)
+  const [adulto, setAdulto]       = useState(true)
 
   useEffect(() => {
-    queueMicrotask(() => setRecebidas(getPropostasRecebidas()))
-    queueMicrotask(() => setEnviadas(getPropostasEnviadas()))
-    getSession().then(session => {
-      if (!session) { setAdulto(true); return }
-      dbGetProfile().then(p => { setPerfil(p); setAdulto(!!p.maior18) })
+    getSession().then(async session => {
+      if (!session) return
+      const [rec, env, prof] = await Promise.all([
+        dbGetPropostasRecebidas(),
+        dbGetPropostasEnviadas(),
+        dbGetProfile(),
+      ])
+      setRecebidas(rec)
+      setEnviadas(env)
+      setAdulto(!!prof.maior18)
+
+      // Fetch phones for all already-accepted proposals
+      const aceitas = [...rec, ...env].filter(p => p.status === 'aceita')
+      if (aceitas.length === 0) return
+      const entries = await Promise.all(
+        aceitas.map(async p => {
+          const phone = await dbGetPhoneForProposta(p.id)
+          return [p.id, phone] as [string, string | null]
+        })
+      )
+      const newPhones: Record<string, string> = {}
+      entries.forEach(([id, phone]) => { if (phone) newPhones[id] = phone })
+      setPhones(newPhones)
     })
   }, [])
 
-  function handleAcao(id: string, acao: 'aceitar' | 'recusar') {
-    setConfirmando({ id, acao })
-  }
+  async function confirmar() {
+    if (!confirmando || loading) return
+    setLoading(true)
+    try {
+      const { id, acao } = confirmando
+      const novoStatus: 'aceita' | 'recusada' = acao === 'aceitar' ? 'aceita' : 'recusada'
+      await dbUpdateProposta(id, { status: novoStatus })
 
-  function confirmar() {
-    if (!confirmando) return
-    const novoStatus = confirmando.acao === 'aceitar' ? 'aceita' : 'recusada'
-    const proposta   = recebidas.find(p => p.id === confirmando.id)
-    const atualizadas = recebidas.map(p =>
-      p.id === confirmando.id ? { ...p, status: novoStatus as PropostaRecebida['status'] } : p
-    )
-    setRecebidas(atualizadas)
-    savePropostasRecebidas(atualizadas)
+      // Update local state for both lists
+      const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
+      setRecebidas(prev => prev.map(patch))
+      setEnviadas(prev => prev.map(patch))
 
-    // Cria pedido no histórico ao aceitar
-    if (confirmando.acao === 'aceitar' && proposta) {
-      const qtd = proposta.eleOferece.length + proposta.elePede.length
-      addPedido({
-        id:               'troca-' + Date.now().toString(36),
-        data:             new Date().toLocaleDateString('pt-BR'),
-        tipo:             'troca',
-        status:           'pendente',
-        contraparte:      proposta.de,
-        fig:              `${qtd} figurinha${qtd !== 1 ? 's' : ''}`,
-        enderecoEntrega:  proposta.enviarPara?.destino,
-      })
+      // Reveal phone if accepted
+      if (acao === 'aceitar') {
+        const phone = await dbGetPhoneForProposta(id)
+        if (phone) setPhones(prev => ({ ...prev, [id]: phone }))
+      }
+    } finally {
+      setLoading(false)
+      setConfirmando(null)
     }
-
-    setConfirmando(null)
-  }
-
-  function escolherEntregaRecebida(id: string, pref: PreferenciaEntrega) {
-    const atualizadas = recebidas.map(p =>
-      p.id === id ? { ...p, minhaEscolha: pref } : p
-    )
-    setRecebidas(atualizadas)
-    savePropostasRecebidas(atualizadas)
-  }
-
-  function escolherEntregaEnviada(id: string, pref: PreferenciaEntrega) {
-    const atualizadas = enviadas.map(p =>
-      p.id === id ? { ...p, minhaEscolha: pref } : p
-    )
-    setEnviadas(atualizadas)
-    savePropostasEnviadas(atualizadas)
   }
 
   const pendentesRecebidas = recebidas.filter(p => p.status === 'pendente').length
@@ -212,7 +140,7 @@ export default function PropostasPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Link href="/matches" className="text-sm text-slate-400 hover:text-slate-600">‹</Link>
-        <h1 className="text-lg font-black text-slate-800">Propostas de Troca</h1>
+        <h1 className="text-lg font-black text-slate-800">Propostas</h1>
       </div>
 
       {/* Abas */}
@@ -251,142 +179,115 @@ export default function PropostasPage() {
           )}
 
           {recebidas.map(p => {
-            const st = STATUS_CONFIG[p.status]
+            const st    = STATUS_CONFIG[p.status]
+            const tipo  = TIPO_CONFIG[p.tipo]
+            const phone = phones[p.id]
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                {/* Header */}
+
+                {/* Header do card */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${p.deAvatarColor} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-white text-sm font-black">{p.deAvatar}</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm font-black">
+                      {p.contraparte_nome.slice(0, 2).toUpperCase()}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-slate-800 text-sm">{p.de}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-slate-800 text-sm">{p.contraparte_nome}</p>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.bg} ${st.text}`}>
                         {st.label}
                       </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {tipo.emoji} {tipo.label}
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-400">{p.deCity} · ⭐ {p.deRating} · {p.data}</p>
+                    <p className="text-xs text-slate-400">
+                      {p.contraparte_cidade} · {formatDate(p.created_at)}
+                    </p>
                   </div>
                 </div>
 
-                {/* Ofertas */}
+                {/* Figurinhas */}
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                      {p.deGender === 'F' ? 'Ela oferece' : 'Ele oferece'} ({p.eleOferece.length})
+                      Ele/ela oferece ({p.eu_ofereco.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.eleOferece.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} />)}
                     </div>
                   </div>
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                      Quer receber ({p.elePede.length})
+                      Quer receber ({p.eu_recebo.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.elePede.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} />)}
                     </div>
                   </div>
                 </div>
 
-                {/* Balanço */}
-                <div className={[
-                  'mx-3 mb-3 px-3 py-2 rounded-xl text-xs text-center font-semibold',
-                  p.eleOferece.length === p.elePede.length
-                    ? 'bg-green-50 text-green-700'
-                    : 'bg-amber-50 text-amber-700',
-                ].join(' ')}>
-                  {p.eleOferece.length === p.elePede.length
-                    ? '✓ Troca exata — mesma quantidade dos dois lados'
-                    : `Desequilíbrio: ${p.eleOferece.length} × ${p.elePede.length}`}
-                </div>
+                {/* Balanço (só trocas) */}
+                {p.tipo === 'troca' && (
+                  <div className={[
+                    'mx-3 mb-3 px-3 py-2 rounded-xl text-xs text-center font-semibold',
+                    p.eu_ofereco.length === p.eu_recebo.length
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-amber-50 text-amber-700',
+                  ].join(' ')}>
+                    {p.eu_ofereco.length === p.eu_recebo.length
+                      ? '✓ Troca exata — mesma quantidade dos dois lados'
+                      : `Desequilíbrio: ${p.eu_ofereco.length} × ${p.eu_recebo.length}`}
+                  </div>
+                )}
 
-                {/* Ações pendente */}
+                {/* Ações — pendente */}
                 {p.status === 'pendente' && (
                   <div className="flex gap-2 px-3 pb-3">
                     <button
-                      onClick={() => handleAcao(p.id, 'recusar')}
+                      onClick={() => setConfirmando({ id: p.id, acao: 'recusar' })}
                       className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                       Recusar
                     </button>
                     {adulto ? (
                       <button
-                        onClick={() => handleAcao(p.id, 'aceitar')}
+                        onClick={() => setConfirmando({ id: p.id, acao: 'aceitar' })}
                         className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
                       >
-                        ✓ Aceitar troca
+                        ✓ Aceitar
                       </button>
                     ) : (
-                      <div className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold text-center">
+                      <div className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center justify-center">
                         🔒 +18 obrigatório
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Aceita — fluxo de entrega */}
+                {/* Aceita — revelar telefone */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                       <span className="text-green-600">✓</span>
-                      <p className="text-sm font-bold text-green-700">Troca aceita com {p.de}!</p>
+                      <p className="text-sm font-bold text-green-700">
+                        {p.tipo === 'troca'  && 'Troca aceita!'}
+                        {p.tipo === 'compra' && 'Interesse confirmado!'}
+                        {p.tipo === 'doacao' && 'Doação aceita!'}
+                        {' '}Combine diretamente com {p.contraparte_nome}.
+                      </p>
                     </div>
-
-                    {/* PASSO 1 — minha escolha de recebimento (sempre primeiro) */}
-                    {!p.minhaEscolha ? (
-                      <SelecionarEntrega
-                        minhaCidade={minhaCidadeUF(perfil)}
-                        meuEnderecoPerfil={meuEndereco(perfil)}
-                        onEscolher={(pref) => escolherEntregaRecebida(p.id, pref)}
-                      />
-                    ) : (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div className="flex items-start gap-2">
-                          <span className="text-xl">{p.minhaEscolha.tipo === 'agencia' ? '📮' : '🏠'}</span>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-slate-700">
-                                {p.minhaEscolha.tipo === 'agencia'
-                                  ? 'Você vai retirar na agência'
-                                  : 'Você vai receber em casa'}
-                              </p>
-                              <button
-                                className="text-[10px] text-slate-400 hover:text-slate-600 underline"
-                                onClick={() => {
-                                  const atualizadas = recebidas.map(r =>
-                                    r.id === p.id ? { ...r, minhaEscolha: undefined } : r
-                                  )
-                                  setRecebidas(atualizadas)
-                                  savePropostasRecebidas(atualizadas)
-                                }}
-                              >
-                                Alterar
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.minhaEscolha.destino}</p>
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              {p.de} receberá este destino para saber onde enviar as figurinhas dela.
-                            </p>
-                          </div>
+                    {phone
+                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} />
+                      : (
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                          <span className="text-slate-400 text-sm">⏳</span>
+                          <p className="text-xs text-slate-500">
+                            Carregando contato de {p.contraparte_nome}…
+                          </p>
                         </div>
-                      </div>
-                    )}
-
-                    {/* PASSO 2 — onde enviar MINHAS figurinhas (só aparece após eu escolher) */}
-                    {p.minhaEscolha && (
-                      p.enviarPara
-                        ? <CardEnviarPara pref={p.enviarPara} contraparte={p.de} />
-                        : (
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
-                            <span className="text-slate-400 animate-spin text-sm">⏳</span>
-                            <p className="text-xs text-slate-500">
-                              Aguardando {p.de} escolher como {p.deGender === 'F' ? 'ela' : 'ele'} quer receber…
-                            </p>
-                          </div>
-                        )
-                    )}
+                      )}
                   </div>
                 )}
 
@@ -414,118 +315,99 @@ export default function PropostasPage() {
               <p className="text-sm text-slate-400 mt-1">
                 Vá para{' '}
                 <Link href="/matches" className="text-green-600 font-semibold">Matches</Link>
-                {' '}e envie propostas de troca.
+                {' '}e envie propostas.
               </p>
             </div>
           )}
 
           {enviadas.map(p => {
-            const st = STATUS_CONFIG[p.status]
+            const st    = STATUS_CONFIG[p.status]
+            const tipo  = TIPO_CONFIG[p.tipo]
+            const phone = phones[p.id]
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${p.contraparteAvatarColor} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-white text-sm font-black">{p.contraparteAvatar}</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm font-black">
+                      {p.contraparte_nome.slice(0, 2).toUpperCase()}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-slate-800 text-sm">{p.contraparte}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-slate-800 text-sm">{p.contraparte_nome}</p>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.bg} ${st.text}`}>
                         {st.label}
                       </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {tipo.emoji} {tipo.label}
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-400">{p.data}</p>
+                    <p className="text-xs text-slate-400">
+                      {p.contraparte_cidade} · {formatDate(p.created_at)}
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                      Você oferece ({p.euOfereco.length})
+                      Você oferece ({p.eu_ofereco.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.euOfereco.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} />)}
                     </div>
                   </div>
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                      Você recebe ({p.euRecebo.length})
+                      Você recebe ({p.eu_recebo.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.euRecebo.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} />)}
                     </div>
                   </div>
                 </div>
 
-                {/* Aceita — fluxo de entrega */}
+                {/* Aceita — revelar telefone */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                       <span className="text-green-600">✓</span>
-                      <p className="text-sm font-bold text-green-700">{p.contraparte} aceitou sua proposta!</p>
+                      <p className="text-sm font-bold text-green-700">
+                        {p.contraparte_nome} aceitou! Combine diretamente.
+                      </p>
                     </div>
-
-                    {/* PASSO 1 — minha escolha de recebimento (sempre primeiro) */}
-                    {!p.minhaEscolha ? (
-                      <SelecionarEntrega
-                        minhaCidade={minhaCidadeUF(perfil)}
-                        meuEnderecoPerfil={meuEndereco(perfil)}
-                        onEscolher={(pref) => escolherEntregaEnviada(p.id, pref)}
-                      />
-                    ) : (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                        <div className="flex items-start gap-2">
-                          <span className="text-xl">{p.minhaEscolha.tipo === 'agencia' ? '📮' : '🏠'}</span>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-slate-700">
-                                {p.minhaEscolha.tipo === 'agencia'
-                                  ? 'Você vai retirar na agência'
-                                  : 'Você vai receber em casa'}
-                              </p>
-                              <button
-                                className="text-[10px] text-slate-400 hover:text-slate-600 underline"
-                                onClick={() => {
-                                  const atualizadas = enviadas.map(e =>
-                                    e.id === p.id ? { ...e, minhaEscolha: undefined } : e
-                                  )
-                                  setEnviadas(atualizadas)
-                                  savePropostasEnviadas(atualizadas)
-                                }}
-                              >
-                                Alterar
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.minhaEscolha.destino}</p>
-                            <p className="text-[11px] text-slate-400 mt-1">
-                              {p.contraparte} receberá este destino para saber onde enviar as figurinhas.
-                            </p>
-                          </div>
+                    {phone
+                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} />
+                      : (
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                          <span className="text-slate-400 text-sm">⏳</span>
+                          <p className="text-xs text-slate-500">
+                            Carregando contato de {p.contraparte_nome}…
+                          </p>
                         </div>
-                      </div>
-                    )}
-
-                    {/* PASSO 2 — onde enviar MINHAS figurinhas (só aparece após eu escolher) */}
-                    {p.minhaEscolha && (
-                      p.enviarPara
-                        ? <CardEnviarPara pref={p.enviarPara} contraparte={p.contraparte} />
-                        : (
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
-                            <span className="text-slate-400 text-sm">⏳</span>
-                            <p className="text-xs text-slate-500">
-                              Aguardando {p.contraparte} escolher como quer receber…
-                            </p>
-                          </div>
-                        )
-                    )}
+                      )}
                   </div>
                 )}
 
-                {/* Aguardando */}
+                {/* Pendente */}
                 {p.status === 'pendente' && (
                   <div className="px-3 pb-3">
                     <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
-                      <p className="text-xs text-slate-500">Aguardando resposta de {p.contraparte}…</p>
+                      <p className="text-xs text-slate-500">
+                        Aguardando resposta de {p.contraparte_nome}…
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recusada */}
+                {p.status === 'recusada' && (
+                  <div className="px-3 pb-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
+                      <p className="text-xs text-slate-500">
+                        {p.contraparte_nome} recusou esta proposta.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -538,7 +420,10 @@ export default function PropostasPage() {
       {/* Modal confirmação */}
       {confirmando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmando(null)} />
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => { if (!loading) setConfirmando(null) }}
+          />
           <div className="relative bg-white rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-fadein">
             <p className="text-2xl mb-2">{confirmando.acao === 'aceitar' ? '🤝' : '❌'}</p>
             <p className="font-black text-slate-800 mb-1">
@@ -546,26 +431,28 @@ export default function PropostasPage() {
             </p>
             <p className="text-sm text-slate-500 mb-4">
               {confirmando.acao === 'aceitar'
-                ? 'Ao aceitar, você escolhe como quer receber e combina o envio com a outra parte.'
+                ? 'Ao aceitar, ambos recebem o telefone um do outro para combinar diretamente.'
                 : 'A proposta será recusada e o colecionador será notificado.'}
             </p>
             <div className="flex gap-2">
               <button
+                disabled={loading}
                 onClick={() => setConfirmando(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
+                disabled={loading}
                 onClick={confirmar}
                 className={[
-                  'flex-1 py-2.5 rounded-xl text-white text-sm font-bold',
+                  'flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-50',
                   confirmando.acao === 'aceitar'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-red-500 hover:bg-red-600',
                 ].join(' ')}
               >
-                {confirmando.acao === 'aceitar' ? '✓ Aceitar' : 'Recusar'}
+                {loading ? '…' : confirmando.acao === 'aceitar' ? '✓ Aceitar' : 'Recusar'}
               </button>
             </div>
           </div>

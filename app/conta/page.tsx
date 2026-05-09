@@ -712,6 +712,24 @@ function ContaPageInner() {
                     </div>
                   ))}
                   <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">WhatsApp / Telefone</label>
+                    {editDados
+                      ? <input
+                          type="tel"
+                          value={String(perfilEdit.telefone ?? '')}
+                          onChange={e => setPerfilEdit(p => ({ ...p, telefone: e.target.value }))}
+                          placeholder="(11) 99999-9999"
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                        />
+                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
+                          {perfil.telefone ? perfil.telefone : '—'}
+                        </p>
+                    }
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Compartilhado apenas com a contraparte após aceitar uma proposta.
+                    </p>
+                  </div>
+                  <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">CPF</label>
                     <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
                       {perfil.cpf ? '•••.•••.' + perfil.cpf.slice(-6) : '—'}
