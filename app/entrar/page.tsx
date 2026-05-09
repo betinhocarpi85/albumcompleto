@@ -38,7 +38,7 @@ export default function EntrarPage() {
       return
     }
     const perfil = await dbGetProfile()
-    const completo = perfil.cpf && perfil.cep && perfil.aceitouTermos && perfil.aceitouPrivacidade
+    const completo = perfil.telefone && perfil.cep && perfil.aceitouTermos && perfil.aceitouPrivacidade
     router.push(completo ? '/album' : '/completar-cadastro')
   }
 

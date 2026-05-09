@@ -16,11 +16,11 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('cpf, cep, aceitou_termos, aceitou_privacidade')
+          .select('telefone, cep, aceitou_termos, aceitou_privacidade')
           .eq('id', user.id)
           .single()
 
-        const completo = profile?.cpf && profile?.cep &&
+        const completo = profile?.telefone && profile?.cep &&
           profile?.aceitou_termos && profile?.aceitou_privacidade
 
         if (!completo) {

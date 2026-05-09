@@ -88,7 +88,7 @@ export interface UserProfile {
 
 export function isProfileComplete(): boolean {
   const p = getUserProfile()
-  return !!(p.cpf && p.cep && p.logradouro && p.cidade && p.aceitouTermos && p.aceitouPrivacidade)
+  return !!(p.telefone && p.cep && p.aceitouTermos && p.aceitouPrivacidade)
 }
 
 /** Usuário confirmou maioridade — pode usar trocas, vendas e compras */
