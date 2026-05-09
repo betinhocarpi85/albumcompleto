@@ -118,16 +118,10 @@ export default function CompletarCadastroPage() {
             <p className="text-slate-500 text-sm mb-6">
               Seu cadastro está completo. Agora marque suas figurinhas e comece a trocar e vender.
             </p>
-            <div className="space-y-2">
-              <Link href="/album"
-                className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
-                📋 Montar meu álbum agora
-              </Link>
-              <Link href="/matches"
-                className="block w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl text-sm transition-colors">
-                🔁 Ver matches disponíveis
-              </Link>
-            </div>
+            <Link href="/album"
+              className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
+              📋 Montar meu álbum agora
+            </Link>
           </div>
         )}
 
