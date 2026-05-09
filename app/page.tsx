@@ -230,7 +230,7 @@ export default function Home() {
             </div>
             <div className="text-5xl font-black text-green-600 mb-1">≈ R$ 1.040</div>
             <p className="text-green-600 text-sm font-medium mb-1">com rede grande de trocas (Prof. Gilcione Costa, UFMG)</p>
-            <p className="text-green-500 text-xs mb-4">Pode ser <strong>muito menos</strong> com doações e trocas diretas</p>
+            <p className="text-green-500 text-xs mb-4">Pode ser <strong>muito menos</strong> com trocas diretas</p>
             <div className="space-y-2 text-sm text-green-700">
               <div className="flex items-start gap-2"><span>✅</span><span>Troque repetidas por exatamente o que falta</span></div>
               <div className="flex items-start gap-2"><span>✅</span><span>Compre figurinhas avulsas direto com o vendedor</span></div>

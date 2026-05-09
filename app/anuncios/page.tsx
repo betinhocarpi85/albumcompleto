@@ -7,7 +7,7 @@ import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
-type TipoAnuncio = 'venda' | 'troca' | 'doacao'
+type TipoAnuncio = 'venda' | 'troca'
 
 // selecionadas: sid → quantidade (Map em vez de Set)
 interface TipoConfig {
@@ -19,9 +19,8 @@ interface TipoConfig {
 }
 
 const ANUNCIO_CONFIG = {
-  venda:  { label: 'Venda',  bg: 'bg-green-100',  text: 'text-green-700',  btn: 'bg-green-500 border-green-500'   },
-  troca:  { label: 'Troca',  bg: 'bg-blue-100',   text: 'text-blue-700',   btn: 'bg-blue-500 border-blue-500'     },
-  doacao: { label: 'Doação', bg: 'bg-purple-100', text: 'text-purple-700', btn: 'bg-purple-500 border-purple-500' },
+  venda: { label: 'Venda', bg: 'bg-green-100', text: 'text-green-700', btn: 'bg-green-500 border-green-500' },
+  troca: { label: 'Troca', bg: 'bg-blue-100',  text: 'text-blue-700',  btn: 'bg-blue-500 border-blue-500'  },
 }
 
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
@@ -42,7 +41,7 @@ interface AtivoItem {
 type Tab = 'configurar' | 'ativos'
 
 const emptySel = (): Record<TipoAnuncio, Map<string, number>> => ({
-  venda: new Map(), troca: new Map(), doacao: new Map(),
+  venda: new Map(), troca: new Map(),
 })
 
 interface QtyModal {
@@ -79,7 +78,7 @@ export default function AnunciosPage() {
             nome:    a.nome,
             seleção: '',
             tipo:    a.tipo,
-            anuncio: a.preco != null && a.preco > 0 ? 'venda' : a.preco === 0 ? 'doacao' : 'troca',
+            anuncio: a.preco != null && a.preco > 0 ? 'venda' : 'troca',
             preco:   a.preco != null && a.preco > 0 ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
             qtd:     a.qty,
           })))
@@ -167,7 +166,7 @@ export default function AnunciosPage() {
       tipo:  a.tipo as StickerType,
       preco: a.anuncio === 'venda' && a.preco !== '—'
         ? parseFloat(a.preco.replace('R$ ', '').replace(',', '.'))
-        : a.anuncio === 'doacao' ? 0 : undefined,
+        : undefined,
     })))
   }
 
@@ -379,14 +378,14 @@ export default function AnunciosPage() {
                       <div>
                         <label className="text-xs font-semibold text-slate-500 block mb-1.5">Quero</label>
                         <div className="flex gap-2">
-                          {(['venda', 'troca', 'doacao'] as TipoAnuncio[]).map(tipo => (
+                          {(['venda', 'troca'] as TipoAnuncio[]).map(tipo => (
                             <button key={tipo}
                               onClick={() => update(key, 'tipoAnuncio', tipo)}
                               className={['flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
                                 cfg.tipoAnuncio === tipo
                                   ? `${ANUNCIO_CONFIG[tipo].btn} text-white`
                                   : 'border-slate-200 text-slate-500 hover:border-slate-300'].join(' ')}>
-                              {tipo === 'venda' ? '💰 Venda' : tipo === 'troca' ? '🔁 Troca' : '💜 Doação'}
+                              {tipo === 'venda' ? '💰 Venda' : '🔁 Troca'}
                             </button>
                           ))}
                         </div>
@@ -460,8 +459,7 @@ export default function AnunciosPage() {
                                         ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
                                         : selected
                                           ? cfg.tipoAnuncio === 'venda'  ? 'bg-green-600 border-green-700 text-white'
-                                          : cfg.tipoAnuncio === 'troca'  ? 'bg-blue-500 border-blue-600 text-white'
-                                          :                                 'bg-purple-500 border-purple-600 text-white'
+                                          : 'bg-blue-500 border-blue-600 text-white'
                                           : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
 
                                       return (
@@ -571,8 +569,8 @@ export default function AnunciosPage() {
                   </button>
                 </div>
 
-                {/* Quantidade — só para venda e troca */}
-                {item.anuncio !== 'doacao' && (
+                {/* Quantidade */}
+                {(
                   <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
                     <span className="text-xs text-slate-500 font-medium">Quantidade disponível</span>
                     <div className="flex items-center gap-2">

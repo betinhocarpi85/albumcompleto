@@ -36,7 +36,6 @@ const ALBUM_PROGRESS_FALLBACK: Record<AlbumId, number> = {
 const TYPE_CONFIG = {
   troca:  { label: 'Troca',  bg: 'bg-blue-100',   text: 'text-blue-700'   },
   venda:  { label: 'Venda',  bg: 'bg-green-100',  text: 'text-green-700'  },
-  doacao: { label: 'Doação', bg: 'bg-purple-100', text: 'text-purple-700' },
 }
 
 function ContaPageInner() {
@@ -46,7 +45,7 @@ function ContaPageInner() {
   const [pedidos, setPedidos]   = useState<Pedido[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
-  const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda' | 'doacao'>('todos')
+  const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda'>('todos')
   const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
   const [estrelas, setEstrelas] = useState(5)
   const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
@@ -411,9 +410,8 @@ function ContaPageInner() {
                 <p className="text-slate-400 text-sm mt-1">entre {(12847).toLocaleString('pt-BR')} colecionadores</p>
                 <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                   {[
-                    { label: 'Trocas',  value: pedidos.filter(p => p.tipo === 'troca').length  },
-                    { label: 'Vendas',  value: pedidos.filter(p => p.tipo === 'venda').length  },
-                    { label: 'Doações', value: pedidos.filter(p => p.tipo === 'doacao').length },
+                    { label: 'Trocas', value: pedidos.filter(p => p.tipo === 'troca').length },
+                    { label: 'Vendas', value: pedidos.filter(p => p.tipo === 'venda').length },
                   ].map(s => (
                     <div key={s.label} className="bg-white/10 rounded-xl py-2">
                       <div className="text-xl font-black">{s.value}</div>
@@ -455,22 +453,6 @@ function ContaPageInner() {
                     { nome: 'Elite',      meta: 750  },
                     { nome: 'Lendário',   meta: 1500 },
                     { nome: 'Supremo',    meta: 3000 },
-                  ],
-                },
-                {
-                  label: 'Doações', icon: '💜', value: pedidos.filter(p => p.tipo === 'doacao').length,
-                  color: { bar: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500', dotOff: 'bg-slate-200' },
-                  levels: [
-                    { nome: 'Estreante',  meta: 1    },
-                    { nome: 'Bronze',     meta: 5    },
-                    { nome: 'Prata',      meta: 10   },
-                    { nome: 'Ouro',       meta: 20   },
-                    { nome: 'Platina',    meta: 40   },
-                    { nome: 'Diamante',   meta: 75   },
-                    { nome: 'Mestre',     meta: 150  },
-                    { nome: 'Elite',      meta: 300  },
-                    { nome: 'Lendário',   meta: 600  },
-                    { nome: 'Anjo',       meta: 1500 },
                   ],
                 },
               ].map(cat => {
@@ -740,10 +722,9 @@ function ContaPageInner() {
               {/* Filtros */}
               <div className="flex gap-1.5 flex-wrap">
                 {([
-                  { key: 'todos',  label: 'Todos'   },
-                  { key: 'troca',  label: '🔁 Trocas' },
-                  { key: 'venda',  label: '💰 Vendas' },
-                  { key: 'doacao', label: '💜 Doações' },
+                  { key: 'todos', label: 'Todos'      },
+                  { key: 'troca', label: '🔁 Trocas'  },
+                  { key: 'venda', label: '💰 Vendas'  },
                 ] as { key: typeof filtroPedido; label: string }[]).map(f => (
                   <button key={f.key} onClick={() => setFiltroPedido(f.key)}
                     className={[

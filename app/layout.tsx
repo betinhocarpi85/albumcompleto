@@ -4,9 +4,9 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 
 export const metadata: Metadata = {
-  title: 'Completando — Troque, Venda e Doe Figurinhas',
-  description: 'A plataforma brasileira para troca, venda e doação de figurinhas de álbuns colecionáveis. Copa do Mundo 2026 e muito mais.',
-  keywords: ['figurinhas', 'álbum', 'copa do mundo', 'troca', 'venda', 'doação', 'colecionáveis'],
+  title: 'Completando — Troque e Venda Figurinhas',
+  description: 'A plataforma brasileira para troca e venda de figurinhas de álbuns colecionáveis. Match automático, combine diretamente. Copa do Mundo 2026 e mais.',
+  keywords: ['figurinhas', 'álbum', 'copa do mundo', 'troca', 'venda', 'colecionáveis'],
 }
 
 export const viewport: Viewport = {
