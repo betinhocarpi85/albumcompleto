@@ -61,7 +61,7 @@ export interface PropostaRecebida {
 export interface Pedido {
   id:                  string
   data:                string
-  tipo:                'venda' | 'troca' | 'doacao'
+  tipo:                'venda' | 'troca'
   status:              'concluido' | 'pendente' | 'cancelado'
   contraparte:         string
   fig:                 string
