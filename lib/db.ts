@@ -284,27 +284,8 @@ export async function dbUpdatePedidoStatus(id: string, status: Pedido['status'])
 
 // ─── Matches ─────────────────────────────────────────────────────────────────
 
-export interface MatchTroca {
-  id:           string
-  nome:         string
-  cidade:       string
-  tem_para_mim: number[]
-  eu_tenho_para: number[]
-}
-
-export interface MatchVenda {
-  id:     string
-  nome:   string
-  cidade: string
-  items:  { gnum: number; preco: number; tipo: string }[]
-}
-
-export interface MatchDoacao {
-  id:    string
-  nome:  string
-  cidade: string
-  gnums: number[]
-}
+// Tipos re-exportados de match-engine para consumidores que importam só de db.ts
+export type { MatchTroca, MatchVenda, MatchDoacao, MatchResult } from '@/lib/match-engine'
 
 export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
   const sb = createClient()
@@ -332,11 +313,6 @@ export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
   })
 }
 
-export async function dbRequestAccountDeletion(): Promise<{ error: string | null }> {
-  const sb = createClient()
-  const { error } = await sb.rpc('delete_my_account')
-  return { error: error?.message ?? null }
-}
 
 // ─── Preferências ─────────────────────────────────────────────────────────────
 

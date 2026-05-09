@@ -73,7 +73,6 @@ export default function AlbumPage() {
   const [loading, setLoading]           = useState(true)
   const [albumId, setAlbumId]           = useState<AlbumId | null>(null)
   const [coladas, setColadas]           = useState<ColadasSet>(new Set())
-  const [hydrated, setHydrated]         = useState(false)
   const [mostrarSeletor, setMostrarSeletor] = useState(false)
   const [search, setSearch]             = useState('')
   const [openCats, setOpenCats]         = useState<Set<string>>(new Set(['fwc']))
@@ -92,13 +91,11 @@ export default function AlbumPage() {
   // Carrega coladas quando albumId muda
   useEffect(() => {
     if (!albumId) return
-    setHydrated(false)
     dbGetColadas(albumId).then(saved => {
       setColadas(new Set(saved))
-      setHydrated(true)
     })
-    setOpenCats(new Set(['fwc']))
-    setSearch('')
+    queueMicrotask(() => setOpenCats(new Set(['fwc'])))
+    queueMicrotask(() => setSearch(''))
   }, [albumId])
 
   function toggleColada(id: string) {
@@ -119,7 +116,8 @@ export default function AlbumPage() {
   function toggleCat(id: string) {
     setOpenCats(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }

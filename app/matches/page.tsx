@@ -3,13 +3,13 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
+import type { AlbumId } from '@/data/albums-registry'
 import StickerSquare from '@/components/StickerSquare'
 import {
   saveCarrinho, savePropostasEnviadas, getPropostasEnviadas, addPedido,
-  getColadas,
   type CarrinhoItem,
 } from '@/lib/store'
-import { getSession, dbGetProfile, dbGetColadas, dbGetMatches, type MatchTroca, type MatchVenda, type MatchDoacao } from '@/lib/db'
+import { getSession, dbGetActiveAlbums, dbGetProfile, dbGetColadas, dbGetMatches } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 // Mapa globalNumber → info da figurinha (nome, código, tipo)
@@ -108,51 +108,66 @@ export default function MatchesPage() {
   const [vendas,   setVendas]   = useState<VendaRecord[]>([])
   const [doacoes,  setDoacoes]  = useState<DoacaoRecord[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
+  const [albumId, setAlbumId] = useState<AlbumId>('copa-2026')
 
   useEffect(() => {
     getSession().then(session => {
       if (!session) { setAdulto(true); setLoadingMatches(false); return }
       dbGetProfile().then(p => setAdulto(!!p.maior18))
-      Promise.all([
-        dbGetColadas('copa-2026'),
-        dbGetMatches('copa-2026'),
-      ]).then(([coladas, result]) => {
-        const coladasSet = new Set(coladas)
-        const tenho   = new Set<number>()
-        const preciso = new Set<number>()
-        for (const [sid, gnum] of sidToGlobal) {
-          if (coladasSet.has(sid)) tenho.add(gnum)
-          else preciso.add(gnum)
-        }
-        setMeuTenhoSet(tenho)
-        setMeuPrecisoSet(preciso)
+      dbGetActiveAlbums().then((ids) => {
+        const id = ids[0] ?? 'copa-2026'
+        setAlbumId(id)
+        Promise.all([
+          dbGetColadas(id),
+          dbGetMatches(id),
+        ]).then(([coladas, result]) => {
+          if (id !== 'copa-2026') {
+            setMeuTenhoSet(new Set())
+            setMeuPrecisoSet(new Set())
+            setMatches([])
+            setVendas([])
+            setDoacoes([])
+            setLoadingMatches(false)
+            return
+          }
 
-        setMatches(result.trocas.map(t => ({
-          id:          t.id,
-          user:        toMatchUser(t),
-          type:        (t.tem_para_mim.length === t.eu_tenho_para.length ? 'exato' : 'parcial') as MatchType,
-          temParaMim:  t.tem_para_mim,
-          euTenhoPara: t.eu_tenho_para,
-          balance:     t.eu_tenho_para.length - t.tem_para_mim.length,
-        })))
+          const coladasSet = new Set(coladas)
+          const tenho   = new Set<number>()
+          const preciso = new Set<number>()
+          for (const [sid, gnum] of sidToGlobal) {
+            if (coladasSet.has(sid)) tenho.add(gnum)
+            else preciso.add(gnum)
+          }
+          setMeuTenhoSet(tenho)
+          setMeuPrecisoSet(preciso)
 
-        setVendas(result.vendas.map(v => ({
-          id:   v.id,
-          user: toVendaUser(v),
-          items: v.items.map(i => ({
-            num:   i.gnum,
-            preco: i.preco,
-            tipo:  (i.tipo ?? 'normal') as StickerTipo,
-          })),
-        })))
+          setMatches(result.trocas.map(t => ({
+            id:          t.id,
+            user:        toMatchUser(t),
+            type:        (t.tem_para_mim.length === t.eu_tenho_para.length ? 'exato' : 'parcial') as MatchType,
+            temParaMim:  t.tem_para_mim,
+            euTenhoPara: t.eu_tenho_para,
+            balance:     t.eu_tenho_para.length - t.tem_para_mim.length,
+          })))
 
-        setDoacoes(result.doacoes.map(d => ({
-          id:       d.id,
-          user:     toMatchUser(d),
-          stickers: d.gnums,
-        })))
+          setVendas(result.vendas.map(v => ({
+            id:   v.id,
+            user: toVendaUser(v),
+            items: v.items.map(i => ({
+              num:   i.gnum,
+              preco: i.preco,
+              tipo:  (i.tipo ?? 'normal') as StickerTipo,
+            })),
+          })))
 
-        setLoadingMatches(false)
+          setDoacoes(result.doacoes.map(d => ({
+            id:       d.id,
+            user:     toMatchUser(d),
+            stickers: d.gnums,
+          })))
+
+          setLoadingMatches(false)
+        })
       })
     })
   }, [])
@@ -167,7 +182,7 @@ export default function MatchesPage() {
     if (ordemVenda === 'preco-desc') lista.sort((a, b) => Math.max(...b.items.map(i => i.preco)) - Math.max(...a.items.map(i => i.preco)))
     if (ordemVenda === 'avaliacao')  lista.sort((a, b) => b.user.rating - a.user.rating)
     return lista
-  }, [filtroTipo, ordemVenda])
+  }, [filtroTipo, ordemVenda, vendas])
 
   // ── Paginação ─────────────────────────────────────────────────
   const totalPaginas  = Math.ceil(vendasFiltradas.length / POR_PAGINA)
@@ -184,13 +199,14 @@ export default function MatchesPage() {
       }
     }
     return { totalItens: itens, totalValor: valor }
-  }, [carrinho])
+  }, [carrinho, vendas])
 
   // ── Removidos (trocas) ─────────────────────────────────────────
   function toggleRemovido(matchId: string, num: number) {
     setRemovidos(prev => {
       const next = new Set(prev[matchId] ?? [])
-      next.has(num) ? next.delete(num) : next.add(num)
+      if (next.has(num)) next.delete(num)
+      else next.add(num)
       return { ...prev, [matchId]: next }
     })
   }
@@ -198,7 +214,8 @@ export default function MatchesPage() {
   function toggleRemovidoDele(matchId: string, num: number) {
     setRemovidosDele(prev => {
       const next = new Set(prev[matchId] ?? [])
-      next.has(num) ? next.delete(num) : next.add(num)
+      if (next.has(num)) next.delete(num)
+      else next.add(num)
       return { ...prev, [matchId]: next }
     })
   }
@@ -250,9 +267,10 @@ export default function MatchesPage() {
 
   function enviarProposta(match: MatchRecord, oferta: number[], recebe: number[]) {
     const prev = getPropostasEnviadas()
+    const id = `pe-${match.id}-${oferta.join('_')}-${recebe.join('_')}`
     savePropostasEnviadas([
       {
-        id:                     'pe-' + Date.now(),
+        id,
         matchId:                match.id,
         contraparte:            match.user.name,
         contraparteAvatar:      match.user.avatar,
@@ -289,6 +307,31 @@ export default function MatchesPage() {
   }
 
   const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  if (albumId !== 'copa-2026') {
+    return (
+      <div className="max-w-2xl mx-auto py-4 animate-fadein">
+        <BannerMenorDeIdade />
+        <div className="px-3">
+          <div className="mb-4">
+            <h1 className="text-xl font-black text-slate-800">Matches</h1>
+            <p className="text-sm text-slate-500">Colecionadores com figurinhas do seu interesse</p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+            <p className="text-5xl mb-3">⏳</p>
+            <p className="font-black text-slate-800 text-lg mb-1">Em breve</p>
+            <p className="text-sm text-slate-500 mb-4">
+              O catálogo digital e os matches para este álbum ainda estão em preparação.
+            </p>
+            <Link href="/album" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+              Voltar ao álbum →
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-4 animate-fadein">
@@ -356,7 +399,6 @@ export default function MatchesPage() {
         <h1 className="text-xl font-black text-slate-800">Matches</h1>
         <p className="text-sm text-slate-500">Colecionadores com figurinhas do seu interesse</p>
       </div>
-
       {/* Aviso de match */}
       {loadingMatches ? (
         <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-5 mb-4 text-center">

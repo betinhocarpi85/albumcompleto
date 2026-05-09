@@ -16,12 +16,12 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('cpf, cep, aceito_termos, aceito_privacidade')
+          .select('cpf, cep, aceitou_termos, aceitou_privacidade')
           .eq('id', user.id)
           .single()
 
         const completo = profile?.cpf && profile?.cep &&
-          profile?.aceito_termos && profile?.aceito_privacidade
+          profile?.aceitou_termos && profile?.aceitou_privacidade
 
         if (!completo) {
           return NextResponse.redirect(`${origin}/completar-cadastro`)

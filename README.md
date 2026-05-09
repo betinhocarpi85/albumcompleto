@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Album Completo
 
-## Getting Started
+Plataforma de colecionadores para gerenciar album, anunciar figurinhas, encontrar matches (troca, venda e doacao) e finalizar checkout.
 
-First, run the development server:
+## Requisitos
+
+- Node.js 20+
+- NPM 10+
+- Projeto Supabase criado
+
+## Variaveis de ambiente
+
+Crie `/.env.local` com:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_ANON_KEY
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup do banco (Supabase)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Abra o SQL Editor do Supabase.
+2. Execute o conteudo de `supabase/schema.sql`.
+3. Confirme que as RPCs abaixo existem:
+   - `public.get_matches_for_album(text)`
+   - `public.delete_my_account()`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+- `npm run dev` - sobe ambiente de desenvolvimento
+- `npm run build` - gera build de producao
+- `npm run start` - roda build de producao
+- `npm run lint` - lint com ESLint
+- `npm run test` - testes unitarios com Vitest
+- `npm run test:watch` - testes em watch mode
 
-To learn more about Next.js, take a look at the following resources:
+## Executando localmente
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Acesse [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+## Estrutura principal
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `app/` - rotas e paginas (album, anuncios, matches, checkout, conta)
+- `components/` - componentes reutilizaveis
+- `lib/db.ts` - acesso ao Supabase
+- `lib/store.ts` - persistencia local temporaria (carrinho e apoios de UX)
+- `supabase/schema.sql` - schema, policies e funcoes SQL
+- `docs/data-strategy.md` - estrategia de persistencia adotada
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Observacoes
+
+- Dados criticos de negocio devem viver no Supabase.
+- `localStorage` deve ser usado como cache/estado temporario de interface.

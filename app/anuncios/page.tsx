@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { albumCopa2026, STICKER_PRICES, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
 import type { StickerType } from '@/data/album-copa-2026'
-import { dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
+import type { AlbumId } from '@/data/albums-registry'
+import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca' | 'doacao'
@@ -57,6 +58,7 @@ export default function AnunciosPage() {
   const [ativos, setAtivos] = useState<AtivoItem[]>([])
   const [publicado, setPublicado] = useState(false)
   const [adulto, setAdulto]       = useState(true)
+  const [albumId, setAlbumId]     = useState<AlbumId>('copa-2026')
 
   // Hidrata ativos do DB
   useEffect(() => {
@@ -64,20 +66,24 @@ export default function AnunciosPage() {
       // Se não logado, adulto = true (apenas leitura, sem anúncios reais)
       if (!session) { setAdulto(true); return }
       // Carrega coladas e anúncios em paralelo
-      Promise.all([
-        dbGetColadas('copa-2026'),
-        dbGetAnuncios('tenho'),
-      ]).then(([coladas, saved]) => {
-        setColadasSet(new Set(coladas))
-        setAtivos(saved.map(a => ({
-          id:      a.sid,
-          nome:    a.nome,
-          seleção: '',
-          tipo:    a.tipo,
-          anuncio: a.preco != null && a.preco > 0 ? 'venda' : a.preco === 0 ? 'doacao' : 'troca',
-          preco:   a.preco != null && a.preco > 0 ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
-          qtd:     a.qty,
-        })))
+      dbGetActiveAlbums().then((ids) => {
+        const id = ids[0] ?? 'copa-2026'
+        setAlbumId(id)
+        Promise.all([
+          dbGetColadas(id),
+          dbGetAnuncios(id, 'tenho'),
+        ]).then(([coladas, saved]) => {
+          setColadasSet(new Set(coladas))
+          setAtivos(saved.map(a => ({
+            id:      a.sid,
+            nome:    a.nome,
+            seleção: '',
+            tipo:    a.tipo,
+            anuncio: a.preco != null && a.preco > 0 ? 'venda' : a.preco === 0 ? 'doacao' : 'troca',
+            preco:   a.preco != null && a.preco > 0 ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
+            qtd:     a.qty,
+          })))
+        })
       })
     })
   }, [])
@@ -130,7 +136,8 @@ export default function AnunciosPage() {
   function toggleCat(id: string) {
     setOpenCats(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -152,7 +159,7 @@ export default function AnunciosPage() {
   }
 
   function persistAtivos(lista: AtivoItem[]) {
-    dbSaveAnuncios('tenho', lista.map(a => ({
+    dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
       sid:   a.id,
       gNum:  Number(a.id.split('-')[1]) || a.id,
       nome:  a.nome,

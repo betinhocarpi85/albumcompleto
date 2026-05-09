@@ -188,7 +188,7 @@ export default function Home() {
             },
           ].map((item) => (
             <div key={item.author} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col">
-              <span className="text-3xl text-slate-200 font-serif leading-none mb-2">"</span>
+              <span className="text-3xl text-slate-200 font-serif leading-none mb-2">&quot;</span>
               <p className="text-sm text-slate-600 italic leading-relaxed flex-1">{item.quote}</p>
               <div className="mt-4 pt-3 border-t border-slate-100">
                 <p className="text-xs font-bold text-slate-800">{item.author}</p>

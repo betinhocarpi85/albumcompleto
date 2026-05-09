@@ -146,8 +146,8 @@ export default function PropostasPage() {
   const [perfil, setPerfil]           = useState<Partial<UserProfile>>({})
 
   useEffect(() => {
-    setRecebidas(getPropostasRecebidas())
-    setEnviadas(getPropostasEnviadas())
+    queueMicrotask(() => setRecebidas(getPropostasRecebidas()))
+    queueMicrotask(() => setEnviadas(getPropostasEnviadas()))
     getSession().then(session => {
       if (!session) { setAdulto(true); return }
       dbGetProfile().then(p => { setPerfil(p); setAdulto(!!p.maior18) })

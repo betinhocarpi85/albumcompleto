@@ -140,8 +140,11 @@ function CheckoutInner() {
   // Auto-calcula frete ao preencher CEP
   useEffect(() => {
     const digits = cep.replace(/\D/g, '')
-    if (digits.length !== 8) { setFreteInfo(null); return }
-    setCalculandoFrete(true)
+    if (digits.length !== 8) {
+      queueMicrotask(() => setFreteInfo(null))
+      return
+    }
+    queueMicrotask(() => setCalculandoFrete(true))
     const t = setTimeout(() => {
       setFreteInfo(calcularFreteCarta(digits, totalItens))
       setCalculandoFrete(false)

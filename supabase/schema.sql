@@ -143,3 +143,165 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
 ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "prefs: gestão própria" ON public.user_preferences FOR ALL USING (auth.uid() = user_id);
+
+-- ── RPC MATCHES ───────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.get_matches_for_album(p_album_id TEXT DEFAULT 'copa-2026')
+RETURNS JSONB
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+WITH me AS (
+  SELECT auth.uid() AS uid
+),
+my_have AS (
+  SELECT DISTINCT a.g_num
+  FROM public.anuncios a, me
+  WHERE a.user_id = me.uid
+    AND a.album_id = p_album_id
+    AND a.tipo = 'tenho'
+    AND a.g_num IS NOT NULL
+),
+my_need AS (
+  SELECT DISTINCT a.g_num
+  FROM public.anuncios a, me
+  WHERE a.user_id = me.uid
+    AND a.album_id = p_album_id
+    AND a.tipo = 'preciso'
+    AND a.g_num IS NOT NULL
+),
+others_have AS (
+  SELECT
+    a.user_id,
+    ARRAY_AGG(DISTINCT a.g_num) FILTER (WHERE a.g_num IS NOT NULL) AS gnums,
+    JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'gnum', a.g_num,
+        'preco', a.preco,
+        'tipo', COALESCE(a.sticker_tipo, 'normal')
+      )
+    ) FILTER (
+      WHERE a.g_num IS NOT NULL
+        AND a.preco IS NOT NULL
+        AND a.preco > 0
+    ) AS venda_items,
+    ARRAY_AGG(DISTINCT a.g_num) FILTER (
+      WHERE a.g_num IS NOT NULL
+        AND (a.preco IS NULL OR a.preco <= 0)
+    ) AS doacao_gnums
+  FROM public.anuncios a, me
+  WHERE a.user_id <> me.uid
+    AND a.album_id = p_album_id
+    AND a.tipo = 'tenho'
+  GROUP BY a.user_id
+),
+others_need AS (
+  SELECT
+    a.user_id,
+    ARRAY_AGG(DISTINCT a.g_num) FILTER (WHERE a.g_num IS NOT NULL) AS gnums
+  FROM public.anuncios a, me
+  WHERE a.user_id <> me.uid
+    AND a.album_id = p_album_id
+    AND a.tipo = 'preciso'
+  GROUP BY a.user_id
+),
+trocas_raw AS (
+  SELECT
+    oh.user_id AS id,
+    COALESCE(p.nome, 'Usuário') AS nome,
+    COALESCE(p.cidade, '') AS cidade,
+    ARRAY(
+      SELECT DISTINCT x
+      FROM UNNEST(COALESCE(oh.gnums, ARRAY[]::INTEGER[])) x
+      JOIN my_need mn ON mn.g_num = x
+      ORDER BY x
+    ) AS tem_para_mim,
+    ARRAY(
+      SELECT DISTINCT x
+      FROM UNNEST(COALESCE(on2.gnums, ARRAY[]::INTEGER[])) x
+      JOIN my_have mh ON mh.g_num = x
+      ORDER BY x
+    ) AS eu_tenho_para
+  FROM others_have oh
+  LEFT JOIN others_need on2 ON on2.user_id = oh.user_id
+  LEFT JOIN public.profiles p ON p.id = oh.user_id
+),
+trocas AS (
+  SELECT *
+  FROM trocas_raw
+  WHERE COALESCE(cardinality(tem_para_mim), 0) > 0
+    AND COALESCE(cardinality(eu_tenho_para), 0) > 0
+),
+vendas AS (
+  SELECT
+    oh.user_id AS id,
+    COALESCE(p.nome, 'Usuário') AS nome,
+    COALESCE(p.cidade, '') AS cidade,
+    COALESCE(oh.venda_items, '[]'::JSONB) AS items
+  FROM others_have oh
+  LEFT JOIN public.profiles p ON p.id = oh.user_id
+  WHERE COALESCE(JSONB_ARRAY_LENGTH(oh.venda_items), 0) > 0
+),
+doacoes AS (
+  SELECT
+    oh.user_id AS id,
+    COALESCE(p.nome, 'Usuário') AS nome,
+    COALESCE(p.cidade, '') AS cidade,
+    COALESCE(oh.doacao_gnums, ARRAY[]::INTEGER[]) AS gnums
+  FROM others_have oh
+  LEFT JOIN public.profiles p ON p.id = oh.user_id
+  WHERE COALESCE(cardinality(oh.doacao_gnums), 0) > 0
+)
+SELECT JSONB_BUILD_OBJECT(
+  'trocas', COALESCE(
+    (SELECT JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'id', t.id,
+        'nome', t.nome,
+        'cidade', t.cidade,
+        'tem_para_mim', t.tem_para_mim,
+        'eu_tenho_para', t.eu_tenho_para
+      )
+    ) FROM trocas t),
+    '[]'::JSONB
+  ),
+  'vendas', COALESCE(
+    (SELECT JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'id', v.id,
+        'nome', v.nome,
+        'cidade', v.cidade,
+        'items', v.items
+      )
+    ) FROM vendas v),
+    '[]'::JSONB
+  ),
+  'doacoes', COALESCE(
+    (SELECT JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'id', d.id,
+        'nome', d.nome,
+        'cidade', d.cidade,
+        'gnums', d.gnums
+      )
+    ) FROM doacoes d),
+    '[]'::JSONB
+  )
+);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_matches_for_album(TEXT) TO authenticated;
+
+-- ── RPC EXCLUSÃO DE CONTA ────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS VOID
+LANGUAGE PLPGSQL
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
