@@ -107,25 +107,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── COMO FUNCIONA ── */}
-      <section className="max-w-6xl mx-auto px-4 py-12 md:py-16">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-black text-slate-800">Como funciona</h2>
-          <p className="text-slate-500 mt-2">Simples, rápido e seguro</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {STEPS.map((step, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-4">{step.icon}</div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-black flex items-center justify-center">{i + 1}</span>
-                <h3 className="font-bold text-slate-800">{step.title}</h3>
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ── 4 TIPOS ── */}
       <section className="bg-slate-800 text-white">
