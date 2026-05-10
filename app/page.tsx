@@ -308,7 +308,7 @@ export default function Home() {
             </div>
             <p className="text-xs font-bold text-green-400 uppercase tracking-wide mb-1">Mensal</p>
             <div className="flex items-end gap-1 mb-1">
-              <span className="text-4xl font-black text-white">R$ 4</span>
+              <span className="text-4xl font-black text-white">R$ 1</span>
               <span className="text-2xl font-black text-white mb-0.5">,99</span>
               <span className="text-slate-400 text-sm mb-1">/mês</span>
             </div>
@@ -342,12 +342,12 @@ export default function Home() {
             </div>
             <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-1">Anual</p>
             <div className="flex items-end gap-1 mb-1">
-              <span className="text-4xl font-black text-slate-800">R$ 49</span>
+              <span className="text-4xl font-black text-slate-800">R$ 14</span>
               <span className="text-2xl font-black text-slate-800 mb-0.5">,99</span>
               <span className="text-slate-400 text-sm mb-1">/ano</span>
             </div>
             <p className="text-xs text-amber-600 font-semibold mb-6">
-              ≈ R$ 4,16/mês · Economize R$ 9,89 vs mensal
+              ≈ R$ 1,25/mês · Economize R$ 8,89 vs mensal
             </p>
 
             <Link href="/cadastro" className="block text-center bg-amber-400 hover:bg-amber-500 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6">
@@ -359,7 +359,6 @@ export default function Home() {
                 'Tudo do plano Mensal',
                 '2 meses grátis vs mensal',
                 'Badge exclusivo "Colecionador Pro"',
-                'Acesso antecipado a novos álbuns',
               ].map((f, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm">
                   <span className="text-amber-500 flex-shrink-0 mt-0.5">✓</span>
