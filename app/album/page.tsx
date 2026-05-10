@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { albumCopa2026, TOTAL_STICKERS, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
 import { type AlbumId } from '@/lib/store'
 import { dbGetColadas, dbColaSticker, dbDescolaSticker, dbGetActiveAlbums, dbSaveActiveAlbums } from '@/lib/db'
@@ -69,7 +70,9 @@ function EscolherAlbum({ onEscolher }: { onEscolher: (id: AlbumId) => void }) {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
-export default function AlbumPage() {
+function AlbumPageInner() {
+  const searchParams = useSearchParams()
+  const escolher     = searchParams.get('escolher') === '1'
   const [loading, setLoading]           = useState(true)
   const [albumId, setAlbumId]           = useState<AlbumId | null>(null)
   const [coladas, setColadas]           = useState<ColadasSet>(new Set())
@@ -78,15 +81,15 @@ export default function AlbumPage() {
   const [openCats, setOpenCats]         = useState<Set<string>>(new Set(['fwc']))
   const [mostrarFaltando, setMostrarFaltando] = useState(false)
 
-  // Carrega álbum ativo do usuário
+  // Carrega álbum ativo do usuário (ignora se ?escolher=1)
   useEffect(() => {
     dbGetActiveAlbums().then(ativos => {
-      if (ativos.length > 0) {
+      if (ativos.length > 0 && !escolher) {
         setAlbumId(ativos[0])
       }
       setLoading(false)
     })
-  }, [])
+  }, [escolher])
 
   // Carrega coladas quando albumId muda
   useEffect(() => {
@@ -371,5 +374,17 @@ export default function AlbumPage() {
       )}
 
     </div>
+  )
+}
+
+export default function AlbumPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <span className="w-7 h-7 border-2 border-slate-200 border-t-green-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <AlbumPageInner />
+    </Suspense>
   )
 }

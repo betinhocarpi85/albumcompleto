@@ -35,7 +35,7 @@ export async function GET(request: Request) {
             aceitou_privacidade: meta.aceitouPrivacidade ?? false,
             updated_at:          new Date().toISOString(),
           })
-          return NextResponse.redirect(`${origin}/album`)
+          return NextResponse.redirect(`${origin}/album?escolher=1`)
         }
 
         const completo = profile?.telefone && profile?.cep &&

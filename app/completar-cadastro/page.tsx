@@ -124,7 +124,7 @@ export default function CompletarCadastroPage() {
             <p className="text-slate-500 text-sm mb-6">
               Seu cadastro está completo. Agora marque suas figurinhas e comece a trocar e vender.
             </p>
-            <Link href="/album"
+            <Link href="/album?escolher=1"
               className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
               📋 Montar meu álbum agora
             </Link>
