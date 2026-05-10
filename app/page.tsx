@@ -378,7 +378,7 @@ export default function Home() {
       {/* ── CTA ── */}
       <section className="bg-green-500 text-white text-center py-14 px-4">
         <h2 className="text-2xl md:text-3xl font-black mb-3">
-          Pronto para completar seu álbum da Copa 2026?
+          Pronto para completar seu álbum de figurinha?
         </h2>
         <p className="text-green-100 mb-6 text-base max-w-md mx-auto">
           Cadastre-se grátis, marque suas figurinhas e comece a trocar agora.
