@@ -33,7 +33,6 @@ const STEPS = [
 const FEATURES = [
   { icon: '🟢', color: 'bg-green-500',  title: 'Venda',  desc: 'Anuncie figurinhas repetidas. Quando alguém aceitar, combinem o encontro diretamente.' },
   { icon: '🔵', color: 'bg-blue-500',   title: 'Troca',  desc: 'Proponha trocas justas. O sistema equilibra a quantidade automaticamente.' },
-  { icon: '✅', color: 'bg-green-700',  title: 'Colada', desc: 'Marque o que já tem no álbum. O que não estiver marcado é faltando.' },
 ]
 
 export default function Home() {
@@ -112,7 +111,7 @@ export default function Home() {
       <section className="bg-slate-800 text-white">
         <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-black">3 formas de completar seu álbum</h2>
+            <h2 className="text-2xl md:text-3xl font-black">2 formas de completar seu álbum</h2>
             <p className="text-slate-400 mt-2">Você escolhe como quer participar</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
