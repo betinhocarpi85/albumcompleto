@@ -467,17 +467,15 @@ export default function AnunciosPage() {
                 </div>
               ) : (
                 <>
-                  {/* Filtro Todos / Troca / Venda */}
+                  {/* Filtro Troca / Venda */}
                   <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
-                    {(['todos', 'troca', 'venda'] as const).map(f => (
-                      <button key={f} onClick={() => setFiltroAcao(f)}
+                    {(['troca', 'venda'] as const).map(f => (
+                      <button key={f} onClick={() => setFiltroAcao(f === filtroAcao ? 'todos' : f)}
                         className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                           filtroAcao === f
-                            ? f === 'venda' ? 'bg-green-500 text-white shadow-sm'
-                            : f === 'troca' ? 'bg-blue-500 text-white shadow-sm'
-                            : 'bg-slate-800 text-white shadow-sm'
+                            ? f === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                        {f === 'todos' ? 'Todas' : f === 'venda' ? '💰 Venda' : '🔁 Troca'}
+                        {f === 'venda' ? '💰 Venda' : '🔁 Troca'}
                       </button>
                     ))}
                   </div>
