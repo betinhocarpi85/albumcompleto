@@ -376,20 +376,15 @@ export default function MatchesPage() {
                       )}
 
                       {adulto ? (
-                        isPro ? (
-                          <button disabled={!equilibrado}
-                            onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
-                            className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}>
-                            🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setShowUpgrade(true)}
-                            className="w-full font-bold py-3 rounded-xl text-sm bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white transition-colors"
-                          >
-                            🏆 Seja PRO para enviar propostas
-                          </button>
-                        )
+                        <button
+                          disabled={!equilibrado}
+                          onClick={() => {
+                            if (!equilibrado) return
+                            isPro ? enviarProposta(match, oferta, deles) : setShowUpgrade(true)
+                          }}
+                          className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}>
+                          🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
+                        </button>
                       ) : (
                         <div className="w-full py-3 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
                           🔒 Trocas disponíveis apenas para maiores de 18
