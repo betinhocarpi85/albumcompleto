@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isAdminAuth, verifyCredentials } from '@/lib/admin-auth'
+import { isAdminAuth } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
@@ -9,27 +9,35 @@ export async function POST(request: Request) {
 
   const { currentPassword, newUsername, newPassword } = await request.json()
 
-  // Verify current password against env vars
-  const currentUsername = (process.env.ADMIN_USERNAME ?? 'admin').trim()
-  if (!verifyCredentials(currentUsername, currentPassword)) {
-    return NextResponse.json({ error: 'Senha atual incorreta.' }, { status: 401 })
-  }
-
-  if (!newUsername || !newPassword) {
+  if (!newUsername?.trim() || !newPassword?.trim()) {
     return NextResponse.json({ error: 'Novo usuário e senha são obrigatórios.' }, { status: 400 })
   }
 
   const sb = createAdminClient()
 
-  // Save new credentials to site_settings as plain text
-  // (env vars are immutable at runtime, so we store overrides in DB)
+  // Busca credenciais atuais no banco (prioridade) ou env vars
+  const { data: settingsData } = await sb
+    .from('site_settings')
+    .select('key, value')
+    .in('key', ['admin_username', 'admin_password_plain'])
+
+  const dbUser = settingsData?.find(r => r.key === 'admin_username')?.value ?? ''
+  const dbPass = settingsData?.find(r => r.key === 'admin_password_plain')?.value ?? ''
+
+  const expectedPass = dbPass || (process.env.ADMIN_PASSWORD ?? 'admin').trim()
+
+  if (currentPassword !== expectedPass) {
+    return NextResponse.json({ error: 'Senha atual incorreta.' }, { status: 401 })
+  }
+
+  // Salva novas credenciais no banco
   await Promise.all([
     sb.from('site_settings').upsert(
-      { key: 'admin_username', value: newUsername, updated_at: new Date().toISOString() },
+      { key: 'admin_username', value: newUsername.trim(), updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     ),
     sb.from('site_settings').upsert(
-      { key: 'admin_password_plain', value: newPassword, updated_at: new Date().toISOString() },
+      { key: 'admin_password_plain', value: newPassword.trim(), updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     ),
   ])
@@ -37,11 +45,8 @@ export async function POST(request: Request) {
   await sb.from('admin_logs').insert({
     action: 'update_credentials',
     target_id: null,
-    details: `Credenciais atualizadas para usuário: ${newUsername}. Nota: mudanças só fazem efeito após reconfigurar variáveis de ambiente.`,
+    details: `Usuário admin alterado para: ${newUsername.trim()}`,
   })
 
-  return NextResponse.json({
-    ok: true,
-    message: 'Credenciais salvas no banco. Para aplicar, atualize ADMIN_USERNAME e ADMIN_PASSWORD nas variáveis de ambiente.',
-  })
+  return NextResponse.json({ ok: true, message: 'Credenciais atualizadas com sucesso!' })
 }

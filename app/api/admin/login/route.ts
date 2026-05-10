@@ -4,7 +4,7 @@ import { verifyCredentials, getAdminToken, ADMIN_COOKIE } from '@/lib/admin-auth
 export async function POST(request: NextRequest) {
   const { username, password } = await request.json()
 
-  if (!verifyCredentials(username, password)) {
+  if (!await verifyCredentials(username, password)) {
     return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
   }
 

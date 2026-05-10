@@ -14,10 +14,8 @@ const ROTAS_PROTEGIDAS = [
 const ADMIN_COOKIE = 'cdo_admin'
 
 function getAdminToken(): string {
-  const u = (process.env.ADMIN_USERNAME ?? 'admin').trim()
-  const p = (process.env.ADMIN_PASSWORD ?? 'admin').trim()
-  const s = (process.env.ADMIN_SECRET   ?? 'completando-admin-secret').trim()
-  return `${s}::${u}:${p}`
+  const s = (process.env.ADMIN_SECRET ?? 'completando-admin-secret').trim()
+  return `cdo-admin-session::${s}`
 }
 
 export async function proxy(request: NextRequest) {
