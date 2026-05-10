@@ -57,6 +57,21 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // ── Cadastro pendente: bloqueia navegação até completar ───────────────────
+  const profilePending = request.cookies.get('profile_pending')?.value === '1'
+  if (user && profilePending) {
+    // Permite apenas completar-cadastro e rotas de API/auth
+    const permitido =
+      pathname.startsWith('/completar-cadastro') ||
+      pathname.startsWith('/auth') ||
+      pathname.startsWith('/api')
+    if (!permitido) {
+      return NextResponse.redirect(new URL('/completar-cadastro', request.url))
+    }
+    return supabaseResponse
+  }
+
+  // ── Rotas protegidas por login ────────────────────────────────────────────
   const protegida = ROTAS_PROTEGIDAS.some(r => pathname === r || pathname.startsWith(r + '/'))
 
   if (protegida && !user) {

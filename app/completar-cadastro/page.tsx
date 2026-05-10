@@ -30,10 +30,12 @@ export default function CompletarCadastroPage() {
   const [cepLoading, setCepLoading] = useState(false)
   const [aceitouTermos,      setAceitouTermos]      = useState(false)
   const [aceitouPrivacidade, setAceitouPrivacidade] = useState(false)
-  const [loading,   setLoading]   = useState(false)
-  const [erros,     setErros]     = useState<string[]>([])
-  const [concluido, setConcluido] = useState(false)
-  const [primeiroNome, setPrimeiroNome] = useState('')
+  const [loading,         setLoading]         = useState(false)
+  const [cancelLoading,   setCancelLoading]   = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [erros,           setErros]           = useState<string[]>([])
+  const [concluido,       setConcluido]       = useState(false)
+  const [primeiroNome,    setPrimeiroNome]    = useState('')
 
   useEffect(() => {
     getSession().then(session => {
@@ -111,8 +113,16 @@ export default function CompletarCadastroPage() {
       aceitouTermos,
       aceitouPrivacidade,
     })
+    // Limpa o cookie de cadastro pendente
+    await fetch('/api/complete-profile', { method: 'POST' })
     setConcluido(true)
     setLoading(false)
+  }
+
+  async function handleCancel() {
+    setCancelLoading(true)
+    await fetch('/api/cancel-registration', { method: 'POST' })
+    window.location.href = '/'
   }
 
   const inp = 'w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent'
@@ -260,11 +270,46 @@ export default function CompletarCadastroPage() {
 
         {!concluido && (
           <p className="text-center text-xs text-slate-500 mt-4">
-            Prefere fazer depois?{' '}
-            <Link href="/album" className="text-slate-300 underline">Entrar sem completar</Link>
+            Não quer continuar?{' '}
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="text-red-400 underline hover:text-red-300"
+            >
+              Cancelar cadastro
+            </button>
           </p>
         )}
       </div>
+
+      {/* Modal de confirmação de cancelamento */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs animate-fadein">
+            <div className="text-4xl text-center mb-3">⚠️</div>
+            <h3 className="font-black text-slate-800 text-center text-lg mb-2">Cancelar cadastro?</h3>
+            <p className="text-sm text-slate-500 text-center mb-5">
+              Sua conta será removida e você voltará para a página inicial. Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Continuar
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelLoading}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold flex items-center justify-center gap-2"
+              >
+                {cancelLoading
+                  ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Cancelando...</>
+                  : 'Sim, cancelar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

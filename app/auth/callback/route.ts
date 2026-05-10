@@ -43,7 +43,14 @@ export async function GET(request: Request) {
           profile?.aceitou_termos && profile?.aceitou_privacidade
 
         if (!completo) {
-          return NextResponse.redirect(`${origin}/completar-cadastro`)
+          const res = NextResponse.redirect(`${origin}/completar-cadastro`)
+          res.cookies.set('profile_pending', '1', {
+            httpOnly: true,
+            sameSite: 'lax',
+            path:     '/',
+            maxAge:   60 * 60 * 24, // 24h
+          })
+          return res
         }
       }
 
