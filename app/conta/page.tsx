@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
-  getPedidos, getPropostasRecebidas,
+  getPedidos,
   savePedidos,
   type Pedido, type UserProfile,
 } from '@/lib/store'
-import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
+import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas } from '@/lib/db'
 
 
 type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
@@ -89,9 +89,10 @@ function ContaPageInner() {
 
   useEffect(() => {
     queueMicrotask(() => setPedidos(getPedidos()))
-    const rec = getPropostasRecebidas()
-    const pend = rec.filter(p => p.status === 'pendente').length
-    queueMicrotask(() => setPropostasPendentes(pend))
+    dbGetPropostasRecebidas().then(rec => {
+      const pend = rec.filter(p => p.status === 'pendente').length
+      setPropostasPendentes(pend)
+    })
     Promise.all([dbGetProfile(), getSession()]).then(async ([p, session]) => {
       const email = session?.user?.email ?? ''
       let merged = { ...p, email }
