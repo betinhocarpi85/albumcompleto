@@ -163,7 +163,6 @@ export default function AnunciosPage() {
     setAnuncios(next)
     await salvar(next)
     setModal(null)
-    if (modal.isNew) setTab('anunciadas')
   }
 
   async function remover(key: string) {
