@@ -183,7 +183,7 @@ function ContaPageInner() {
             </div>
             <div className="min-w-0">
               <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
-              <p className="text-xs text-slate-400">{[perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
+              <p className="text-xs text-slate-400">{[perfil.bairro, perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
               {userId && (
                 <Link href={`/perfil/${userId}`} className="text-xs text-green-600 font-medium hover:underline">
                   Ver perfil público →
