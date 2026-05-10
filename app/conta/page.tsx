@@ -50,6 +50,7 @@ function ContaPageInner() {
   const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
   const [albumProgress, setAlbumProgress] = useState<Record<AlbumId, number>>(ALBUM_PROGRESS_FALLBACK)
   const [editDados, setEditDados] = useState(false)
+  const [cepLoading, setCepLoading] = useState(false)
   const [perfil, setPerfil] = useState<Partial<UserProfile>>({})
   const [perfilEdit, setPerfilEdit] = useState<Partial<UserProfile>>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -548,31 +549,26 @@ function ContaPageInner() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-5">
                   <p className="font-bold text-slate-800">Dados pessoais</p>
-                  <button onClick={() => { setEditDados(!editDados); setPerfilEdit(perfil) }} className="text-sm text-green-600 font-semibold hover:text-green-700">
+                  <button onClick={() => { setEditDados(!editDados); setPerfilEdit(perfil) }}
+                    className="text-sm text-green-600 font-semibold hover:text-green-700">
                     {editDados ? 'Cancelar' : '✏️ Editar'}
                   </button>
                 </div>
                 <div className="space-y-4">
 
-                  {/* Nome */}
+                  {/* Nome — sempre read-only */}
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Nome completo</label>
-                    {editDados
-                      ? <input type="text" value={String(perfilEdit.nome ?? '')}
-                          onChange={e => setPerfilEdit(p => ({ ...p, nome: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.nome || '—'}</p>
-                    }
+                    <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.nome || '—'}</p>
                   </div>
 
-                  {/* E-mail — sempre read-only (vem do auth) */}
+                  {/* E-mail — sempre read-only */}
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">E-mail</label>
                     <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.email || '—'}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">O e-mail não pode ser alterado por aqui.</p>
                   </div>
 
-                  {/* Telefone */}
+                  {/* Telefone — editável */}
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">WhatsApp / Telefone</label>
                     {editDados
@@ -585,23 +581,57 @@ function ContaPageInner() {
                     <p className="text-[11px] text-slate-400 mt-1">Compartilhado apenas após aceitação mútua de proposta.</p>
                   </div>
 
-                  {/* CEP / Cidade / Estado */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-1">
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">CEP</label>
-                      <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{perfil.cep || '—'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">Cidade — Estado</label>
-                      <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">
-                        {perfil.cidade && perfil.uf ? `${perfil.cidade} — ${perfil.uf}` : '—'}
-                      </p>
-                    </div>
+                  {/* CEP — editável com ViaCEP */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">CEP</label>
+                    {editDados ? (
+                      <div className="relative">
+                        <input type="text" inputMode="numeric" maxLength={9}
+                          value={String(perfilEdit.cep ?? '')}
+                          onChange={async e => {
+                            const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
+                            const fmt = raw.length > 5 ? `${raw.slice(0,5)}-${raw.slice(5)}` : raw
+                            setPerfilEdit(p => ({ ...p, cep: fmt }))
+                            if (raw.length === 8) {
+                              setCepLoading(true)
+                              try {
+                                const res  = await fetch(`https://viacep.com.br/ws/${raw}/json/`)
+                                const data = await res.json()
+                                if (!data.erro) setPerfilEdit(p => ({ ...p, cidade: data.localidade, uf: data.uf }))
+                              } finally { setCepLoading(false) }
+                            }
+                          }}
+                          placeholder="00000-000"
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 pr-10" />
+                        {cepLoading && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.cep || '—'}</p>
+                    )}
+                  </div>
+
+                  {/* Cidade / Estado — auto-preenchido */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Cidade — Estado</label>
+                    <p className={['text-sm px-4 py-2.5 rounded-xl',
+                      editDados ? 'text-slate-500 bg-slate-50 border border-dashed border-slate-200' : 'text-slate-700 bg-slate-50'].join(' ')}>
+                      {(editDados ? perfilEdit.cidade : perfil.cidade) && (editDados ? perfilEdit.uf : perfil.uf)
+                        ? `${editDados ? perfilEdit.cidade : perfil.cidade} — ${editDados ? perfilEdit.uf : perfil.uf}`
+                        : '—'}
+                    </p>
+                    {editDados && <p className="text-[11px] text-slate-400 mt-1">Preenchido automaticamente pelo CEP.</p>}
                   </div>
 
                   {editDados && (
                     <button
-                      onClick={() => { dbSaveProfile({ ...perfil, ...perfilEdit }); setPerfil({ ...perfil, ...perfilEdit }); setEditDados(false) }}
+                      onClick={() => {
+                        const novo = { ...perfil, ...perfilEdit }
+                        dbSaveProfile(novo)
+                        setPerfil(novo)
+                        setEditDados(false)
+                      }}
                       className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2"
                     >
                       Salvar alterações
