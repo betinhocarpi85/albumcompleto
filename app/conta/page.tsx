@@ -647,28 +647,16 @@ function ContaPageInner() {
                     )}
                   </div>
 
-                  {/* Bairro — editável */}
+                  {/* Bairro / Cidade / Estado — somente leitura, vem do CEP */}
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 block mb-1">Bairro</label>
-                    {editDados
-                      ? <input type="text" value={String(perfilEdit.bairro ?? '')}
-                          onChange={e => setPerfilEdit(p => ({ ...p, bairro: e.target.value }))}
-                          placeholder="Ex: Icaraí"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.bairro || '—'}</p>
-                    }
-                    {editDados && <p className="text-[11px] text-slate-400 mt-1">Preenchido automaticamente pelo CEP ou edite manualmente.</p>}
-                  </div>
-
-                  {/* Cidade / Estado — somente leitura, vem do CEP */}
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 block mb-1">Cidade — Estado</label>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Bairro — Cidade — Estado</label>
                     <p className={['text-sm px-4 py-2.5 rounded-xl',
                       editDados ? 'text-slate-500 bg-slate-50 border border-dashed border-slate-200' : 'text-slate-700 bg-slate-50'].join(' ')}>
                       {(() => {
+                        const b = editDados ? perfilEdit.bairro : perfil.bairro
                         const c = editDados ? perfilEdit.cidade : perfil.cidade
                         const u = editDados ? perfilEdit.uf     : perfil.uf
-                        return [c, u].filter(Boolean).join(' — ') || '—'
+                        return [b, c, u].filter(Boolean).join(' — ') || '—'
                       })()}
                     </p>
                     {editDados && <p className="text-[11px] text-slate-400 mt-1">Preenchido automaticamente pelo CEP.</p>}
