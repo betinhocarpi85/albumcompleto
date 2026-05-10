@@ -9,7 +9,7 @@ import {
   savePedidos,
   type Pedido, type UserProfile,
 } from '@/lib/store'
-import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
+import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
 
 
 type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
@@ -91,7 +91,12 @@ function ContaPageInner() {
     const rec = getPropostasRecebidas()
     const pend = rec.filter(p => p.status === 'pendente').length
     queueMicrotask(() => setPropostasPendentes(pend))
-    dbGetProfile().then(p => { setPerfil(p); setPerfilEdit(p) })
+    Promise.all([dbGetProfile(), getSession()]).then(([p, session]) => {
+      const email = session?.user?.email ?? ''
+      const merged = { ...p, email }
+      setPerfil(merged)
+      setPerfilEdit(merged)
+    })
     getUserId().then(id => setUserId(id))
     dbGetActiveAlbums().then(ids => {
       setActiveAlbums(new Set(ids))
@@ -548,49 +553,52 @@ function ContaPageInner() {
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {([
-                    { label: 'Nome completo',    field: 'nome'           as keyof UserProfile, type: 'text'  },
-                    { label: 'E-mail',           field: 'email'          as keyof UserProfile, type: 'email' },
-                    { label: 'Data de nascimento', field: 'dataNascimento' as keyof UserProfile, type: 'date'  },
-                  ] as { label: string; field: keyof UserProfile; type: string }[]).map(f => (
-                    <div key={f.label}>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
-                      {editDados
-                        ? <input type={f.type}
-                            value={String(perfilEdit[f.field] ?? '')}
-                            onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
-                            {String(perfil[f.field] || '—')}
-                          </p>
-                      }
-                    </div>
-                  ))}
+
+                  {/* Nome */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Nome completo</label>
+                    {editDados
+                      ? <input type="text" value={String(perfilEdit.nome ?? '')}
+                          onChange={e => setPerfilEdit(p => ({ ...p, nome: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.nome || '—'}</p>
+                    }
+                  </div>
+
+                  {/* E-mail — sempre read-only (vem do auth) */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">E-mail</label>
+                    <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.email || '—'}</p>
+                    <p className="text-[11px] text-slate-400 mt-1">O e-mail não pode ser alterado por aqui.</p>
+                  </div>
+
+                  {/* Telefone */}
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">WhatsApp / Telefone</label>
                     {editDados
-                      ? <input
-                          type="tel"
-                          value={String(perfilEdit.telefone ?? '')}
+                      ? <input type="tel" value={String(perfilEdit.telefone ?? '')}
                           onChange={e => setPerfilEdit(p => ({ ...p, telefone: e.target.value }))}
                           placeholder="(11) 99999-9999"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                        />
-                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
-                          {perfil.telefone ? perfil.telefone : '—'}
-                        </p>
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                      : <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">{perfil.telefone || '—'}</p>
                     }
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Compartilhado apenas com a contraparte após aceitar uma proposta.
-                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1">Compartilhado apenas após aceitação mútua de proposta.</p>
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-500 block mb-1">CPF</label>
-                    <p className="text-sm text-slate-700 bg-slate-50 px-4 py-2.5 rounded-xl">
-                      {perfil.cpf ? '•••.•••.' + perfil.cpf.slice(-6) : '—'}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-1">CPF não pode ser alterado. Entre em contato se precisar corrigir.</p>
+
+                  {/* CEP / Cidade / Estado */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-1">
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">CEP</label>
+                      <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{perfil.cep || '—'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold text-slate-500 block mb-1">Cidade — Estado</label>
+                      <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">
+                        {perfil.cidade && perfil.uf ? `${perfil.cidade} — ${perfil.uf}` : '—'}
+                      </p>
+                    </div>
                   </div>
+
                   {editDados && (
                     <button
                       onClick={() => { dbSaveProfile({ ...perfil, ...perfilEdit }); setPerfil({ ...perfil, ...perfilEdit }); setEditDados(false) }}
