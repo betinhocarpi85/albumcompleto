@@ -48,29 +48,46 @@ function StickerPill({ num }: { num: number }) {
 }
 
 function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
+  const [aberto, setAberto] = useState(false)
   const digits = phone.replace(/\D/g, '')
   const waLink = `https://wa.me/55${digits}`
   return (
-    <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-      <p className="text-xs font-bold text-green-800 mb-1">📞 Telefone de {nome}</p>
-      <p className="text-lg font-black text-green-900 tracking-wide mb-2">{formatPhone(phone)}</p>
-      <a
-        href={waLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+    <div className="border border-green-200 rounded-xl overflow-hidden">
+      {/* Header — sempre visível */}
+      <button
+        onClick={() => setAberto(a => !a)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-green-50 hover:bg-green-100 transition-colors"
       >
-        <span>💬</span> Chamar no WhatsApp
-      </a>
-      <p className="text-[11px] text-green-600 mt-2">
-        Combine data, local e horário diretamente com {nome}.
-      </p>
-      <div className="mt-3 flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-        <span className="text-base leading-none mt-0.5">🛡️</span>
-        <p className="text-[11px] text-amber-700 leading-relaxed">
-          <strong>Dica de segurança:</strong> prefira se encontrar em locais públicos e movimentados — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
-        </p>
-      </div>
+        <div className="flex items-center gap-2">
+          <span className="text-base">📞</span>
+          <span className="text-sm font-bold text-green-800">Contato de {nome}</span>
+        </div>
+        <span className={`text-green-600 text-sm transition-transform ${aberto ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+
+      {/* Conteúdo expansível */}
+      {aberto && (
+        <div className="px-4 py-3 bg-green-50 border-t border-green-100 space-y-3 animate-fadein">
+          <p className="text-xl font-black text-green-900 tracking-wide">{formatPhone(phone)}</p>
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+          >
+            <span>💬</span> Chamar no WhatsApp
+          </a>
+          <p className="text-[11px] text-green-600">
+            Combine data, local e horário diretamente com {nome}.
+          </p>
+          <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+            <span className="text-base leading-none mt-0.5">🛡️</span>
+            <p className="text-[11px] text-amber-700 leading-relaxed">
+              <strong>Dica de segurança:</strong> prefira se encontrar em locais públicos e movimentados — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
