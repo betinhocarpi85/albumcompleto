@@ -92,9 +92,24 @@ function ContaPageInner() {
     const rec = getPropostasRecebidas()
     const pend = rec.filter(p => p.status === 'pendente').length
     queueMicrotask(() => setPropostasPendentes(pend))
-    Promise.all([dbGetProfile(), getSession()]).then(([p, session]) => {
+    Promise.all([dbGetProfile(), getSession()]).then(async ([p, session]) => {
       const email = session?.user?.email ?? ''
-      const merged = { ...p, email }
+      let merged = { ...p, email }
+      // Se tem CEP mas bairro vazio, busca automaticamente no ViaCEP
+      if (p.cep && !p.bairro) {
+        const raw = String(p.cep).replace(/\D/g, '')
+        if (raw.length === 8) {
+          try {
+            const res  = await fetch(`https://viacep.com.br/ws/${raw}/json/`)
+            const data = await res.json()
+            if (!data.erro) {
+              merged = { ...merged, bairro: data.bairro ?? '', cidade: data.localidade, uf: data.uf }
+              // Salva no banco para próximas visitas
+              dbSaveProfile({ cep: p.cep, bairro: data.bairro ?? '', cidade: data.localidade, uf: data.uf })
+            }
+          } catch { /* silently ignore */ }
+        }
+      }
       setPerfil(merged)
       setPerfilEdit(merged)
     })

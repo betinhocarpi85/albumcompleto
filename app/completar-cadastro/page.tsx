@@ -47,7 +47,10 @@ export default function CompletarCadastroPage() {
           setPrimeiroNome(p.nome.trim().split(' ')[0])
         }
         if (p.telefone) setTelefone(formatTelefone(p.telefone))
-        if (p.cep) { setCep(formatCEP(p.cep)); buscarCEP(p.cep.replace(/\D/g, '')) }
+        if (p.cep) {
+          setCep(formatCEP(p.cep))
+          buscarCEP(p.cep.replace(/\D/g, ''))  // busca bairro/cidade/uf mesmo que já existam
+        }
         if (p.aceitouTermos)      setAceitouTermos(true)
         if (p.aceitouPrivacidade) setAceitouPrivacidade(true)
       })
