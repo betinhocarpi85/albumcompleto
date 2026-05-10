@@ -427,11 +427,26 @@ export default function PropostasPage() {
             <p className="font-black text-slate-800 mb-1">
               {confirmando.acao === 'aceitar' ? 'Aceitar proposta?' : 'Recusar proposta?'}
             </p>
-            <p className="text-sm text-slate-500 mb-4">
-              {confirmando.acao === 'aceitar'
-                ? 'Ao aceitar, ambos recebem o telefone um do outro para combinar diretamente.'
-                : 'A proposta será recusada e o colecionador será notificado.'}
-            </p>
+            {confirmando.acao === 'aceitar' ? (
+              <div className="mb-4 space-y-2">
+                <p className="text-sm text-slate-500">
+                  Ao aceitar, ambos recebem o telefone um do outro para combinar diretamente.
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex gap-2">
+                  <span className="text-lg leading-none mt-0.5">🛡️</span>
+                  <div>
+                    <p className="text-xs font-bold text-amber-800 mb-0.5">Dica de segurança</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      Prefira se encontrar em <strong>locais públicos e movimentados</strong> — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 mb-4">
+                A proposta será recusada e o colecionador será notificado.
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 disabled={loading}
