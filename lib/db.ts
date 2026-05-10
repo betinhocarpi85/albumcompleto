@@ -7,12 +7,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AlbumId } from '@/data/albums-registry'
 import type { AnuncioItem, Pedido, PreferenciaEntrega, UserProfile } from '@/lib/store'
-import { buildMatchResultFromAnuncios, type MatchResult } from '@/lib/match-engine'
-import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
-
-// Mapa sid → globalNumber (gerado uma vez, reutilizado em dbGetMatches)
-const _sidToGnum = buildGlobalNumberMap(albumCopa2026)
-const _allGnums  = new Set(_sidToGnum.values())
+import type { MatchResult } from '@/lib/match-engine'
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -120,7 +115,7 @@ export async function dbSaveProfile(p: Partial<UserProfile>) {
   const uid = await getUserId()
   if (!uid) return
   const sb = createClient()
-  await sb.from('profiles').upsert({
+  const { error } = await sb.from('profiles').upsert({
     id:                  uid,
     nome:                p.nome,
     cpf:                 p.cpf,
@@ -138,6 +133,7 @@ export async function dbSaveProfile(p: Partial<UserProfile>) {
     telefone:            p.telefone,
     updated_at:          new Date().toISOString(),
   })
+  if (error) console.error('[dbSaveProfile] erro ao salvar perfil:', error.message)
 }
 
 // ─── Coladas ──────────────────────────────────────────────────────────────────
@@ -322,49 +318,12 @@ export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
   const uid = await getUserId()
   if (!uid) return { trocas: [], vendas: [], doacoes: [] }
 
-  const sb = createClient()
-
-  // Busca anúncios tenho + coladas de todos os usuários do álbum em paralelo
-  const [myAdsRes, othersAdsRes, allColadasRes, profilesRes] = await Promise.all([
-    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo')
-      .eq('user_id', uid).eq('album_id', albumId).eq('tipo', 'tenho'),
-    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo')
-      .neq('user_id', uid).eq('album_id', albumId).eq('tipo', 'tenho'),
-    sb.from('coladas').select('user_id,sticker_id')
-      .eq('album_id', albumId),
-    sb.from('profiles').select('id,nome,cidade'),
-  ])
-
-  // Monta set de gnums colados por usuário
-  const coladasGnumsByUser = new Map<string, Set<number>>()
-  for (const c of (allColadasRes.data ?? [])) {
-    const gnum = _sidToGnum.get(c.sticker_id)
-    if (gnum == null) continue
-    if (!coladasGnumsByUser.has(c.user_id)) coladasGnumsByUser.set(c.user_id, new Set())
-    coladasGnumsByUser.get(c.user_id)!.add(gnum)
-  }
-
-  // preciso de um usuário = todos os gnums do álbum que ele NÃO tem colados
-  type PrecisoRow = { user_id: string; g_num: number; preco: null; sticker_tipo: null }
-  function precisoFor(userId: string): PrecisoRow[] {
-    const have = coladasGnumsByUser.get(userId) ?? new Set<number>()
-    const rows: PrecisoRow[] = []
-    for (const gnum of _allGnums) {
-      if (!have.has(gnum)) rows.push({ user_id: userId, g_num: gnum, preco: null, sticker_tipo: null })
-    }
-    return rows
-  }
-
-  const otherUserIds = [...new Set((othersAdsRes.data ?? []).map(a => a.user_id))]
-
-  return buildMatchResultFromAnuncios({
-    myUserId:      uid,
-    myTenho:       myAdsRes.data    ?? [],
-    myPreciso:     precisoFor(uid),
-    othersTenho:   othersAdsRes.data ?? [],
-    othersPreciso: otherUserIds.flatMap(precisoFor),
-    profiles:      profilesRes.data  ?? [],
+  // Chama API server-side que usa admin client (bypassa RLS)
+  const res = await fetch(`/api/matches?albumId=${encodeURIComponent(albumId)}`, {
+    credentials: 'include',
   })
+  if (!res.ok) return { trocas: [], vendas: [], doacoes: [] }
+  return res.json() as Promise<MatchResult>
 }
 
 
