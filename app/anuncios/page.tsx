@@ -21,18 +21,16 @@ interface AnuncioLocal {
   tipo:    StickerType
   acao:    TipoAnuncio
   preco:   string
-  qty:     number
 }
 
-interface QtyModal {
+// Modal apenas para venda (definir preço)
+interface VendaModal {
   key:   string
   sid:   string
   gNum:  number
   nome:  string
   tipo:  StickerType
-  acao:  TipoAnuncio
   preco: string
-  qty:   number
   isNew: boolean
 }
 
@@ -89,7 +87,7 @@ export default function AnunciosPage() {
   const [loading,  setLoading]  = useState(true)
   const [tab,      setTab]      = useState<Tab>('disponiveis')
   const [subTab,   setSubTab]   = useState<SubTab>('troca')
-  const [modal,    setModal]    = useState<QtyModal | null>(null)
+  const [modal,    setModal]    = useState<VendaModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
   const [filtroAcao, setFiltroAcao]   = useState<'todos' | TipoAnuncio>('todos')
@@ -124,7 +122,6 @@ export default function AnunciosPage() {
               tipo:    a.tipo as StickerType,
               acao,
               preco:   a.preco != null && a.preco > 0 ? String(a.preco.toFixed(2)) : '',
-              qty:     a.qty,
             }
           }))
           setLoading(false)
@@ -171,21 +168,36 @@ export default function AnunciosPage() {
         nome: a.nome, catName: info?.catName ?? '',
         tipo: a.tipo as StickerType, acao,
         preco: a.preco != null && a.preco > 0 ? String(a.preco.toFixed(2)) : '',
-        qty: a.qty,
       }
     }))
     setLoading(false)
   }
 
-  function abrirModal(s: typeof allStickersFlat[0]) {
+  // Troca: toggle direto sem modal
+  async function toggleTroca(s: typeof allStickersFlat[0]) {
     if (!adulto) return
-    setModal({ key: makeKey(s.sid, subTab), sid: s.sid, gNum: s.gNum, nome: s.nome,
-      tipo: s.tipo, acao: subTab, preco: PRECO_SUGERIDO[s.tipo], qty: 1, isNew: true })
+    const key = makeKey(s.sid, 'troca')
+    const jaAnunciado = anunciadosKeys.has(key)
+    const next = jaAnunciado
+      ? anuncios.filter(a => a.key !== key)
+      : [...anuncios, {
+          key, sid: s.sid, gNum: s.gNum, nome: s.nome,
+          catName: s.catName, tipo: s.tipo, acao: 'troca' as TipoAnuncio, preco: '',
+        }]
+    setAnuncios(next)
+    await salvar(next)
   }
 
-  function editarModal(a: AnuncioLocal) {
+  // Venda: abre modal só para definir preço
+  function abrirModalVenda(s: typeof allStickersFlat[0]) {
+    if (!adulto) return
+    setModal({ key: makeKey(s.sid, 'venda'), sid: s.sid, gNum: s.gNum, nome: s.nome,
+      tipo: s.tipo, preco: PRECO_SUGERIDO[s.tipo], isNew: true })
+  }
+
+  function editarModalVenda(a: AnuncioLocal) {
     setModal({ key: a.key, sid: a.sid, gNum: a.gNum, nome: a.nome,
-      tipo: a.tipo, acao: a.acao, preco: a.preco || PRECO_SUGERIDO[a.tipo], qty: a.qty, isNew: false })
+      tipo: a.tipo, preco: a.preco || PRECO_SUGERIDO[a.tipo], isNew: false })
   }
 
   async function confirmarModal() {
@@ -193,9 +205,7 @@ export default function AnunciosPage() {
     const novo: AnuncioLocal = {
       key: modal.key, sid: modal.sid, gNum: modal.gNum, nome: modal.nome,
       catName: allStickersFlat.find(s => s.sid === modal.sid)?.catName ?? '',
-      tipo: modal.tipo, acao: modal.acao,
-      preco: modal.acao === 'venda' ? modal.preco : '',
-      qty: modal.qty,
+      tipo: modal.tipo, acao: 'venda', preco: modal.preco,
     }
     const next = modal.isNew ? [...anuncios, novo] : anuncios.map(a => a.key === modal.key ? novo : a)
     setAnuncios(next)
@@ -223,7 +233,7 @@ export default function AnunciosPage() {
       sid:   a.sid,
       gNum:  a.gNum,
       nome:  a.nome,
-      qty:   a.qty,
+      qty:   1,
       tipo:  a.tipo,
       preco: a.acao === 'venda' && a.preco ? parseFloat(a.preco) : undefined,
     })))
@@ -268,45 +278,26 @@ export default function AnunciosPage() {
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
       <BannerMenorDeIdade />
 
-      {/* ── MODAL ── */}
+      {/* ── MODAL VENDA (só preço) ── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
             <p className="text-xs text-slate-400 mb-0.5">Figurinha #{modal.gNum} {TIPO_ICON[modal.tipo]}</p>
             <p className="font-black text-slate-800 text-lg leading-tight mb-3">{modal.nome}</p>
-
-            <div className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold mb-4',
-              modal.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
-              {modal.acao === 'venda' ? '💰 Venda' : '🔁 Troca'}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold mb-5 bg-green-100 text-green-700">
+              💰 Venda
             </div>
-
-            {modal.acao === 'venda' && (
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-slate-500 mb-2">Preço por unidade</p>
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-green-400">
-                  <span className="text-sm font-semibold text-slate-400">R$</span>
-                  <input type="number" min="0.50" step="0.50" value={modal.preco}
-                    onChange={e => setModal(m => m ? { ...m, preco: e.target.value } : m)}
-                    className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none" placeholder="0,00" />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1">Sugerido: R$ {PRECO_SUGERIDO[modal.tipo].replace('.', ',')}</p>
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-slate-500 mb-2">Preço</p>
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-green-400">
+                <span className="text-sm font-semibold text-slate-400">R$</span>
+                <input type="number" min="0.50" step="0.50" value={modal.preco}
+                  onChange={e => setModal(m => m ? { ...m, preco: e.target.value } : m)}
+                  className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none" placeholder="0,00" />
               </div>
-            )}
-
-            <p className="text-xs font-semibold text-slate-500 mb-2">Quantas repetidas você tem?</p>
-            <div className="flex items-center justify-center gap-5 mb-6">
-              <button onClick={() => setModal(m => m ? { ...m, qty: Math.max(1, m.qty - 1) } : m)}
-                disabled={modal.qty <= 1}
-                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center">−</button>
-              <div className="text-center">
-                <span className="text-5xl font-black text-slate-800">{modal.qty}</span>
-                <p className="text-xs text-slate-400 mt-1">unidade{modal.qty > 1 ? 's' : ''}</p>
-              </div>
-              <button onClick={() => setModal(m => m ? { ...m, qty: m.qty + 1 } : m)}
-                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center">+</button>
+              <p className="text-[10px] text-slate-400 mt-1">Sugerido: R$ {PRECO_SUGERIDO[modal.tipo].replace('.', ',')}</p>
             </div>
-
             <div className="flex gap-2">
               {!modal.isNew && (
                 <button onClick={removerModal} className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
@@ -496,7 +487,8 @@ export default function AnunciosPage() {
                                 {catOpen && (
                                   <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
                                     {g.stickers.map(s => (
-                                      <button key={s.sid} onClick={() => abrirModal(s)}
+                                      <button key={s.sid}
+                                        onClick={() => subTab === 'troca' ? toggleTroca(s) : abrirModalVenda(s)}
                                         title={`#${s.gNum} · ${s.nome}`}
                                         className={['w-12 h-12 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all', subColor.sticker].join(' ')}>
                                         <span className="text-[11px] font-black leading-none">{s.gNum}</span>
@@ -602,12 +594,13 @@ export default function AnunciosPage() {
                                     {catOpen && (
                                       <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
                                         {g.items.map(a => (
-                                          <button key={a.key} onClick={() => editarModal(a)}
-                                            title={`#${a.gNum} · ${a.nome} · ${a.acao === 'venda' ? `R$ ${parseFloat(a.preco||'0').toFixed(2)}` : 'Troca'} · ${a.qty} unid.`}
+                                          <button key={a.key}
+                                            onClick={() => a.acao === 'venda' ? editarModalVenda(a) : remover(a.key)}
+                                            title={`#${a.gNum} · ${a.nome} · ${a.acao === 'venda' ? `R$ ${parseFloat(a.preco||'0').toFixed(2)}` : 'Troca — toque para remover'}`}
                                             className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all',
                                               a.acao === 'venda'
                                                 ? 'border-green-300 bg-green-50 hover:border-green-500 hover:bg-green-100 text-green-700'
-                                                : 'border-blue-300 bg-blue-50 hover:border-blue-500 hover:bg-blue-100 text-blue-700'].join(' ')}>
+                                                : 'border-blue-300 bg-blue-50 hover:border-red-300 hover:bg-red-50 text-blue-700'].join(' ')}>
                                             <span className="text-[11px] font-black leading-none">{a.gNum}</span>
                                             {TIPO_ICON[a.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[a.tipo]}</span>}
                                           </button>
