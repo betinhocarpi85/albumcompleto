@@ -391,7 +391,6 @@ export default function Home() {
       {/* ── FOOTER ── */}
       <footer className="bg-slate-900 text-slate-400 text-center py-6 text-xs">
         <p>© 2026 completando.com.br · Todos os direitos reservados</p>
-        <p className="mt-1">Feito com ❤️ para colecionadores brasileiros</p>
       </footer>
     </div>
   )
