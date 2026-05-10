@@ -75,6 +75,7 @@ function AlbumPageInner() {
   const escolher     = searchParams.get('escolher') === '1'
   const [loading, setLoading]           = useState(true)
   const [albumId, setAlbumId]           = useState<AlbumId | null>(null)
+  const [activeAlbums, setActiveAlbums] = useState<AlbumId[]>([])
   const [coladas, setColadas]           = useState<ColadasSet>(new Set())
   const [mostrarSeletor, setMostrarSeletor] = useState(false)
   const [search, setSearch]             = useState('')
@@ -84,6 +85,7 @@ function AlbumPageInner() {
   // Carrega álbum ativo do usuário (ignora se ?escolher=1)
   useEffect(() => {
     dbGetActiveAlbums().then(ativos => {
+      setActiveAlbums(ativos)
       if (ativos.length > 0 && !escolher) {
         setAlbumId(ativos[0])
       }
@@ -158,42 +160,44 @@ function AlbumPageInner() {
   return (
     <div className="max-w-4xl mx-auto px-3 py-4 animate-fadein">
 
-      {/* ── SELETOR DE ÁLBUM ── */}
-      <div className="mb-4">
-        <button
-          onClick={() => setMostrarSeletor(s => !s)}
-          className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
-        >
-          <span className="text-2xl">{albumMeta.emoji}</span>
-          <div className="flex-1 text-left min-w-0">
-            <p className="font-black text-sm text-slate-800 truncate">{albumMeta.name}</p>
-            <p className="text-xs text-slate-400">{albumMeta.description}</p>
-          </div>
-          <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
-        </button>
+      {/* ── SELETOR DE ÁLBUM (só aparece com 2+ álbuns ativos) ── */}
+      {activeAlbums.length > 1 && (
+        <div className="mb-4">
+          <button
+            onClick={() => setMostrarSeletor(s => !s)}
+            className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            <span className="text-2xl">{albumMeta.emoji}</span>
+            <div className="flex-1 text-left min-w-0">
+              <p className="font-black text-sm text-slate-800 truncate">{albumMeta.name}</p>
+              <p className="text-xs text-slate-400">{albumMeta.description}</p>
+            </div>
+            <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
+          </button>
 
-        {mostrarSeletor && (
-          <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
-            {ALBUMS_REGISTRY.map(a => (
-              <button
-                key={a.id}
-                onClick={() => trocarAlbum(a.id)}
-                className={[
-                  'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b border-slate-50 last:border-0',
-                  a.id === albumId ? 'bg-green-50' : 'hover:bg-slate-50',
-                ].join(' ')}
-              >
-                <span className="text-xl">{a.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800 truncate">{a.name}</p>
-                  <p className="text-xs text-slate-400">{a.description}</p>
-                </div>
-                {a.id === albumId && <span className="text-green-500 text-sm flex-shrink-0">✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          {mostrarSeletor && (
+            <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
+              {ALBUMS_REGISTRY.filter(a => activeAlbums.includes(a.id)).map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => trocarAlbum(a.id)}
+                  className={[
+                    'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b border-slate-50 last:border-0',
+                    a.id === albumId ? 'bg-green-50' : 'hover:bg-slate-50',
+                  ].join(' ')}
+                >
+                  <span className="text-xl">{a.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-slate-800 truncate">{a.name}</p>
+                    <p className="text-xs text-slate-400">{a.description}</p>
+                  </div>
+                  {a.id === albumId && <span className="text-green-500 text-sm flex-shrink-0">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── CABEÇALHO ── */}
       <div className="flex items-center gap-3 mb-4">
