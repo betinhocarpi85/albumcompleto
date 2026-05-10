@@ -20,18 +20,19 @@ function formatCEP(v: string) {
 
 export default function CompletarCadastroPage() {
   const router = useRouter()
-  const [telefone, setTelefone] = useState('')
-  const [cep, setCep]           = useState('')
-  const [cidade, setCidade]     = useState('')
-  const [uf, setUf]             = useState('')
-  const [cepOk, setCepOk]       = useState(false)
+  const [nome,      setNome]      = useState('')
+  const [telefone,  setTelefone]  = useState('')
+  const [cep,       setCep]       = useState('')
+  const [cidade,    setCidade]    = useState('')
+  const [uf,        setUf]        = useState('')
+  const [cepOk,     setCepOk]     = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
-  const [aceitouTermos, setAceitouTermos]           = useState(false)
+  const [aceitouTermos,      setAceitouTermos]      = useState(false)
   const [aceitouPrivacidade, setAceitouPrivacidade] = useState(false)
-  const [loading, setLoading]   = useState(false)
-  const [erros, setErros]       = useState<string[]>([])
+  const [loading,   setLoading]   = useState(false)
+  const [erros,     setErros]     = useState<string[]>([])
   const [concluido, setConcluido] = useState(false)
-  const [nomeUsuario, setNomeUsuario] = useState('')
+  const [primeiroNome, setPrimeiroNome] = useState('')
 
   useEffect(() => {
     getSession().then(session => {
@@ -40,7 +41,10 @@ export default function CompletarCadastroPage() {
         if (p.telefone && p.cep && p.aceitouTermos && p.aceitouPrivacidade) {
           router.replace('/album'); return
         }
-        if (p.nome) setNomeUsuario(p.nome.trim().split(' ')[0])
+        if (p.nome) {
+          setNome(p.nome)
+          setPrimeiroNome(p.nome.trim().split(' ')[0])
+        }
         if (p.telefone) setTelefone(formatTelefone(p.telefone))
         if (p.cep) { setCep(formatCEP(p.cep)); buscarCEP(p.cep.replace(/\D/g, '')) }
         if (p.aceitouTermos)      setAceitouTermos(true)
@@ -53,7 +57,7 @@ export default function CompletarCadastroPage() {
     if (digits.length !== 8) { setCepOk(false); setCidade(''); setUf(''); return }
     setCepLoading(true)
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      const res  = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
       const data = await res.json()
       if (data.erro) { setCepOk(false); setCidade(''); setUf('') }
       else { setCidade(data.localidade); setUf(data.uf); setCepOk(true) }
@@ -71,14 +75,16 @@ export default function CompletarCadastroPage() {
 
   async function handleSubmit() {
     const e: string[] = []
-    if (telefone.replace(/\D/g, '').length < 10) e.push('Informe um WhatsApp/telefone válido.')
-    if (!cepOk) e.push('CEP inválido ou não encontrado.')
-    if (!aceitouTermos)      e.push('Aceite os Termos de Uso para continuar.')
-    if (!aceitouPrivacidade) e.push('Aceite a Política de Privacidade para continuar.')
+    if (nome.trim().split(' ').filter(Boolean).length < 2) e.push('Informe nome e sobrenome.')
+    if (telefone.replace(/\D/g, '').length < 10)           e.push('Informe um WhatsApp/telefone válido.')
+    if (!cepOk)                                             e.push('CEP inválido ou não encontrado.')
+    if (!aceitouTermos)                                     e.push('Aceite os Termos de Uso para continuar.')
+    if (!aceitouPrivacidade)                                e.push('Aceite a Política de Privacidade para continuar.')
     if (e.length) { setErros(e); return }
     setErros([])
     setLoading(true)
     await dbSaveProfile({
+      nome:               nome.trim(),
       telefone:           telefone.replace(/\D/g, ''),
       cep:                cep.replace(/\D/g, ''),
       cidade,
@@ -113,7 +119,7 @@ export default function CompletarCadastroPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-6 text-center animate-fadein">
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="font-black text-slate-800 text-xl mb-2">
-              Tudo pronto{nomeUsuario ? `, ${nomeUsuario}` : ''}!
+              Tudo pronto{primeiroNome ? `, ${primeiroNome}` : ''}!
             </h2>
             <p className="text-slate-500 text-sm mb-6">
               Seu cadastro está completo. Agora marque suas figurinhas e comece a trocar e vender.
@@ -130,7 +136,7 @@ export default function CompletarCadastroPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-6">
             <h2 className="font-black text-slate-800 text-lg mb-0.5">Quase lá!</h2>
             <p className="text-xs text-slate-400 mb-5">
-              Só precisamos de mais dois dados para ativar sua conta.
+              Só precisamos de mais alguns dados para ativar sua conta.
             </p>
 
             {erros.length > 0 && (
@@ -140,6 +146,18 @@ export default function CompletarCadastroPage() {
             )}
 
             <div className="space-y-4">
+
+              {/* Nome */}
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Nome completo</label>
+                <input
+                  type="text"
+                  placeholder="João da Silva"
+                  value={nome}
+                  onChange={e => setNome(e.target.value)}
+                  className={inp}
+                />
+              </div>
 
               {/* Telefone */}
               <div>
