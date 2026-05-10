@@ -65,6 +65,12 @@ function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
       <p className="text-[11px] text-green-600 mt-2">
         Combine data, local e horário diretamente com {nome}.
       </p>
+      <div className="mt-3 flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+        <span className="text-base leading-none mt-0.5">🛡️</span>
+        <p className="text-[11px] text-amber-700 leading-relaxed">
+          <strong>Dica de segurança:</strong> prefira se encontrar em locais públicos e movimentados — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
+        </p>
+      </div>
     </div>
   )
 }
