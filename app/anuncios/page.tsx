@@ -5,6 +5,7 @@ import { albumCopa2026, buildGlobalNumberMap, stickerId } from '@/data/album-cop
 import type { StickerType } from '@/data/album-copa-2026'
 import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
@@ -79,7 +80,9 @@ for (const cat of albumCopa2026.categories) {
 function makeKey(sid: string, acao: TipoAnuncio) { return `${sid}__${acao}` }
 
 export default function AnunciosPage() {
-  const [albumId,  setAlbumId]  = useState<AlbumId>('copa-2026')
+  const [albumId,       setAlbumId]       = useState<AlbumId>('copa-2026')
+  const [activeAlbums,  setActiveAlbums]  = useState<AlbumId[]>([])
+  const [mostrarSeletor, setMostrarSeletor] = useState(false)
   const [adulto,   setAdulto]   = useState(true)
   const [coladas,  setColadas]  = useState<Set<string>>(new Set())
   const [anuncios, setAnuncios] = useState<AnuncioLocal[]>([])
@@ -101,6 +104,7 @@ export default function AnunciosPage() {
     getSession().then(session => {
       if (!session) { setLoading(false); return }
       dbGetActiveAlbums().then(ids => {
+        setActiveAlbums(ids)
         const id = ids[0] ?? 'copa-2026'
         setAlbumId(id)
         Promise.all([dbGetColadas(id), dbGetAnuncios(id, 'tenho')]).then(([col, saved]) => {
@@ -146,6 +150,31 @@ export default function AnunciosPage() {
   }
   function toggleCatAn(id: string) {
     setOpenCatsAn(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function trocarAlbum(id: AlbumId) {
+    setAlbumId(id)
+    setMostrarSeletor(false)
+    setAnuncios([])
+    setColadas(new Set())
+    setLoading(true)
+    const [col, saved] = await Promise.all([dbGetColadas(id), dbGetAnuncios(id, 'tenho')])
+    const coladasSet = new Set(col)
+    setColadas(coladasSet)
+    setAnuncios(saved.map(a => {
+      const rawSid = a.sid.replace(/__(?:troca|venda)$/, '')
+      const acao: TipoAnuncio = a.preco != null && a.preco > 0 ? 'venda' : 'troca'
+      const info = allStickersFlat.find(s => s.sid === rawSid)
+      return {
+        key: makeKey(rawSid, acao), sid: rawSid,
+        gNum: typeof a.gNum === 'number' ? a.gNum : Number(a.gNum) || 0,
+        nome: a.nome, catName: info?.catName ?? '',
+        tipo: a.tipo as StickerType, acao,
+        preco: a.preco != null && a.preco > 0 ? String(a.preco.toFixed(2)) : '',
+        qty: a.qty,
+      }
+    }))
+    setLoading(false)
   }
 
   function abrirModal(s: typeof allStickersFlat[0]) {
@@ -306,6 +335,47 @@ export default function AnunciosPage() {
           </span>
         )}
       </div>
+
+      {/* ── SELETOR DE ÁLBUM (só com 2+ álbuns ativos) ── */}
+      {activeAlbums.length > 1 && (() => {
+        const meta = ALBUMS_REGISTRY.find(a => a.id === albumId)!
+        return (
+          <div className="mb-4">
+            <button
+              onClick={() => setMostrarSeletor(s => !s)}
+              className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <span className="text-2xl">{meta.emoji}</span>
+              <div className="flex-1 text-left min-w-0">
+                <p className="font-black text-sm text-slate-800 truncate">{meta.name}</p>
+                <p className="text-xs text-slate-400">{meta.description}</p>
+              </div>
+              <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
+            </button>
+            {mostrarSeletor && (
+              <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
+                {ALBUMS_REGISTRY.filter(a => activeAlbums.includes(a.id)).map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => trocarAlbum(a.id)}
+                    className={[
+                      'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b border-slate-50 last:border-0',
+                      a.id === albumId ? 'bg-green-50' : 'hover:bg-slate-50',
+                    ].join(' ')}
+                  >
+                    <span className="text-xl">{a.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-slate-800 truncate">{a.name}</p>
+                      <p className="text-xs text-slate-400">{a.description}</p>
+                    </div>
+                    {a.id === albumId && <span className="text-green-500 text-sm flex-shrink-0">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Resumo */}
       <div className="grid grid-cols-2 gap-2 mb-4">
