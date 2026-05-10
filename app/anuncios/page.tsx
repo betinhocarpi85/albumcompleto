@@ -89,12 +89,13 @@ export default function AnunciosPage() {
   const [modal,    setModal]    = useState<QtyModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
-  const [busca,    setBusca]    = useState('')
   const [filtroAcao, setFiltroAcao]   = useState<'todos' | TipoAnuncio>('todos')
-  // quais quadros de tipo estão expandidos
+  // disponíveis
   const [openTipos, setOpenTipos]     = useState<Set<StickerType>>(new Set(['normal']))
-  // quais categorias dentro de cada tipo estão expandidas
   const [openCats,  setOpenCats]      = useState<Set<string>>(new Set())
+  // anunciadas
+  const [openTiposAn, setOpenTiposAn] = useState<Set<StickerType>>(new Set(['normal']))
+  const [openCatsAn,  setOpenCatsAn]  = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getSession().then(session => {
@@ -139,6 +140,12 @@ export default function AnunciosPage() {
   }
   function toggleCat(id: string) {
     setOpenCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleTipoAn(t: StickerType) {
+    setOpenTiposAn(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
+  }
+  function toggleCatAn(id: string) {
+    setOpenCatsAn(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   function abrirModal(s: typeof allStickersFlat[0]) {
@@ -199,12 +206,24 @@ export default function AnunciosPage() {
   const anunciosFiltrados = useMemo(() => {
     let lista = anuncios
     if (filtroAcao !== 'todos') lista = lista.filter(a => a.acao === filtroAcao)
-    if (busca.trim()) {
-      const q = busca.toLowerCase()
-      lista = lista.filter(a => a.nome.toLowerCase().includes(q) || String(a.gNum).includes(q) || a.catName.toLowerCase().includes(q))
-    }
     return lista
-  }, [anuncios, filtroAcao, busca])
+  }, [anuncios, filtroAcao])
+
+  // Agrupa anúncios filtrados por tipo → por categoria (para a aba Anunciadas)
+  const anunciadosPorTipoECat = useMemo(() => {
+    const result: Record<StickerType, { catId: string; catName: string; catFlag: string; items: AnuncioLocal[] }[]> = {
+      normal: [], escudo: [], brilhante: [], especial: [],
+    }
+    for (const cat of albumCopa2026.categories) {
+      for (const tipo of Object.keys(result) as StickerType[]) {
+        const items = anunciosFiltrados.filter(a =>
+          a.tipo === tipo && allStickersFlat.find(s => s.sid === a.sid)?.catId === cat.id
+        )
+        if (items.length) result[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', items })
+      }
+    }
+    return result
+  }, [anunciosFiltrados])
 
   if (loading) return (
     <div className="max-w-2xl mx-auto px-3 py-10 text-center">
@@ -439,7 +458,7 @@ export default function AnunciosPage() {
 
           {/* ── ABA ANUNCIADAS ── */}
           {tab === 'anunciadas' && (
-            <div className="animate-fadein space-y-3">
+            <div className="animate-fadein">
               {anuncios.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
                   <p className="text-3xl mb-2">📭</p>
@@ -448,54 +467,103 @@ export default function AnunciosPage() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {(['todos', 'troca', 'venda'] as const).map(f => (
-                        <button key={f} onClick={() => setFiltroAcao(f)}
-                          className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
-                            filtroAcao === f ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'].join(' ')}>
-                          {f === 'todos' ? 'Todas' : f === 'venda' ? '💰 Venda' : '🔁 Troca'}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex-1 relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
-                      <input type="text" placeholder="Buscar..." value={busca}
-                        onChange={e => setBusca(e.target.value)}
-                        className="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-green-400" />
-                    </div>
+                  {/* Filtro Todos / Troca / Venda */}
+                  <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
+                    {(['todos', 'troca', 'venda'] as const).map(f => (
+                      <button key={f} onClick={() => setFiltroAcao(f)}
+                        className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
+                          filtroAcao === f
+                            ? f === 'venda' ? 'bg-green-500 text-white shadow-sm'
+                            : f === 'troca' ? 'bg-blue-500 text-white shadow-sm'
+                            : 'bg-slate-800 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                        {f === 'todos' ? 'Todas' : f === 'venda' ? '💰 Venda' : '🔁 Troca'}
+                      </button>
+                    ))}
                   </div>
 
-                  {anunciosFiltrados.map(a => (
-                    <div key={a.key} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
-                      <div className={['w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 border-2',
-                        a.acao === 'venda' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-blue-50 border-blue-200 text-blue-700'].join(' ')}>
-                        <span className="text-xs font-black leading-none">{a.gNum}</span>
-                        {TIPO_ICON[a.tipo] && <span className="text-[8px] leading-none mt-0.5">{TIPO_ICON[a.tipo]}</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-800 truncate">{a.nome}</p>
-                        <p className="text-xs text-slate-400">{a.catName}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className={['text-[10px] font-bold px-2 py-0.5 rounded-full',
-                          a.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
-                          {a.acao === 'venda' ? `R$ ${parseFloat(a.preco || '0').toFixed(2).replace('.', ',')}` : '🔁 Troca'}
-                        </span>
-                        <span className="text-[10px] text-slate-400">{a.qty} unid.</span>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => editarModal(a)}
-                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors flex items-center justify-center">✏️</button>
-                        <button onClick={() => remover(a.key)}
-                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 text-lg transition-colors flex items-center justify-center">×</button>
-                      </div>
-                    </div>
-                  ))}
+                  {/* Quadros por tipo */}
+                  <div className="space-y-3">
+                    {TIPO_META.map(({ key: tipoKey, label, icon, desc }) => {
+                      const grupos = anunciadosPorTipoECat[tipoKey]
+                      const totalTipo = grupos.reduce((a, g) => a + g.items.length, 0)
+                      const isOpen = openTiposAn.has(tipoKey)
 
-                  {anunciosFiltrados.length === 0 && (
-                    <p className="text-center text-sm text-slate-400 py-4">Nenhum resultado</p>
-                  )}
+                      return (
+                        <div key={tipoKey}
+                          className={['bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all',
+                            isOpen && totalTipo > 0 ? 'border-slate-300' : 'border-slate-100'].join(' ')}>
+
+                          {/* Header do tipo */}
+                          <button onClick={() => toggleTipoAn(tipoKey)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
+                            <span className="text-2xl">{icon}</span>
+                            <div className="flex-1">
+                              <p className="font-bold text-slate-800 text-sm">{label}</p>
+                              <p className="text-xs text-slate-400">{desc}</p>
+                            </div>
+                            {totalTipo > 0 && (
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {totalTipo} anúncio{totalTipo > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {totalTipo === 0 && (
+                              <span className="text-xs text-slate-300 font-medium">nenhuma</span>
+                            )}
+                            <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                          </button>
+
+                          {/* Categorias dentro do tipo */}
+                          {isOpen && totalTipo > 0 && (
+                            <div className="border-t border-slate-50 px-4 pb-4 pt-2 space-y-2">
+                              {grupos.map(g => {
+                                const catKey = `an__${tipoKey}__${g.catId}`
+                                const catOpen = openCatsAn.has(catKey)
+                                return (
+                                  <div key={g.catId} className="border border-slate-100 rounded-xl overflow-hidden">
+                                    <button onClick={() => toggleCatAn(catKey)}
+                                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
+                                      <span className="text-base">{g.catFlag}</span>
+                                      <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName}</span>
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                        {g.items.length}✓
+                                      </span>
+                                      <span className="text-xs text-slate-400">{catOpen ? '▲' : '▼'}</span>
+                                    </button>
+
+                                    {catOpen && (
+                                      <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
+                                        {g.items.map(a => (
+                                          <button key={a.key} onClick={() => editarModal(a)}
+                                            title={`#${a.gNum} · ${a.nome} · ${a.acao === 'venda' ? `R$ ${parseFloat(a.preco||'0').toFixed(2)}` : 'Troca'} · ${a.qty} unid.`}
+                                            className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all',
+                                              a.acao === 'venda'
+                                                ? 'border-green-300 bg-green-50 hover:border-green-500 hover:bg-green-100 text-green-700'
+                                                : 'border-blue-300 bg-blue-50 hover:border-blue-500 hover:bg-blue-100 text-blue-700'].join(' ')}>
+                                            <span className="text-[11px] font-black leading-none">{a.gNum}</span>
+                                            {TIPO_ICON[a.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[a.tipo]}</span>}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                              <p className="text-[10px] text-slate-400 text-center pt-1">
+                                Toque para editar ou remover
+                              </p>
+                            </div>
+                          )}
+
+                          {isOpen && totalTipo === 0 && (
+                            <div className="border-t border-slate-50 px-4 py-3 text-center">
+                              <p className="text-xs text-slate-400">Nenhum anúncio {label.toLowerCase()}</p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </>
               )}
             </div>
