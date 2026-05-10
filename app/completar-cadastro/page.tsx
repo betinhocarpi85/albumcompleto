@@ -87,6 +87,19 @@ export default function CompletarCadastroPage() {
     if (e.length) { setErros(e); return }
     setErros([])
     setLoading(true)
+
+    // Verifica telefone duplicado (exclui o próprio usuário logado)
+    const session = await getSession()
+    const tel = telefone.replace(/\D/g, '')
+    const exclude = session?.user?.id ?? ''
+    const checkRes = await fetch(`/api/check-phone?tel=${tel}&exclude=${exclude}`)
+    const { available } = await checkRes.json()
+    if (!available) {
+      setErros(['Este telefone já está cadastrado em outra conta.'])
+      setLoading(false)
+      return
+    }
+
     await dbSaveProfile({
       nome:               nome.trim(),
       telefone:           telefone.replace(/\D/g, ''),

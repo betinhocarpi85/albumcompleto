@@ -676,7 +676,16 @@ function ContaPageInner() {
 
                   {editDados && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        const tel = String(perfilEdit.telefone ?? '').replace(/\D/g, '')
+                        if (tel.length >= 10) {
+                          const res = await fetch(`/api/check-phone?tel=${tel}&exclude=${userId ?? ''}`)
+                          const { available } = await res.json()
+                          if (!available) {
+                            alert('Este telefone já está cadastrado em outra conta.')
+                            return
+                          }
+                        }
                         const novo = { ...perfil, ...perfilEdit }
                         dbSaveProfile(novo)
                         setPerfil(novo)

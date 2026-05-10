@@ -75,6 +75,17 @@ export default function CadastroPage() {
     if (e.length) { setErros(e); return }
     setErros([])
     setLoading(true)
+
+    // Verifica se o telefone já está cadastrado
+    const tel = telefone.replace(/\D/g, '')
+    const checkRes = await fetch(`/api/check-phone?tel=${tel}`)
+    const { available } = await checkRes.json()
+    if (!available) {
+      setErros(['Este telefone já está cadastrado em outra conta.'])
+      setLoading(false)
+      return
+    }
+
     const { error } = await signInWithMagicLink(email, {
       nome:               nome.trim(),
       telefone:           telefone.replace(/\D/g, ''),
