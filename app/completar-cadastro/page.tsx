@@ -45,8 +45,10 @@ export default function CompletarCadastroPage() {
       const meta = session.user.user_metadata ?? {}
 
       // Tenta carregar do banco primeiro (usuário pode já ter dados parciais)
-      dbGetProfile().then(p => {
+      dbGetProfile().then(async p => {
         if (p.telefone && p.cep && p.aceitouTermos && p.aceitouPrivacidade) {
+          // Garante que o cookie de cadastro pendente seja removido antes de redirecionar
+          await fetch('/api/complete-profile', { method: 'POST' })
           router.replace('/album'); return
         }
 

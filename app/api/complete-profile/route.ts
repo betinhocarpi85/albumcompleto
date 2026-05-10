@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   const res = NextResponse.json({ ok: true })
-  res.cookies.set('profile_pending', '', { maxAge: 0, path: '/' })
+  res.cookies.set('profile_pending', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path:     '/',
+    maxAge:   0,   // expira imediatamente
+  })
   return res
 }

@@ -27,9 +27,17 @@ export async function signIn(email: string, password: string) {
   return sb.auth.signInWithPassword({ email, password })
 }
 
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string,
+  metadata?: Record<string, unknown>
+) {
   const sb = createClient()
-  return sb.auth.signUp({ email, password })
+  return sb.auth.signUp({
+    email,
+    password,
+    options: { data: metadata },
+  })
 }
 
 export async function signInWithMagicLink(

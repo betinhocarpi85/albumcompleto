@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { createHmac } from 'crypto'
 
 const ROTAS_PROTEGIDAS = [
   '/album',
@@ -15,8 +14,10 @@ const ROTAS_PROTEGIDAS = [
 const ADMIN_COOKIE = 'cdo_admin'
 
 function getAdminToken(): string {
-  const secret = process.env.ADMIN_SECRET ?? 'completando-admin-secret'
-  return createHmac('sha256', secret).update('admin-authenticated').digest('hex')
+  const u = process.env.ADMIN_USERNAME ?? 'admin'
+  const p = process.env.ADMIN_PASSWORD ?? 'admin'
+  const s = process.env.ADMIN_SECRET   ?? 'completando-admin-secret'
+  return `${s}::${u}:${p}`
 }
 
 export async function proxy(request: NextRequest) {
