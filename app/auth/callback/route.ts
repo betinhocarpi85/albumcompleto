@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const code  = searchParams.get('code')
-  const next  = searchParams.get('next') ?? '/album'
+  const code = searchParams.get('code')
+  const next = searchParams.get('next') ?? '/album'
 
   if (code) {
     const supabase = await createClient()
@@ -14,47 +14,32 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (user) {
+        // Verifica se o perfil já está completo (usuário existente)
         const { data: profile } = await supabase
           .from('profiles')
           .select('telefone, cep, aceitou_termos, aceitou_privacidade')
           .eq('id', user.id)
           .single()
 
-        // Novo usuário via magic link — salva perfil a partir dos metadados
-        const meta = user.user_metadata
-        if (!profile?.telefone && meta?.nome) {
-          await supabase.from('profiles').upsert({
-            id:                  user.id,
-            nome:                meta.nome,
-            telefone:            meta.telefone,
-            cep:                 meta.cep,
-            bairro:              meta.bairro ?? '',
-            cidade:              meta.cidade,
-            uf:                  meta.uf,
-            maior18:             true,
-            aceitou_termos:      meta.aceitouTermos ?? false,
-            aceitou_privacidade: meta.aceitouPrivacidade ?? false,
-            updated_at:          new Date().toISOString(),
-          })
-          return NextResponse.redirect(`${origin}/album?escolher=1`)
-        }
-
         const completo = profile?.telefone && profile?.cep &&
           profile?.aceitou_termos && profile?.aceitou_privacidade
 
-        if (!completo) {
-          const res = NextResponse.redirect(`${origin}/completar-cadastro`)
-          res.cookies.set('profile_pending', '1', {
-            httpOnly: true,
-            sameSite: 'lax',
-            path:     '/',
-            maxAge:   60 * 60 * 24, // 24h
-          })
-          return res
+        if (completo) {
+          // Usuário existente com perfil completo → vai direto para o destino
+          return NextResponse.redirect(`${origin}${next}`)
         }
-      }
 
-      return NextResponse.redirect(`${origin}${next}`)
+        // Perfil incompleto ou novo usuário → completar cadastro
+        // O perfil só é salvo no banco após o formulário ser preenchido
+        const res = NextResponse.redirect(`${origin}/completar-cadastro`)
+        res.cookies.set('profile_pending', '1', {
+          httpOnly: true,
+          sameSite: 'lax',
+          path:     '/',
+          maxAge:   60 * 60 * 24, // 24h
+        })
+        return res
+      }
     }
   }
 

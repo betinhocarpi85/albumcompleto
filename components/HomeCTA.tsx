@@ -29,9 +29,6 @@ export default function HomeCTA() {
       <Link href="/cadastro" className="bg-green-500 hover:bg-green-400 text-white font-bold px-6 py-3.5 rounded-xl text-base transition-colors shadow-lg shadow-green-500/25">
         Começar grátis 🚀
       </Link>
-      <Link href="/album" className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3.5 rounded-xl text-base transition-colors border border-white/20">
-        Ver o álbum
-      </Link>
     </div>
   )
 }

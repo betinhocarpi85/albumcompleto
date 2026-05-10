@@ -40,18 +40,29 @@ export default function CompletarCadastroPage() {
   useEffect(() => {
     getSession().then(session => {
       if (!session) { router.replace('/entrar'); return }
+
+      // Pré-preenche com metadados do magic link (nome, telefone, cep passados no cadastro)
+      const meta = session.user.user_metadata ?? {}
+
+      // Tenta carregar do banco primeiro (usuário pode já ter dados parciais)
       dbGetProfile().then(p => {
         if (p.telefone && p.cep && p.aceitouTermos && p.aceitouPrivacidade) {
           router.replace('/album'); return
         }
-        if (p.nome) {
-          setNome(p.nome)
-          setPrimeiroNome(p.nome.trim().split(' ')[0])
+
+        // Prioriza dados do DB, usa metadados do magic link como fallback
+        const nomeVal     = p.nome     || meta.nome     || meta.full_name || ''
+        const telefoneVal = p.telefone || meta.telefone || ''
+        const cepVal      = p.cep      || meta.cep      || ''
+
+        if (nomeVal) {
+          setNome(nomeVal)
+          setPrimeiroNome(nomeVal.trim().split(' ')[0])
         }
-        if (p.telefone) setTelefone(formatTelefone(p.telefone))
-        if (p.cep) {
-          setCep(formatCEP(p.cep))
-          buscarCEP(p.cep.replace(/\D/g, ''))  // busca bairro/cidade/uf mesmo que já existam
+        if (telefoneVal) setTelefone(formatTelefone(telefoneVal))
+        if (cepVal) {
+          setCep(formatCEP(cepVal))
+          buscarCEP(cepVal.replace(/\D/g, ''))
         }
         if (p.aceitouTermos)      setAceitouTermos(true)
         if (p.aceitouPrivacidade) setAceitouPrivacidade(true)
