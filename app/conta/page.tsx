@@ -9,7 +9,7 @@ import {
   savePedidos,
   type Pedido, type UserProfile,
 } from '@/lib/store'
-import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas } from '@/lib/db'
+import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount } from '@/lib/db'
 
 
 type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
@@ -43,6 +43,7 @@ function ContaPageInner() {
   const [section, setSection]   = useState<Section>('visao-geral')
   const [pedidos, setPedidos]   = useState<Pedido[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
+  const [tradeCount, setTradeCount] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
   const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda'>('todos')
   const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
@@ -114,7 +115,10 @@ function ContaPageInner() {
       setPerfil(merged)
       setPerfilEdit(merged)
     })
-    getUserId().then(id => setUserId(id))
+    getUserId().then(id => {
+      setUserId(id)
+      if (id) dbGetTradeCount(id).then(setTradeCount)
+    })
     dbGetActiveAlbums().then(ids => {
       setActiveAlbums(new Set(ids))
       if (ids.length > 0) setActiveAlbumView(ids[0])
@@ -135,14 +139,15 @@ function ContaPageInner() {
     return m
   })
 
-  const nTrocas  = pedidos.filter(p => p.tipo === 'troca').length
   const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
 
+  // tradeCount = trocas confirmadas por avaliação mútua (fonte confiável para ranking/badges)
   const BADGE_DEFS = [
-    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Complete 10+ vendas',   earned: nVendas >= 10  },
-    { icon: '⭐', label: 'Top Trocador',          desc: 'Complete 50+ trocas',   earned: nTrocas >= 50  },
-    { icon: '🔥', label: '100 Trocas',            desc: 'Realize 100 trocas',    earned: nTrocas >= 100 },
-    { icon: '🏆', label: 'Álbum Completo',        desc: 'Complete 100% do álbum', earned: false          },
+    { icon: '🥇', label: 'Vendedor Verificado', desc: 'Complete 10+ vendas',    earned: nVendas    >= 10  },
+    { icon: '⭐', label: 'Primeiro Troco',       desc: 'Realize 1 troca',        earned: tradeCount >= 1   },
+    { icon: '🔁', label: 'Top Trocador',         desc: 'Complete 50+ trocas',    earned: tradeCount >= 50  },
+    { icon: '🔥', label: '100 Trocas',           desc: 'Realize 100 trocas',     earned: tradeCount >= 100 },
+    { icon: '🏆', label: 'Álbum Completo',       desc: 'Complete 100% do álbum', earned: false             },
   ]
 
   function toggleAlbum(id: AlbumId) {
@@ -242,7 +247,7 @@ function ContaPageInner() {
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { label: 'Trocas',    value: pedidos.filter(p => p.tipo === 'troca').length,   color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
+                  { label: 'Trocas',    value: tradeCount,                                       color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
                   { label: 'Vendas',    value: pedidos.filter(p => p.tipo === 'venda').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
                   { label: 'Avaliações',value: 0,                                                color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
                 ].map(s => (
@@ -442,7 +447,7 @@ function ContaPageInner() {
                 <p className="text-slate-400 text-sm mt-1">entre {(12847).toLocaleString('pt-BR')} colecionadores</p>
                 <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                   {[
-                    { label: 'Trocas', value: pedidos.filter(p => p.tipo === 'troca').length },
+                    { label: 'Trocas', value: tradeCount },
                     { label: 'Vendas', value: pedidos.filter(p => p.tipo === 'venda').length },
                   ].map(s => (
                     <div key={s.label} className="bg-white/10 rounded-xl py-2">
@@ -472,7 +477,7 @@ function ContaPageInner() {
                   ],
                 },
                 {
-                  label: 'Trocas', icon: '🔁', value: pedidos.filter(p => p.tipo === 'troca').length,
+                  label: 'Trocas', icon: '🔁', value: tradeCount,
                   color: { bar: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500', dotOff: 'bg-slate-200' },
                   levels: [
                     { nome: 'Estreante',  meta: 1    },
