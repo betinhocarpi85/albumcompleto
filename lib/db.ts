@@ -362,8 +362,8 @@ export interface PropostaComPerfil {
   de_user_id:   string
   para_user_id: string
   /** Nome da contraparte (de quem enviou, para recebidas; de quem vai receber, para enviadas) */
-  contraparte_nome:   string
-  contraparte_cidade: string
+  contraparte_nome:       string
+  contraparte_localidade: string
   eu_ofereco:   number[]
   eu_recebo:    number[]
   tipo:         TipoProposta
@@ -381,17 +381,18 @@ async function enrichPropostas(
   const ids = [...new Set(propostas.map(p => p[profileIdField] as string))]
   const { data: profiles } = await sb
     .from('profiles')
-    .select('id, nome, cidade')
+    .select('id, nome, bairro, cidade, uf')
     .in('id', ids)
   const pm = new Map((profiles ?? []).map(p => [p.id, p]))
   return propostas.map(p => {
     const pr = pm.get(p[profileIdField] as string)
+    const partes = [pr?.bairro, pr?.cidade, pr?.uf].filter(Boolean)
     return {
-      id:                 p.id as string,
-      de_user_id:         p.de_user_id as string,
-      para_user_id:       p.para_user_id as string,
-      contraparte_nome:   pr?.nome   ?? 'Usuário',
-      contraparte_cidade: pr?.cidade ?? '',
+      id:                     p.id as string,
+      de_user_id:             p.de_user_id as string,
+      para_user_id:           p.para_user_id as string,
+      contraparte_nome:       pr?.nome ?? 'Usuário',
+      contraparte_localidade: partes.join(', '),
       eu_ofereco:         (p.eu_ofereco  as number[]) ?? [],
       eu_recebo:          (p.eu_recebo   as number[]) ?? [],
       tipo:               (p.tipo as TipoProposta)    ?? 'troca',

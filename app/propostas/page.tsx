@@ -202,7 +202,7 @@ export default function PropostasPage() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-400">
-                      {p.contraparte_cidade} · {formatDate(p.created_at)}
+                      {p.contraparte_localidade} · {formatDate(p.created_at)}
                     </p>
                   </div>
                 </div>
@@ -342,7 +342,7 @@ export default function PropostasPage() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-400">
-                      {p.contraparte_cidade} · {formatDate(p.created_at)}
+                      {p.contraparte_localidade} · {formatDate(p.created_at)}
                     </p>
                   </div>
                 </div>
