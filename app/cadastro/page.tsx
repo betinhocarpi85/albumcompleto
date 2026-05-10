@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signUp, signInWithGoogle, getSession } from '@/lib/db'
+import { signUp, signInWithGoogle } from '@/lib/db'
 
 export default function CadastroPage() {
-  const router = useRouter()
+  const router  = useRouter()
   const [loading, setLoading] = useState(false)
   const [erros,   setErros]   = useState<string[]>([])
   const [email,   setEmail]   = useState('')
@@ -15,9 +15,7 @@ export default function CadastroPage() {
   const [mostrarSenha,      setMostrarSenha]      = useState(false)
   const [mostrarConfirmar,  setMostrarConfirmar]  = useState(false)
 
-  useEffect(() => {
-    getSession().then(s => { if (s) router.replace('/album') })
-  }, [router])
+  // Não redireciona usuário logado — deixa o Supabase tratar duplicatas
 
   async function handleSubmit() {
     const e: string[] = []
