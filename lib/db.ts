@@ -466,13 +466,21 @@ export async function dbUpdateProposta(
 // ─── Trocas / Estatísticas ────────────────────────────────────────────────────
 
 export async function dbGetTradeCount(userId: string): Promise<number> {
+  // Só conta propostas onde AMBOS os usuários avaliaram (confirmação mútua)
   const sb = createClient()
-  const { count } = await sb
-    .from('propostas')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'aceita')
+  const { data } = await sb
+    .from('avaliacoes')
+    .select('proposta_id')
     .or(`de_user_id.eq.${userId},para_user_id.eq.${userId}`)
-  return count ?? 0
+
+  if (!data || data.length === 0) return 0
+
+  // Agrupa por proposta_id e conta as que têm 2 avaliações
+  const counts = new Map<string, number>()
+  for (const row of data) {
+    counts.set(row.proposta_id, (counts.get(row.proposta_id) ?? 0) + 1)
+  }
+  return [...counts.values()].filter(n => n >= 2).length
 }
 
 export interface PublicProfileData {
@@ -485,22 +493,34 @@ export interface PublicProfileData {
 
 export async function dbGetPublicProfile(userId: string): Promise<PublicProfileData> {
   const sb = createClient()
-  const [profileRes, tradeRes, ratingsRes] = await Promise.all([
+  const [profileRes, allAvalRes, ratingsRes] = await Promise.all([
     sb.from('profiles').select('nome, bairro, cidade, uf').eq('id', userId).single(),
-    sb.from('propostas').select('id', { count: 'exact', head: true })
-      .eq('status', 'aceita')
-      .or(`de_user_id.eq.${userId},para_user_id.eq.${userId}`),
+    // Busca todas avaliações relacionadas ao usuário para calcular trocas mútuas
+    sb.from('avaliacoes').select('proposta_id, de_user_id, para_user_id'),
+    // Avaliações recebidas (para rating)
     sb.from('avaliacoes').select('nota').eq('para_user_id', userId),
   ])
+
   const p = profileRes.data
+
+  // Trocas confirmadas = propostas com 2 avaliações envolvendo este usuário
+  const allAval = allAvalRes.data ?? []
+  const userAval = allAval.filter(a => a.de_user_id === userId || a.para_user_id === userId)
+  const countByProposta = new Map<string, number>()
+  for (const a of userAval) {
+    countByProposta.set(a.proposta_id, (countByProposta.get(a.proposta_id) ?? 0) + 1)
+  }
+  const tradeCount = [...countByProposta.values()].filter(n => n >= 2).length
+
   const ratings = ratingsRes.data ?? []
   const ratingMedia = ratings.length > 0
     ? ratings.reduce((s, r) => s + (r.nota as number), 0) / ratings.length
     : null
+
   return {
     nome:        p?.nome ?? 'Usuário',
     localidade:  [p?.bairro, p?.cidade, p?.uf].filter(Boolean).join(', '),
-    tradeCount:  tradeRes.count ?? 0,
+    tradeCount,
     ratingMedia,
     ratingCount: ratings.length,
   }
