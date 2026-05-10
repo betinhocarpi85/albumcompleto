@@ -210,7 +210,7 @@ function ContaPageInner() {
                 <span>{item.icon}</span>
                 <span className="flex-1">{item.label}</span>
                 {item.badge != null && item.badge > 0 && (
-                  <span className="text-[10px] font-black bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-black bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
                     {item.badge}
                   </span>
                 )}
