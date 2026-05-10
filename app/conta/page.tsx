@@ -12,7 +12,7 @@ import {
 import { signOut, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount } from '@/lib/db'
 
 
-type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'endereco' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
 
 const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
@@ -21,7 +21,6 @@ const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
-  { key: 'endereco',    icon: '📍', label: 'Endereço' },
   { key: 'seguranca',   icon: '🔒', label: 'Segurança' },
 ]
 
@@ -51,7 +50,6 @@ function ContaPageInner() {
   const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
   const [albumProgress, setAlbumProgress] = useState<Record<AlbumId, number>>(ALBUM_PROGRESS_FALLBACK)
   const [editDados, setEditDados] = useState(false)
-  const [editEndereco, setEditEndereco] = useState(false)
   const [perfil, setPerfil] = useState<Partial<UserProfile>>({})
   const [perfilEdit, setPerfilEdit] = useState<Partial<UserProfile>>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -84,7 +82,7 @@ function ContaPageInner() {
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
-    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','endereco','historico','seguranca']
+    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','seguranca']
     if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
@@ -599,67 +597,6 @@ function ContaPageInner() {
                       className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-2"
                     >
                       Salvar alterações
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ENDEREÇO */}
-          {section === 'endereco' && (
-            <div className="animate-fadein">
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <p className="font-bold text-slate-800">Endereço de entrega</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Usado para envio de figurinhas. Nunca exibido publicamente.</p>
-                  </div>
-                  <button onClick={() => { setEditEndereco(!editEndereco); setPerfilEdit(perfil) }} className="text-sm text-green-600 font-semibold hover:text-green-700 flex-shrink-0">
-                    {editEndereco ? 'Cancelar' : '✏️ Editar'}
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { label: 'CEP', field: 'cep' as keyof UserProfile, col: 'col-span-2' },
-                      { label: 'UF',  field: 'uf'  as keyof UserProfile, col: 'col-span-1' },
-                    ] as { label: string; field: keyof UserProfile; col: string }[]).map(f => (
-                      <div key={f.label} className={f.col}>
-                        <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
-                        {editEndereco
-                          ? <input type="text"
-                              value={String(perfilEdit[f.field] ?? '')}
-                              onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
-                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                          : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{String(perfil[f.field] || '—')}</p>
-                        }
-                      </div>
-                    ))}
-                  </div>
-                  {([
-                    { label: 'Logradouro',  field: 'logradouro'  as keyof UserProfile, col: 'col-span-3' },
-                    { label: 'Número',      field: 'numero'      as keyof UserProfile, col: 'col-span-1' },
-                    { label: 'Complemento', field: 'complemento' as keyof UserProfile, col: 'col-span-2' },
-                    { label: 'Cidade',      field: 'cidade'      as keyof UserProfile, col: 'col-span-3' },
-                  ] as { label: string; field: keyof UserProfile; col: string }[]).map(f => (
-                    <div key={f.label} className={f.col}>
-                      <label className="text-xs font-semibold text-slate-500 block mb-1">{f.label}</label>
-                      {editEndereco
-                        ? <input type="text"
-                            value={String(perfilEdit[f.field] ?? '')}
-                            onChange={e => setPerfilEdit(p => ({ ...p, [f.field]: e.target.value }))}
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                        : <p className="text-sm text-slate-700 bg-slate-50 px-3 py-2.5 rounded-xl">{String(perfil[f.field] || '—')}</p>
-                      }
-                    </div>
-                  ))}
-                  {editEndereco && (
-                    <button
-                      onClick={() => { dbSaveProfile({ ...perfil, ...perfilEdit }); setPerfil({ ...perfil, ...perfilEdit }); setEditEndereco(false) }}
-                      className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors mt-1"
-                    >
-                      Salvar endereço
                     </button>
                   )}
                 </div>
