@@ -106,11 +106,13 @@ export default function AnunciosPage() {
           const coladasSet = new Set(col)
           setColadas(coladasSet)
           setAnuncios(saved.map(a => {
+            // limpa chaves compostas legadas (sid__troca → sid)
+            const rawSid = a.sid.replace(/__(?:troca|venda)$/, '')
             const acao: TipoAnuncio = a.preco != null && a.preco > 0 ? 'venda' : 'troca'
-            const info = allStickersFlat.find(s => s.sid === a.sid)
+            const info = allStickersFlat.find(s => s.sid === rawSid)
             return {
-              key:     makeKey(a.sid, acao),
-              sid:     a.sid,
+              key:     makeKey(rawSid, acao),
+              sid:     rawSid,
               gNum:    typeof a.gNum === 'number' ? a.gNum : Number(a.gNum) || 0,
               nome:    a.nome,
               catName: info?.catName ?? '',
@@ -182,7 +184,7 @@ export default function AnunciosPage() {
   async function salvar(lista: AnuncioLocal[]) {
     setSalvando(true)
     await dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
-      sid:   a.key,
+      sid:   a.sid,
       gNum:  a.gNum,
       nome:  a.nome,
       qty:   a.qty,
