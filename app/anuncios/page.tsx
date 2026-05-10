@@ -8,9 +8,12 @@ import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSess
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
-type Tab = 'disponiveis' | 'anunciadas'
+type Tab        = 'disponiveis' | 'anunciadas'
+type SubTab     = TipoAnuncio
 
+// Chave única: sid__acao (mesma figurinha pode ter troca E venda)
 interface AnuncioLocal {
+  key:     string   // sid__acao
   sid:     string
   gNum:    number
   nome:    string
@@ -22,11 +25,12 @@ interface AnuncioLocal {
 }
 
 interface QtyModal {
+  key:    string
   sid:    string
   gNum:   number
   nome:   string
   tipo:   StickerType
-  acao:   TipoAnuncio
+  acao:   TipoAnuncio  // fixo (definido pela sub-aba)
   preco:  string
   qty:    number
   isNew:  boolean
@@ -37,7 +41,6 @@ const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 const PRECO_SUGERIDO: Record<StickerType, string> = {
   normal: '3.00', escudo: '4.00', brilhante: '8.00', especial: '5.00',
 }
-
 const TIPO_ICON: Record<StickerType, string> = {
   normal: '', escudo: '🛡️', brilhante: '✨', especial: '⭐',
 }
@@ -54,7 +57,6 @@ const allStickersFlat = albumCopa2026.categories.flatMap(cat =>
   }))
 )
 
-// Agrupa stickers por categoria
 const stickersPorCat = albumCopa2026.categories.map(cat => ({
   id:      cat.id,
   name:    cat.name,
@@ -67,6 +69,8 @@ const stickersPorCat = albumCopa2026.categories.map(cat => ({
   })),
 }))
 
+function makeKey(sid: string, acao: TipoAnuncio) { return `${sid}__${acao}` }
+
 export default function AnunciosPage() {
   const [albumId,  setAlbumId]  = useState<AlbumId>('copa-2026')
   const [adulto,   setAdulto]   = useState(true)
@@ -74,6 +78,7 @@ export default function AnunciosPage() {
   const [anuncios, setAnuncios] = useState<AnuncioLocal[]>([])
   const [loading,  setLoading]  = useState(true)
   const [tab,      setTab]      = useState<Tab>('disponiveis')
+  const [subTab,   setSubTab]   = useState<SubTab>('troca')
   const [modal,    setModal]    = useState<QtyModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
@@ -91,19 +96,20 @@ export default function AnunciosPage() {
           const coladasSet = new Set(col)
           setColadas(coladasSet)
           setAnuncios(saved.map(a => {
+            const acao: TipoAnuncio = a.preco != null && a.preco > 0 ? 'venda' : 'troca'
             const info = allStickersFlat.find(s => s.sid === a.sid)
             return {
+              key:     makeKey(a.sid, acao),
               sid:     a.sid,
               gNum:    typeof a.gNum === 'number' ? a.gNum : Number(a.gNum) || 0,
               nome:    a.nome,
               catName: info?.catName ?? '',
               tipo:    a.tipo as StickerType,
-              acao:    a.preco != null && a.preco > 0 ? 'venda' : 'troca',
+              acao,
               preco:   a.preco != null && a.preco > 0 ? String(a.preco.toFixed(2)) : '',
               qty:     a.qty,
             }
           }))
-          // Abre todas as categorias que têm coladas
           const catsComColadas = new Set(
             allStickersFlat.filter(s => coladasSet.has(s.sid)).map(s => s.catId)
           )
@@ -114,17 +120,20 @@ export default function AnunciosPage() {
     })
   }, [])
 
-  const anunciadosSet = useMemo(() => new Set(anuncios.map(a => a.sid)), [anuncios])
+  // Chaves já anunciadas por ação
+  const anunciadosKeys = useMemo(() => new Set(anuncios.map(a => a.key)), [anuncios])
 
-  // Stickers colados ainda não anunciados, agrupados por categoria
+  // Categorias filtradas pela sub-aba: mostra coladas que ainda não têm esse tipo de anúncio
   const catsDisponiveis = useMemo(() =>
     stickersPorCat
       .map(cat => ({
         ...cat,
-        stickers: cat.stickers.filter(s => coladas.has(s.sid) && !anunciadosSet.has(s.sid)),
+        stickers: cat.stickers.filter(s =>
+          coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, subTab))
+        ),
       }))
       .filter(cat => cat.stickers.length > 0),
-    [coladas, anunciadosSet]
+    [coladas, anunciadosKeys, subTab]
   )
 
   const totalDisponiveis = useMemo(() =>
@@ -156,18 +165,30 @@ export default function AnunciosPage() {
 
   function abrirModal(s: { sid: string; gNum: number; nome: string; tipo: StickerType }) {
     if (!adulto) return
-    setModal({ sid: s.sid, gNum: s.gNum, nome: s.nome, tipo: s.tipo,
-      acao: 'troca', preco: PRECO_SUGERIDO[s.tipo], qty: 1, isNew: true })
+    const key = makeKey(s.sid, subTab)
+    setModal({
+      key, sid: s.sid, gNum: s.gNum, nome: s.nome, tipo: s.tipo,
+      acao:  subTab,
+      preco: PRECO_SUGERIDO[s.tipo],
+      qty:   1,
+      isNew: true,
+    })
   }
 
   function editarModal(a: AnuncioLocal) {
-    setModal({ sid: a.sid, gNum: a.gNum, nome: a.nome, tipo: a.tipo,
-      acao: a.acao, preco: a.preco || PRECO_SUGERIDO[a.tipo], qty: a.qty, isNew: false })
+    setModal({
+      key: a.key, sid: a.sid, gNum: a.gNum, nome: a.nome, tipo: a.tipo,
+      acao:  a.acao,
+      preco: a.preco || PRECO_SUGERIDO[a.tipo],
+      qty:   a.qty,
+      isNew: false,
+    })
   }
 
   async function confirmarModal() {
     if (!modal) return
     const novo: AnuncioLocal = {
+      key:     modal.key,
       sid:     modal.sid,
       gNum:    modal.gNum,
       nome:    modal.nome,
@@ -179,22 +200,22 @@ export default function AnunciosPage() {
     }
     const next = modal.isNew
       ? [...anuncios, novo]
-      : anuncios.map(a => a.sid === modal.sid ? novo : a)
+      : anuncios.map(a => a.key === modal.key ? novo : a)
     setAnuncios(next)
     await salvar(next)
     setModal(null)
     if (modal.isNew) setTab('anunciadas')
   }
 
-  async function remover(sid: string) {
-    const next = anuncios.filter(a => a.sid !== sid)
+  async function remover(key: string) {
+    const next = anuncios.filter(a => a.key !== key)
     setAnuncios(next)
     await salvar(next)
   }
 
   async function removerModal() {
     if (!modal) return
-    const next = anuncios.filter(a => a.sid !== modal.sid)
+    const next = anuncios.filter(a => a.key !== modal.key)
     setAnuncios(next)
     await salvar(next)
     setModal(null)
@@ -203,7 +224,7 @@ export default function AnunciosPage() {
   async function salvar(lista: AnuncioLocal[]) {
     setSalvando(true)
     await dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
-      sid:   a.sid,
+      sid:   a.key,   // usa key (sid__acao) como sid único no DB
       gNum:  a.gNum,
       nome:  a.nome,
       qty:   a.qty,
@@ -231,24 +252,15 @@ export default function AnunciosPage() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
             <p className="text-xs text-slate-400 mb-0.5">Figurinha #{modal.gNum} {TIPO_ICON[modal.tipo]}</p>
-            <p className="font-black text-slate-800 text-lg leading-tight mb-4">{modal.nome}</p>
+            <p className="font-black text-slate-800 text-lg leading-tight mb-1">{modal.nome}</p>
 
-            {/* Venda / Troca */}
-            <p className="text-xs font-semibold text-slate-500 mb-2">Tipo de anúncio</p>
-            <div className="flex gap-2 mb-4">
-              {(['troca', 'venda'] as TipoAnuncio[]).map(tipo => (
-                <button key={tipo}
-                  onClick={() => setModal(m => m ? { ...m, acao: tipo } : m)}
-                  className={['flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all',
-                    modal.acao === tipo
-                      ? tipo === 'venda' ? 'bg-green-500 border-green-500 text-white' : 'bg-blue-500 border-blue-500 text-white'
-                      : 'border-slate-200 text-slate-500 hover:border-slate-300'].join(' ')}>
-                  {tipo === 'venda' ? '💰 Venda' : '🔁 Troca'}
-                </button>
-              ))}
+            {/* Tipo fixo (definido pela sub-aba) */}
+            <div className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold mb-4',
+              modal.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
+              {modal.acao === 'venda' ? '💰 Venda' : '🔁 Troca'}
             </div>
 
-            {/* Preço */}
+            {/* Preço (só venda) */}
             {modal.acao === 'venda' && (
               <div className="mb-4">
                 <p className="text-xs font-semibold text-slate-500 mb-2">Preço por unidade</p>
@@ -315,8 +327,8 @@ export default function AnunciosPage() {
       {/* Resumo */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-green-50 rounded-2xl px-4 py-3 text-center">
-          <p className="text-2xl font-black text-green-700">{totalDisponiveis}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Disponíveis</p>
+          <p className="text-2xl font-black text-green-700">{coladas.size}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">No álbum</p>
         </div>
         <div className="bg-blue-50 rounded-2xl px-4 py-3 text-center">
           <p className="text-2xl font-black text-blue-700">{anuncios.length}</p>
@@ -335,12 +347,12 @@ export default function AnunciosPage() {
         </div>
       ) : (
         <>
-          {/* Abas */}
+          {/* Abas principais */}
           <div className="flex gap-2 mb-4">
             <button onClick={() => setTab('disponiveis')}
               className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
                 tab === 'disponiveis' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
-              📋 Disponíveis ({totalDisponiveis})
+              📋 Disponíveis
             </button>
             <button onClick={() => setTab('anunciadas')}
               className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
@@ -349,19 +361,45 @@ export default function AnunciosPage() {
             </button>
           </div>
 
-          {/* ── ABA DISPONÍVEIS (grade como álbum) ── */}
+          {/* ── ABA DISPONÍVEIS ── */}
           {tab === 'disponiveis' && (
             <div className="animate-fadein">
+              {/* Sub-abas Troca / Venda */}
+              <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
+                <button onClick={() => setSubTab('troca')}
+                  className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
+                    subTab === 'troca' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                  🔁 Troca ({subTab === 'troca' ? totalDisponiveis : catsDisponiveis.reduce((a,c) => a + c.stickers.length, 0)})
+                </button>
+                <button onClick={() => setSubTab('venda')}
+                  className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
+                    subTab === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
+                  💰 Venda ({subTab === 'venda' ? totalDisponiveis : (() => {
+                    // conta para venda
+                    return stickersPorCat.reduce((acc, cat) =>
+                      acc + cat.stickers.filter(s => coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, 'venda'))).length, 0)
+                  })()})
+                </button>
+              </div>
+
               {!adulto && (
                 <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 text-center font-semibold">
                   🔒 Anúncios disponíveis apenas para maiores de 18
                 </div>
               )}
 
+              <p className="text-xs text-slate-400 mb-3 text-center">
+                {subTab === 'troca'
+                  ? 'Figurinhas disponíveis para anunciar como troca'
+                  : 'Figurinhas disponíveis para anunciar como venda'}
+              </p>
+
               {catsDisponiveis.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
                   <p className="text-3xl mb-2">✅</p>
-                  <p className="font-bold text-slate-700 text-sm">Todas as figurinhas já estão anunciadas!</p>
+                  <p className="font-bold text-slate-700 text-sm">
+                    Todas as figurinhas já estão anunciadas para {subTab === 'troca' ? 'troca' : 'venda'}!
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -369,37 +407,35 @@ export default function AnunciosPage() {
                     const isOpen = openCats.has(cat.id)
                     return (
                       <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        {/* Header da categoria */}
-                        <button
-                          onClick={() => toggleCat(cat.id)}
+                        <button onClick={() => toggleCat(cat.id)}
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
                           <span className="text-xl">{cat.flag}</span>
                           <span className="flex-1 font-bold text-sm text-slate-800">{cat.name}</span>
-                          <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                          <span className={['text-xs font-semibold px-2 py-0.5 rounded-full',
+                            subTab === 'troca' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'].join(' ')}>
                             {cat.stickers.length} fig.
                           </span>
                           <span className="text-slate-400 text-xs">{isOpen ? '▲' : '▼'}</span>
                         </button>
 
-                        {/* Grade de figurinhas */}
                         {isOpen && (
                           <div className="px-4 pb-4 pt-1 border-t border-slate-50">
                             <div className="flex flex-wrap gap-2">
                               {cat.stickers.map(s => (
-                                <button
-                                  key={s.sid}
-                                  onClick={() => abrirModal(s)}
+                                <button key={s.sid} onClick={() => abrirModal(s)}
                                   title={`#${s.gNum} · ${s.nome}`}
-                                  className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-green-400 hover:bg-green-50 active:scale-90 transition-all flex flex-col items-center justify-center gap-0.5 group">
-                                  <span className="text-[11px] font-black text-slate-500 group-hover:text-green-700 leading-none">{s.gNum}</span>
-                                  {TIPO_ICON[s.tipo] && (
-                                    <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>
-                                  )}
+                                  className={['w-12 h-12 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all group',
+                                    subTab === 'troca'
+                                      ? 'border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'
+                                      : 'border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100'].join(' ')}>
+                                  <span className={['text-[11px] font-black leading-none',
+                                    subTab === 'troca' ? 'text-blue-600' : 'text-green-600'].join(' ')}>{s.gNum}</span>
+                                  {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
                                 </button>
                               ))}
                             </div>
                             <p className="text-[10px] text-slate-400 mt-2 text-center">
-                              Toque em uma figurinha para anunciá-la
+                              Toque para anunciar como {subTab === 'troca' ? 'troca' : 'venda'}
                             </p>
                           </div>
                         )}
@@ -418,11 +454,10 @@ export default function AnunciosPage() {
                 <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
                   <p className="text-3xl mb-2">📭</p>
                   <p className="font-bold text-slate-700 text-sm mb-1">Nenhum anúncio ainda</p>
-                  <p className="text-xs text-slate-400">Vá para a aba Disponíveis e selecione figurinhas para anunciar.</p>
+                  <p className="text-xs text-slate-400">Vá para Disponíveis e selecione figurinhas.</p>
                 </div>
               ) : (
                 <>
-                  {/* Filtros */}
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {(['todos', 'troca', 'venda'] as const).map(f => (
@@ -442,7 +477,7 @@ export default function AnunciosPage() {
                   </div>
 
                   {anunciosFiltrados.map(a => (
-                    <div key={a.sid} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
+                    <div key={a.key} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
                       <div className={['w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 border-2',
                         a.acao === 'venda' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-blue-50 border-blue-200 text-blue-700'].join(' ')}>
                         <span className="text-xs font-black leading-none">{a.gNum}</span>
@@ -466,7 +501,7 @@ export default function AnunciosPage() {
                           className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors flex items-center justify-center">
                           ✏️
                         </button>
-                        <button onClick={() => remover(a.sid)}
+                        <button onClick={() => remover(a.key)}
                           className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 text-lg transition-colors flex items-center justify-center">
                           ×
                         </button>
