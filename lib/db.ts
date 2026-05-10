@@ -32,6 +32,20 @@ export async function signUp(email: string, password: string) {
   return sb.auth.signUp({ email, password })
 }
 
+export async function signInWithMagicLink(
+  email: string,
+  metadata?: Record<string, string | boolean>
+) {
+  const sb = createClient()
+  return sb.auth.signInWithOtp({
+    email,
+    options: {
+      data: metadata,
+      emailRedirectTo: `${location.origin}/auth/callback`,
+    },
+  })
+}
+
 export async function signInWithGoogle() {
   const sb = createClient()
   return sb.auth.signInWithOAuth({
