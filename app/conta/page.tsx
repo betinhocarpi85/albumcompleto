@@ -440,23 +440,6 @@ function ContaPageInner() {
           {/* GAMEFICAÇÃO */}
           {section === 'gamificacao' && (
             <div className="animate-fadein space-y-4">
-              {/* Ranking */}
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
-                <p className="text-slate-400 text-sm mb-1">Seu ranking este mês</p>
-                <div className="text-5xl font-black text-green-400">#247</div>
-                <p className="text-slate-400 text-sm mt-1">entre {(12847).toLocaleString('pt-BR')} colecionadores</p>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                  {[
-                    { label: 'Trocas', value: tradeCount },
-                    { label: 'Vendas', value: pedidos.filter(p => p.tipo === 'venda').length },
-                  ].map(s => (
-                    <div key={s.label} className="bg-white/10 rounded-xl py-2">
-                      <div className="text-xl font-black">{s.value}</div>
-                      <div className="text-xs text-slate-400">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Badges por categoria */}
               {[
