@@ -463,6 +463,80 @@ export async function dbUpdateProposta(
   await sb.from('propostas').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
 }
 
+// ─── Trocas / Estatísticas ────────────────────────────────────────────────────
+
+export async function dbGetTradeCount(userId: string): Promise<number> {
+  const sb = createClient()
+  const { count } = await sb
+    .from('propostas')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'aceita')
+    .or(`de_user_id.eq.${userId},para_user_id.eq.${userId}`)
+  return count ?? 0
+}
+
+export interface PublicProfileData {
+  nome:        string
+  localidade:  string
+  tradeCount:  number
+  ratingMedia: number | null
+  ratingCount: number
+}
+
+export async function dbGetPublicProfile(userId: string): Promise<PublicProfileData> {
+  const sb = createClient()
+  const [profileRes, tradeRes, ratingsRes] = await Promise.all([
+    sb.from('profiles').select('nome, bairro, cidade, uf').eq('id', userId).single(),
+    sb.from('propostas').select('id', { count: 'exact', head: true })
+      .eq('status', 'aceita')
+      .or(`de_user_id.eq.${userId},para_user_id.eq.${userId}`),
+    sb.from('avaliacoes').select('nota').eq('para_user_id', userId),
+  ])
+  const p = profileRes.data
+  const ratings = ratingsRes.data ?? []
+  const ratingMedia = ratings.length > 0
+    ? ratings.reduce((s, r) => s + (r.nota as number), 0) / ratings.length
+    : null
+  return {
+    nome:        p?.nome ?? 'Usuário',
+    localidade:  [p?.bairro, p?.cidade, p?.uf].filter(Boolean).join(', '),
+    tradeCount:  tradeRes.count ?? 0,
+    ratingMedia,
+    ratingCount: ratings.length,
+  }
+}
+
+export async function dbAvaliar(
+  proposta_id:  string,
+  para_user_id: string,
+  nota:         number,
+  comentario?:  string
+): Promise<{ error: string | null }> {
+  const uid = await getUserId()
+  if (!uid) return { error: 'Não autenticado' }
+  const sb = createClient()
+  const { error } = await sb.from('avaliacoes').insert({
+    de_user_id:  uid,
+    para_user_id,
+    proposta_id,
+    nota,
+    comentario: comentario || null,
+  })
+  return { error: error?.message ?? null }
+}
+
+export async function dbJaAvaliou(proposta_id: string): Promise<boolean> {
+  const uid = await getUserId()
+  if (!uid) return false
+  const sb = createClient()
+  const { count } = await sb
+    .from('avaliacoes')
+    .select('id', { count: 'exact', head: true })
+    .eq('de_user_id', uid)
+    .eq('proposta_id', proposta_id)
+  return (count ?? 0) > 0
+}
+
 // ─── Conta ────────────────────────────────────────────────────────────────────
 
 export async function dbDeleteAccount(): Promise<{ error: string | null }> {

@@ -186,9 +186,20 @@ function ContaPageInner() {
               <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
               <p className="text-xs text-slate-400">{[perfil.bairro, perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
               {userId && (
-                <Link href={`/perfil/${userId}`} className="text-xs text-green-600 font-medium hover:underline">
-                  Ver perfil público →
-                </Link>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Link href={`/perfil/${userId}`} className="text-xs text-green-600 font-medium hover:underline">
+                    Ver perfil →
+                  </Link>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/perfil/${userId}`)
+                    }}
+                    title="Copiar link do perfil"
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    🔗
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -6,6 +6,7 @@ import {
   getSession, dbGetProfile,
   dbGetPropostasRecebidas, dbGetPropostasEnviadas,
   dbUpdateProposta, dbGetPhoneForProposta,
+  dbAvaliar, dbJaAvaliou,
   type PropostaComPerfil, type TipoProposta,
 } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
@@ -68,12 +69,17 @@ function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
   )
 }
 
+type AvaliacaoModal = { proposta: PropostaComPerfil; nota: number; comentario: string }
+
 export default function PropostasPage() {
   const [aba, setAba]             = useState<Aba>('recebidas')
   const [recebidas, setRecebidas] = useState<PropostaComPerfil[]>([])
   const [enviadas, setEnviadas]   = useState<PropostaComPerfil[]>([])
   const [phones, setPhones]       = useState<Record<string, string>>({})
+  const [jaAvaliou, setJaAvaliou] = useState<Record<string, boolean>>({})
   const [confirmando, setConfirmando] = useState<{ id: string; acao: 'aceitar' | 'recusar' } | null>(null)
+  const [avalModal, setAvalModal] = useState<AvaliacaoModal | null>(null)
+  const [avalSalvando, setAvalSalvando] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [adulto, setAdulto]       = useState(true)
 
@@ -101,8 +107,28 @@ export default function PropostasPage() {
       const newPhones: Record<string, string> = {}
       entries.forEach(([id, phone]) => { if (phone) newPhones[id] = phone })
       setPhones(newPhones)
+
+      // Verifica quais já foram avaliadas
+      const avalChecks = await Promise.all(
+        aceitas.map(async p => [p.id, await dbJaAvaliou(p.id)] as [string, boolean])
+      )
+      const avalMap: Record<string, boolean> = {}
+      avalChecks.forEach(([id, done]) => { avalMap[id] = done })
+      setJaAvaliou(avalMap)
     })
   }, [])
+
+  async function salvarAvaliacao() {
+    if (!avalModal || avalSalvando) return
+    setAvalSalvando(true)
+    const contraparte_id = avalModal.proposta.de_user_id === (await import('@/lib/db').then(m => m.getUserId()))
+      ? avalModal.proposta.para_user_id
+      : avalModal.proposta.de_user_id
+    await dbAvaliar(avalModal.proposta.id, contraparte_id, avalModal.nota, avalModal.comentario)
+    setJaAvaliou(prev => ({ ...prev, [avalModal.proposta.id]: true }))
+    setAvalSalvando(false)
+    setAvalModal(null)
+  }
 
   async function confirmar() {
     if (!confirmando || loading) return
@@ -265,7 +291,7 @@ export default function PropostasPage() {
                   </div>
                 )}
 
-                {/* Aceita — revelar telefone */}
+                {/* Aceita — revelar telefone + avaliar */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
@@ -286,6 +312,16 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
+                    {jaAvaliou[p.id] ? (
+                      <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
+                    ) : (
+                      <button
+                        onClick={() => setAvalModal({ proposta: p, nota: 5, comentario: '' })}
+                        className="w-full py-2 rounded-xl border border-yellow-300 bg-yellow-50 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors"
+                      >
+                        ⭐ Avaliar {p.contraparte_nome}
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -366,7 +402,7 @@ export default function PropostasPage() {
                   </div>
                 </div>
 
-                {/* Aceita — revelar telefone */}
+                {/* Aceita — revelar telefone + avaliar */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
@@ -385,6 +421,16 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
+                    {jaAvaliou[p.id] ? (
+                      <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
+                    ) : (
+                      <button
+                        onClick={() => setAvalModal({ proposta: p, nota: 5, comentario: '' })}
+                        className="w-full py-2 rounded-xl border border-yellow-300 bg-yellow-50 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors"
+                      >
+                        ⭐ Avaliar {p.contraparte_nome}
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -412,6 +458,57 @@ export default function PropostasPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal avaliação */}
+      {avalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { if (!avalSalvando) setAvalModal(null) }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-fadein">
+            <p className="text-2xl mb-2">⭐</p>
+            <p className="font-black text-slate-800 mb-1">Avaliar {avalModal.proposta.contraparte_nome}</p>
+            <p className="text-xs text-slate-400 mb-4">Como foi a experiência desta troca?</p>
+
+            {/* Estrelas */}
+            <div className="flex justify-center gap-3 mb-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <button
+                  key={i}
+                  onClick={() => setAvalModal(prev => prev ? { ...prev, nota: i } : prev)}
+                  className={`text-3xl transition-transform hover:scale-110 ${i <= avalModal.nota ? 'text-yellow-400' : 'text-slate-200'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            {/* Comentário opcional */}
+            <textarea
+              placeholder="Comentário opcional…"
+              value={avalModal.comentario}
+              onChange={e => setAvalModal(prev => prev ? { ...prev, comentario: e.target.value } : prev)}
+              rows={2}
+              className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none mb-4"
+            />
+
+            <div className="flex gap-2">
+              <button
+                disabled={avalSalvando}
+                onClick={() => setAvalModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={avalSalvando}
+                onClick={salvarAvaliacao}
+                className="flex-1 py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-900 text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {avalSalvando ? '…' : 'Enviar avaliação'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
