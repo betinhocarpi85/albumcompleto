@@ -28,6 +28,7 @@ export async function GET(request: Request) {
             nome:                meta.nome,
             telefone:            meta.telefone,
             cep:                 meta.cep,
+            bairro:              meta.bairro ?? '',
             cidade:              meta.cidade,
             uf:                  meta.uf,
             maior18:             true,

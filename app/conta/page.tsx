@@ -597,7 +597,7 @@ function ContaPageInner() {
                               try {
                                 const res  = await fetch(`https://viacep.com.br/ws/${raw}/json/`)
                                 const data = await res.json()
-                                if (!data.erro) setPerfilEdit(p => ({ ...p, cidade: data.localidade, uf: data.uf }))
+                                if (!data.erro) setPerfilEdit(p => ({ ...p, bairro: data.bairro ?? '', cidade: data.localidade, uf: data.uf }))
                               } finally { setCepLoading(false) }
                             }
                           }}
@@ -612,14 +612,18 @@ function ContaPageInner() {
                     )}
                   </div>
 
-                  {/* Cidade / Estado — auto-preenchido */}
+                  {/* Bairro / Cidade / Estado — auto-preenchido */}
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 block mb-1">Cidade — Estado</label>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Bairro — Cidade — Estado</label>
                     <p className={['text-sm px-4 py-2.5 rounded-xl',
                       editDados ? 'text-slate-500 bg-slate-50 border border-dashed border-slate-200' : 'text-slate-700 bg-slate-50'].join(' ')}>
-                      {(editDados ? perfilEdit.cidade : perfil.cidade) && (editDados ? perfilEdit.uf : perfil.uf)
-                        ? `${editDados ? perfilEdit.cidade : perfil.cidade} — ${editDados ? perfilEdit.uf : perfil.uf}`
-                        : '—'}
+                      {(() => {
+                        const b = editDados ? perfilEdit.bairro : perfil.bairro
+                        const c = editDados ? perfilEdit.cidade : perfil.cidade
+                        const u = editDados ? perfilEdit.uf     : perfil.uf
+                        const parts = [b, c, u].filter(Boolean)
+                        return parts.length ? parts.join(' — ') : '—'
+                      })()}
                     </p>
                     {editDados && <p className="text-[11px] text-slate-400 mt-1">Preenchido automaticamente pelo CEP.</p>}
                   </div>

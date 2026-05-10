@@ -27,6 +27,7 @@ export default function CadastroPage() {
   const [email,     setEmail]       = useState('')
   const [telefone,  setTelefone]    = useState('')
   const [cep,       setCep]         = useState('')
+  const [bairro,    setBairro]      = useState('')
   const [cidade,    setCidade]      = useState('')
   const [uf,        setUf]          = useState('')
   const [cepOk,     setCepOk]       = useState(false)
@@ -44,8 +45,8 @@ export default function CadastroPage() {
     try {
       const res  = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
       const data = await res.json()
-      if (data.erro) { setCepOk(false); setCidade(''); setUf('') }
-      else { setCidade(data.localidade); setUf(data.uf); setCepOk(true) }
+      if (data.erro) { setCepOk(false); setBairro(''); setCidade(''); setUf('') }
+      else { setBairro(data.bairro ?? ''); setCidade(data.localidade); setUf(data.uf); setCepOk(true) }
     } catch { setCepOk(false) }
     finally { setCepLoading(false) }
   }
@@ -55,7 +56,7 @@ export default function CadastroPage() {
     setCep(fmt)
     const digits = v.replace(/\D/g, '')
     if (digits.length === 8) buscarCEP(digits)
-    else { setCepOk(false); setCidade(''); setUf('') }
+    else { setCepOk(false); setBairro(''); setCidade(''); setUf('') }
   }
 
   function validar(): string[] {
@@ -78,6 +79,7 @@ export default function CadastroPage() {
       nome:               nome.trim(),
       telefone:           telefone.replace(/\D/g, ''),
       cep:                cep.replace(/\D/g, ''),
+      bairro,
       cidade,
       uf,
       aceitouTermos:      true,
@@ -192,7 +194,7 @@ export default function CadastroPage() {
                   )}
                 </div>
                 {cepOk && cidade && (
-                  <p className="text-[11px] text-green-600 font-semibold mt-1">📍 {cidade} — {uf}</p>
+                  <p className="text-[11px] text-green-600 font-semibold mt-1">📍 {[bairro, cidade, uf].filter(Boolean).join(' — ')}</p>
                 )}
               </div>
 

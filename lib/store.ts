@@ -78,11 +78,12 @@ export interface UserProfile {
   aceitouTermos:      boolean
   aceitouPrivacidade: boolean
   cep:                string
+  bairro:             string
+  cidade:             string
   uf:                 string
   logradouro:         string
   numero:             string
   complemento:        string
-  cidade:             string
   telefone:           string   // WhatsApp/telefone para contato em trocas e vendas
 }
 

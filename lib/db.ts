@@ -93,11 +93,12 @@ export async function dbGetProfile(): Promise<Partial<UserProfile>> {
     aceitouTermos:      data.aceitou_termos     ?? false,
     aceitouPrivacidade: data.aceitou_privacidade ?? false,
     cep:                data.cep                ?? '',
+    bairro:             data.bairro             ?? '',
+    cidade:             data.cidade             ?? '',
     uf:                 data.uf                 ?? '',
     logradouro:         data.logradouro         ?? '',
     numero:             data.numero             ?? '',
     complemento:        data.complemento        ?? '',
-    cidade:             data.cidade             ?? '',
     telefone:           data.telefone           ?? '',
   }
 }
@@ -115,11 +116,12 @@ export async function dbSaveProfile(p: Partial<UserProfile>) {
     aceitou_termos:      p.aceitouTermos,
     aceitou_privacidade: p.aceitouPrivacidade,
     cep:                 p.cep,
+    bairro:              p.bairro,
+    cidade:              p.cidade,
     uf:                  p.uf,
     logradouro:          p.logradouro,
     numero:              p.numero,
     complemento:         p.complemento,
-    cidade:              p.cidade,
     telefone:            p.telefone,
     updated_at:          new Date().toISOString(),
   })
