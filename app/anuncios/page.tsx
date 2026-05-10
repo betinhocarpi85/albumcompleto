@@ -8,10 +8,9 @@ import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSess
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
-type Tab        = 'disponiveis' | 'anunciadas'
-type SubTab     = TipoAnuncio
+type Tab         = 'disponiveis' | 'anunciadas'
+type SubTab      = TipoAnuncio
 
-// Chave única: sid__acao (mesma figurinha pode ter troca E venda)
 interface AnuncioLocal {
   key:     string   // sid__acao
   sid:     string
@@ -25,15 +24,15 @@ interface AnuncioLocal {
 }
 
 interface QtyModal {
-  key:    string
-  sid:    string
-  gNum:   number
-  nome:   string
-  tipo:   StickerType
-  acao:   TipoAnuncio  // fixo (definido pela sub-aba)
-  preco:  string
-  qty:    number
-  isNew:  boolean
+  key:   string
+  sid:   string
+  gNum:  number
+  nome:  string
+  tipo:  StickerType
+  acao:  TipoAnuncio
+  preco: string
+  qty:   number
+  isNew: boolean
 }
 
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
@@ -41,33 +40,41 @@ const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 const PRECO_SUGERIDO: Record<StickerType, string> = {
   normal: '3.00', escudo: '4.00', brilhante: '8.00', especial: '5.00',
 }
+
+const TIPO_META: { key: StickerType; label: string; icon: string; desc: string }[] = [
+  { key: 'normal',    label: 'Normais',    icon: '⬜', desc: 'Jogadores comuns'         },
+  { key: 'escudo',    label: 'Escudos',    icon: '🛡️', desc: 'Escudo de cada seleção'  },
+  { key: 'brilhante', label: 'Brilhantes', icon: '✨', desc: 'Figurinhas foil especiais' },
+  { key: 'especial',  label: 'Especiais',  icon: '⭐', desc: 'Fotos de time e intro'    },
+]
+
 const TIPO_ICON: Record<StickerType, string> = {
   normal: '', escudo: '🛡️', brilhante: '✨', especial: '⭐',
 }
 
+// Todos os stickers flat com metadados
 const allStickersFlat = albumCopa2026.categories.flatMap(cat =>
   cat.stickers.map(s => ({
     sid:     stickerId(cat.code, s.number),
     gNum:    globalNumbers.get(stickerId(cat.code, s.number)) ?? 0,
     nome:    s.name,
     catName: cat.name,
-    catFlag: cat.flag ?? '📌',
     catId:   cat.id,
+    catFlag: cat.flag ?? '📌',
     tipo:    s.type as StickerType,
   }))
 )
 
-const stickersPorCat = albumCopa2026.categories.map(cat => ({
-  id:      cat.id,
-  name:    cat.name,
-  flag:    cat.flag ?? '📌',
-  stickers: cat.stickers.map(s => ({
-    sid:  stickerId(cat.code, s.number),
-    gNum: globalNumbers.get(stickerId(cat.code, s.number)) ?? 0,
-    nome: s.name,
-    tipo: s.type as StickerType,
-  })),
-}))
+// Por tipo → por categoria
+const porTipoECat: Record<StickerType, { catId: string; catName: string; catFlag: string; stickers: typeof allStickersFlat }[]> = {
+  normal: [], escudo: [], brilhante: [], especial: [],
+}
+for (const cat of albumCopa2026.categories) {
+  for (const tipo of Object.keys(porTipoECat) as StickerType[]) {
+    const stickers = allStickersFlat.filter(s => s.catId === cat.id && s.tipo === tipo)
+    if (stickers.length) porTipoECat[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', stickers })
+  }
+}
 
 function makeKey(sid: string, acao: TipoAnuncio) { return `${sid}__${acao}` }
 
@@ -83,8 +90,11 @@ export default function AnunciosPage() {
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
   const [busca,    setBusca]    = useState('')
-  const [filtroAcao, setFiltroAcao] = useState<'todos' | TipoAnuncio>('todos')
-  const [openCats, setOpenCats] = useState<Set<string>>(new Set())
+  const [filtroAcao, setFiltroAcao]   = useState<'todos' | TipoAnuncio>('todos')
+  // quais quadros de tipo estão expandidos
+  const [openTipos, setOpenTipos]     = useState<Set<StickerType>>(new Set(['normal']))
+  // quais categorias dentro de cada tipo estão expandidas
+  const [openCats,  setOpenCats]      = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getSession().then(session => {
@@ -110,97 +120,46 @@ export default function AnunciosPage() {
               qty:     a.qty,
             }
           }))
-          const catsComColadas = new Set(
-            allStickersFlat.filter(s => coladasSet.has(s.sid)).map(s => s.catId)
-          )
-          setOpenCats(catsComColadas)
           setLoading(false)
         })
       })
     })
   }, [])
 
-  // Chaves já anunciadas por ação
   const anunciadosKeys = useMemo(() => new Set(anuncios.map(a => a.key)), [anuncios])
 
-  // Categorias filtradas pela sub-aba: mostra coladas que ainda não têm esse tipo de anúncio
-  const catsDisponiveis = useMemo(() =>
-    stickersPorCat
-      .map(cat => ({
-        ...cat,
-        stickers: cat.stickers.filter(s =>
-          coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, subTab))
-        ),
-      }))
-      .filter(cat => cat.stickers.length > 0),
-    [coladas, anunciadosKeys, subTab]
-  )
+  // Contagem total disponível por sub-aba
+  const countDisp = (acao: TipoAnuncio) =>
+    allStickersFlat.filter(s => coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, acao))).length
 
-  const totalDisponiveis = useMemo(() =>
-    catsDisponiveis.reduce((acc, c) => acc + c.stickers.length, 0),
-    [catsDisponiveis]
-  )
-
-  const anunciosFiltrados = useMemo(() => {
-    let lista = anuncios
-    if (filtroAcao !== 'todos') lista = lista.filter(a => a.acao === filtroAcao)
-    if (busca.trim()) {
-      const q = busca.toLowerCase()
-      lista = lista.filter(a =>
-        a.nome.toLowerCase().includes(q) ||
-        String(a.gNum).includes(q) ||
-        a.catName.toLowerCase().includes(q)
-      )
-    }
-    return lista
-  }, [anuncios, filtroAcao, busca])
-
+  function toggleTipo(t: StickerType) {
+    setOpenTipos(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
+  }
   function toggleCat(id: string) {
-    setOpenCats(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
+    setOpenCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
-  function abrirModal(s: { sid: string; gNum: number; nome: string; tipo: StickerType }) {
+  function abrirModal(s: typeof allStickersFlat[0]) {
     if (!adulto) return
-    const key = makeKey(s.sid, subTab)
-    setModal({
-      key, sid: s.sid, gNum: s.gNum, nome: s.nome, tipo: s.tipo,
-      acao:  subTab,
-      preco: PRECO_SUGERIDO[s.tipo],
-      qty:   1,
-      isNew: true,
-    })
+    setModal({ key: makeKey(s.sid, subTab), sid: s.sid, gNum: s.gNum, nome: s.nome,
+      tipo: s.tipo, acao: subTab, preco: PRECO_SUGERIDO[s.tipo], qty: 1, isNew: true })
   }
 
   function editarModal(a: AnuncioLocal) {
-    setModal({
-      key: a.key, sid: a.sid, gNum: a.gNum, nome: a.nome, tipo: a.tipo,
-      acao:  a.acao,
-      preco: a.preco || PRECO_SUGERIDO[a.tipo],
-      qty:   a.qty,
-      isNew: false,
-    })
+    setModal({ key: a.key, sid: a.sid, gNum: a.gNum, nome: a.nome,
+      tipo: a.tipo, acao: a.acao, preco: a.preco || PRECO_SUGERIDO[a.tipo], qty: a.qty, isNew: false })
   }
 
   async function confirmarModal() {
     if (!modal) return
     const novo: AnuncioLocal = {
-      key:     modal.key,
-      sid:     modal.sid,
-      gNum:    modal.gNum,
-      nome:    modal.nome,
+      key: modal.key, sid: modal.sid, gNum: modal.gNum, nome: modal.nome,
       catName: allStickersFlat.find(s => s.sid === modal.sid)?.catName ?? '',
-      tipo:    modal.tipo,
-      acao:    modal.acao,
-      preco:   modal.acao === 'venda' ? modal.preco : '',
-      qty:     modal.qty,
+      tipo: modal.tipo, acao: modal.acao,
+      preco: modal.acao === 'venda' ? modal.preco : '',
+      qty: modal.qty,
     }
-    const next = modal.isNew
-      ? [...anuncios, novo]
-      : anuncios.map(a => a.key === modal.key ? novo : a)
+    const next = modal.isNew ? [...anuncios, novo] : anuncios.map(a => a.key === modal.key ? novo : a)
     setAnuncios(next)
     await salvar(next)
     setModal(null)
@@ -224,7 +183,7 @@ export default function AnunciosPage() {
   async function salvar(lista: AnuncioLocal[]) {
     setSalvando(true)
     await dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
-      sid:   a.key,   // usa key (sid__acao) como sid único no DB
+      sid:   a.key,
       gNum:  a.gNum,
       nome:  a.nome,
       qty:   a.qty,
@@ -236,47 +195,56 @@ export default function AnunciosPage() {
     setTimeout(() => setSalvo(false), 2000)
   }
 
+  const anunciosFiltrados = useMemo(() => {
+    let lista = anuncios
+    if (filtroAcao !== 'todos') lista = lista.filter(a => a.acao === filtroAcao)
+    if (busca.trim()) {
+      const q = busca.toLowerCase()
+      lista = lista.filter(a => a.nome.toLowerCase().includes(q) || String(a.gNum).includes(q) || a.catName.toLowerCase().includes(q))
+    }
+    return lista
+  }, [anuncios, filtroAcao, busca])
+
   if (loading) return (
     <div className="max-w-2xl mx-auto px-3 py-10 text-center">
       <span className="w-8 h-8 border-2 border-green-400 border-t-transparent rounded-full animate-spin inline-block" />
     </div>
   )
 
+  const isVenda  = subTab === 'venda'
+  const subColor = isVenda ? { border: 'border-green-300', bg: 'bg-green-500', light: 'bg-green-50', badge: 'bg-green-100 text-green-700', sticker: 'border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100 text-green-600' }
+                           : { border: 'border-blue-300',  bg: 'bg-blue-500',  light: 'bg-blue-50',  badge: 'bg-blue-100 text-blue-700',   sticker: 'border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 text-blue-600'  }
+
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
       <BannerMenorDeIdade />
 
-      {/* Modal */}
+      {/* ── MODAL ── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
             <p className="text-xs text-slate-400 mb-0.5">Figurinha #{modal.gNum} {TIPO_ICON[modal.tipo]}</p>
-            <p className="font-black text-slate-800 text-lg leading-tight mb-1">{modal.nome}</p>
+            <p className="font-black text-slate-800 text-lg leading-tight mb-3">{modal.nome}</p>
 
-            {/* Tipo fixo (definido pela sub-aba) */}
             <div className={['inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold mb-4',
               modal.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
               {modal.acao === 'venda' ? '💰 Venda' : '🔁 Troca'}
             </div>
 
-            {/* Preço (só venda) */}
             {modal.acao === 'venda' && (
               <div className="mb-4">
                 <p className="text-xs font-semibold text-slate-500 mb-2">Preço por unidade</p>
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-green-400">
                   <span className="text-sm font-semibold text-slate-400">R$</span>
-                  <input type="number" min="0.50" step="0.50"
-                    value={modal.preco}
+                  <input type="number" min="0.50" step="0.50" value={modal.preco}
                     onChange={e => setModal(m => m ? { ...m, preco: e.target.value } : m)}
-                    className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
-                    placeholder="0,00" />
+                    className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none" placeholder="0,00" />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Sugerido: R$ {PRECO_SUGERIDO[modal.tipo].replace('.', ',')}</p>
               </div>
             )}
 
-            {/* Quantidade */}
             <p className="text-xs font-semibold text-slate-500 mb-2">Quantas repetidas você tem?</p>
             <div className="flex items-center justify-center gap-5 mb-6">
               <button onClick={() => setModal(m => m ? { ...m, qty: Math.max(1, m.qty - 1) } : m)}
@@ -292,17 +260,12 @@ export default function AnunciosPage() {
 
             <div className="flex gap-2">
               {!modal.isNew && (
-                <button onClick={removerModal}
-                  className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
+                <button onClick={removerModal} className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
                   Remover
                 </button>
               )}
-              <button onClick={() => setModal(null)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">
-                Cancelar
-              </button>
-              <button onClick={confirmarModal}
-                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-black transition-colors">
+              <button onClick={() => setModal(null)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">Cancelar</button>
+              <button onClick={confirmarModal} className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-black transition-colors">
                 {modal.isNew ? 'Anunciar' : 'Salvar'}
               </button>
             </div>
@@ -317,7 +280,7 @@ export default function AnunciosPage() {
           <p className="text-sm text-slate-500">Anuncie suas figurinhas repetidas</p>
         </div>
         {(salvando || salvo) && (
-          <span className={['text-xs font-semibold px-3 py-1.5 rounded-full transition-all',
+          <span className={['text-xs font-semibold px-3 py-1.5 rounded-full',
             salvando ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-700'].join(' ')}>
             {salvando ? 'Salvando...' : '✓ Salvo'}
           </span>
@@ -326,8 +289,8 @@ export default function AnunciosPage() {
 
       {/* Resumo */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-green-50 rounded-2xl px-4 py-3 text-center">
-          <p className="text-2xl font-black text-green-700">{coladas.size}</p>
+        <div className="bg-slate-50 rounded-2xl px-4 py-3 text-center">
+          <p className="text-2xl font-black text-slate-700">{coladas.size}</p>
           <p className="text-[11px] text-slate-500 mt-0.5">No álbum</p>
         </div>
         <div className="bg-blue-50 rounded-2xl px-4 py-3 text-center">
@@ -364,21 +327,18 @@ export default function AnunciosPage() {
           {/* ── ABA DISPONÍVEIS ── */}
           {tab === 'disponiveis' && (
             <div className="animate-fadein">
+
               {/* Sub-abas Troca / Venda */}
               <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
                 <button onClick={() => setSubTab('troca')}
                   className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                     subTab === 'troca' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                  🔁 Troca ({subTab === 'troca' ? totalDisponiveis : catsDisponiveis.reduce((a,c) => a + c.stickers.length, 0)})
+                  🔁 Troca ({countDisp('troca')})
                 </button>
                 <button onClick={() => setSubTab('venda')}
                   className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                     subTab === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                  💰 Venda ({subTab === 'venda' ? totalDisponiveis : (() => {
-                    // conta para venda
-                    return stickersPorCat.reduce((acc, cat) =>
-                      acc + cat.stickers.filter(s => coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, 'venda'))).length, 0)
-                  })()})
+                  💰 Venda ({countDisp('venda')})
                 </button>
               </div>
 
@@ -388,62 +348,91 @@ export default function AnunciosPage() {
                 </div>
               )}
 
-              <p className="text-xs text-slate-400 mb-3 text-center">
-                {subTab === 'troca'
-                  ? 'Figurinhas disponíveis para anunciar como troca'
-                  : 'Figurinhas disponíveis para anunciar como venda'}
-              </p>
+              {/* Quadros por tipo */}
+              <div className="space-y-3">
+                {TIPO_META.map(({ key: tipoKey, label, icon, desc }) => {
+                  const grupos = porTipoECat[tipoKey]
+                  // filtra só stickers colados e ainda não anunciados para o subTab atual
+                  const gruposFiltrados = grupos.map(g => ({
+                    ...g,
+                    stickers: g.stickers.filter(s => coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, subTab))),
+                  })).filter(g => g.stickers.length > 0)
 
-              {catsDisponiveis.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
-                  <p className="text-3xl mb-2">✅</p>
-                  <p className="font-bold text-slate-700 text-sm">
-                    Todas as figurinhas já estão anunciadas para {subTab === 'troca' ? 'troca' : 'venda'}!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {catsDisponiveis.map(cat => {
-                    const isOpen = openCats.has(cat.id)
-                    return (
-                      <div key={cat.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <button onClick={() => toggleCat(cat.id)}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
-                          <span className="text-xl">{cat.flag}</span>
-                          <span className="flex-1 font-bold text-sm text-slate-800">{cat.name}</span>
-                          <span className={['text-xs font-semibold px-2 py-0.5 rounded-full',
-                            subTab === 'troca' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'].join(' ')}>
-                            {cat.stickers.length} fig.
+                  const totalTipo = gruposFiltrados.reduce((a, g) => a + g.stickers.length, 0)
+                  const isOpen    = openTipos.has(tipoKey)
+
+                  return (
+                    <div key={tipoKey}
+                      className={['bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all',
+                        isOpen && totalTipo > 0 ? subColor.border : 'border-slate-100'].join(' ')}>
+
+                      {/* Header do tipo */}
+                      <button onClick={() => toggleTipo(tipoKey)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
+                        <span className="text-2xl">{icon}</span>
+                        <div className="flex-1">
+                          <p className="font-bold text-slate-800 text-sm">{label}</p>
+                          <p className="text-xs text-slate-400">{desc}</p>
+                        </div>
+                        {totalTipo > 0 && (
+                          <span className={['text-xs font-bold px-2 py-0.5 rounded-full', subColor.badge].join(' ')}>
+                            {totalTipo} fig.
                           </span>
-                          <span className="text-slate-400 text-xs">{isOpen ? '▲' : '▼'}</span>
-                        </button>
-
-                        {isOpen && (
-                          <div className="px-4 pb-4 pt-1 border-t border-slate-50">
-                            <div className="flex flex-wrap gap-2">
-                              {cat.stickers.map(s => (
-                                <button key={s.sid} onClick={() => abrirModal(s)}
-                                  title={`#${s.gNum} · ${s.nome}`}
-                                  className={['w-12 h-12 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all group',
-                                    subTab === 'troca'
-                                      ? 'border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'
-                                      : 'border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100'].join(' ')}>
-                                  <span className={['text-[11px] font-black leading-none',
-                                    subTab === 'troca' ? 'text-blue-600' : 'text-green-600'].join(' ')}>{s.gNum}</span>
-                                  {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
-                                </button>
-                              ))}
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-2 text-center">
-                              Toque para anunciar como {subTab === 'troca' ? 'troca' : 'venda'}
-                            </p>
-                          </div>
                         )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                        {totalTipo === 0 && (
+                          <span className="text-xs text-slate-300 font-medium">nenhuma</span>
+                        )}
+                        <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                      </button>
+
+                      {/* Categorias dentro do tipo */}
+                      {isOpen && totalTipo > 0 && (
+                        <div className="border-t border-slate-50 px-4 pb-4 pt-2 space-y-2">
+                          {gruposFiltrados.map(g => {
+                            const catKey = `${tipoKey}__${g.catId}`
+                            const catOpen = openCats.has(catKey)
+                            return (
+                              <div key={g.catId} className="border border-slate-100 rounded-xl overflow-hidden">
+                                <button onClick={() => toggleCat(catKey)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
+                                  <span className="text-base">{g.catFlag}</span>
+                                  <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName}</span>
+                                  <span className={['text-[10px] font-bold px-1.5 py-0.5 rounded-full', subColor.badge].join(' ')}>
+                                    {g.stickers.length}✓
+                                  </span>
+                                  <span className="text-xs text-slate-400">{catOpen ? '▲' : '▼'}</span>
+                                </button>
+
+                                {catOpen && (
+                                  <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
+                                    {g.stickers.map(s => (
+                                      <button key={s.sid} onClick={() => abrirModal(s)}
+                                        title={`#${s.gNum} · ${s.nome}`}
+                                        className={['w-12 h-12 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all', subColor.sticker].join(' ')}>
+                                        <span className="text-[11px] font-black leading-none">{s.gNum}</span>
+                                        {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                          <p className="text-[10px] text-slate-400 text-center pt-1">
+                            Toque para anunciar como {subTab === 'troca' ? 'troca' : 'venda'}
+                          </p>
+                        </div>
+                      )}
+
+                      {isOpen && totalTipo === 0 && (
+                        <div className="border-t border-slate-50 px-4 py-3 text-center">
+                          <p className="text-xs text-slate-400">Nenhuma figurinha {label.toLowerCase()} disponível para {subTab === 'troca' ? 'troca' : 'venda'}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -490,21 +479,15 @@ export default function AnunciosPage() {
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <span className={['text-[10px] font-bold px-2 py-0.5 rounded-full',
                           a.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
-                          {a.acao === 'venda'
-                            ? `R$ ${parseFloat(a.preco || '0').toFixed(2).replace('.', ',')}`
-                            : '🔁 Troca'}
+                          {a.acao === 'venda' ? `R$ ${parseFloat(a.preco || '0').toFixed(2).replace('.', ',')}` : '🔁 Troca'}
                         </span>
                         <span className="text-[10px] text-slate-400">{a.qty} unid.</span>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button onClick={() => editarModal(a)}
-                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors flex items-center justify-center">
-                          ✏️
-                        </button>
+                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors flex items-center justify-center">✏️</button>
                         <button onClick={() => remover(a.key)}
-                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 text-lg transition-colors flex items-center justify-center">
-                          ×
-                        </button>
+                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 text-lg transition-colors flex items-center justify-center">×</button>
                       </div>
                     </div>
                   ))}
