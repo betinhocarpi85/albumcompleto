@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createHmac } from 'crypto'
 
 const ROTAS_PROTEGIDAS = [
   '/album',
@@ -11,7 +12,26 @@ const ROTAS_PROTEGIDAS = [
   '/completar-cadastro',
 ]
 
+const ADMIN_COOKIE = 'cdo_admin'
+
+function getAdminToken(): string {
+  const secret = process.env.ADMIN_SECRET ?? 'completando-admin-secret'
+  return createHmac('sha256', secret).update('admin-authenticated').digest('hex')
+}
+
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // ── Proteção do painel admin ──────────────────────────────────────────────
+  if (pathname.startsWith('/admin/dashboard')) {
+    const token = request.cookies.get(ADMIN_COOKIE)?.value
+    if (token !== getAdminToken()) {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+    return NextResponse.next({ request })
+  }
+
+  // ── Proteção das rotas de usuário (Supabase Auth) ─────────────────────────
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -37,7 +57,6 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
   const protegida = ROTAS_PROTEGIDAS.some(r => pathname === r || pathname.startsWith(r + '/'))
 
   if (protegida && !user) {
