@@ -65,7 +65,9 @@ export async function proxy(request: NextRequest) {
     const permitido =
       pathname.startsWith('/completar-cadastro') ||
       pathname.startsWith('/auth') ||
-      pathname.startsWith('/api')
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/entrar') ||
+      pathname.startsWith('/cadastro')
     if (!permitido) {
       return NextResponse.redirect(new URL('/completar-cadastro', request.url))
     }
