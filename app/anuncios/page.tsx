@@ -320,7 +320,7 @@ export default function AnunciosPage() {
             <button onClick={() => setTab('anunciadas')}
               className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
                 tab === 'anunciadas' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
-              📢 Anunciadas ({anuncios.length})
+              📢 Anunciadas
             </button>
           </div>
 
@@ -333,12 +333,12 @@ export default function AnunciosPage() {
                 <button onClick={() => setSubTab('troca')}
                   className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                     subTab === 'troca' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                  🔁 Troca ({countDisp('troca')})
+                  🔁 Troca
                 </button>
                 <button onClick={() => setSubTab('venda')}
                   className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                     subTab === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                  💰 Venda ({countDisp('venda')})
+                  💰 Venda
                 </button>
               </div>
 
