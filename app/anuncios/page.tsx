@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { albumCopa2026, STICKER_PRICES, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
 import type { StickerType } from '@/data/album-copa-2026'
 import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
@@ -9,595 +9,424 @@ import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
 
-// selecionadas: sid → quantidade (Map em vez de Set)
-interface TipoConfig {
-  ativo:        boolean
-  tipoAnuncio:  TipoAnuncio
-  preco:        string
-  selecionadas: Record<TipoAnuncio, Map<string, number>>
-  expandido:    boolean
+interface AnuncioLocal {
+  sid:    string
+  gNum:   number
+  nome:   string
+  catName:string
+  tipo:   StickerType
+  acao:   TipoAnuncio
+  preco:  string   // "3.00" ou ""
+  qty:    number
 }
 
-const ANUNCIO_CONFIG = {
-  venda: { label: 'Venda', bg: 'bg-green-100', text: 'text-green-700', btn: 'bg-green-500 border-green-500' },
-  troca: { label: 'Troca', bg: 'bg-blue-100',  text: 'text-blue-700',  btn: 'bg-blue-500 border-blue-500'  },
+interface QtyModal {
+  sid:    string
+  gNum:   number
+  nome:   string
+  tipo:   StickerType
+  acao:   TipoAnuncio
+  preco:  string
+  qty:    number
+  isNew:  boolean
 }
 
 const globalNumbers = buildGlobalNumberMap(albumCopa2026)
 
-const TIPOS = [
-  { key: 'normal'    as StickerType, label: 'Normais',    desc: 'Jogadores comuns',          icon: '⬜' },
-  { key: 'escudo'    as StickerType, label: 'Escudos',    desc: 'Escudo de cada seleção',    icon: '🛡️' },
-  { key: 'brilhante' as StickerType, label: 'Brilhantes', desc: 'Figurinhas foil especiais',  icon: '✨' },
-  { key: 'especial'  as StickerType, label: 'Especiais',  desc: 'Fotos de time e intro',     icon: '⭐' },
-]
-
-interface AtivoItem {
-  id: string; nome: string; seleção: string; tipo: string
-  anuncio: string; preco: string; qtd: number
+const PRECO_SUGERIDO: Record<StickerType, string> = {
+  normal:    '3.00',
+  escudo:    '4.00',
+  brilhante: '8.00',
+  especial:  '5.00',
 }
 
-
-type Tab = 'configurar' | 'ativos'
-
-const emptySel = (): Record<TipoAnuncio, Map<string, number>> => ({
-  venda: new Map(), troca: new Map(),
-})
-
-interface QtyModal {
-  tipo:  StickerType
-  sid:   string
-  gNum:  number | string
-  nome:  string
-  qtdAtual: number  // 0 = ainda não selecionado
-}
+const allStickersFlat = albumCopa2026.categories.flatMap(cat =>
+  cat.stickers.map(s => ({
+    sid:     stickerId(cat.code, s.number),
+    gNum:    0, // preenchido abaixo
+    nome:    s.name,
+    catName: cat.name,
+    catFlag: cat.flag ?? '📌',
+    tipo:    s.type as StickerType,
+  }))
+).map(s => ({ ...s, gNum: globalNumbers.get(s.sid) ?? 0 }))
 
 export default function AnunciosPage() {
-  const [tab, setTab]       = useState<Tab>('configurar')
-  const [ativos, setAtivos] = useState<AtivoItem[]>([])
-  const [publicado, setPublicado] = useState(false)
-  const [adulto, setAdulto]       = useState(true)
   const [albumId, setAlbumId]     = useState<AlbumId>('copa-2026')
+  const [adulto,  setAdulto]      = useState(true)
+  const [coladas, setColadas]     = useState<Set<string>>(new Set())
+  const [anuncios, setAnuncios]   = useState<AnuncioLocal[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [modal, setModal]         = useState<QtyModal | null>(null)
+  const [salvando, setSalvando]   = useState(false)
+  const [salvo, setSalvo]         = useState(false)
+  const [busca, setBusca]         = useState('')
+  const [filtroAcao, setFiltroAcao] = useState<'todos' | TipoAnuncio>('todos')
 
-  // Hidrata ativos do DB
   useEffect(() => {
     getSession().then(session => {
-      // Se não logado, adulto = true (apenas leitura, sem anúncios reais)
-      if (!session) { setAdulto(true); return }
-      // Carrega coladas e anúncios em paralelo
-      dbGetActiveAlbums().then((ids) => {
+      if (!session) { setLoading(false); return }
+      dbGetActiveAlbums().then(ids => {
         const id = ids[0] ?? 'copa-2026'
         setAlbumId(id)
-        Promise.all([
-          dbGetColadas(id),
-          dbGetAnuncios(id, 'tenho'),
-        ]).then(([coladas, saved]) => {
-          setColadasSet(new Set(coladas))
-          setAtivos(saved.map(a => ({
-            id:      a.sid,
-            nome:    a.nome,
-            seleção: '',
-            tipo:    a.tipo,
-            anuncio: a.preco != null && a.preco > 0 ? 'venda' : 'troca',
-            preco:   a.preco != null && a.preco > 0 ? `R$ ${a.preco.toFixed(2).replace('.', ',')}` : '—',
-            qtd:     a.qty,
-          })))
+        Promise.all([dbGetColadas(id), dbGetAnuncios(id, 'tenho')]).then(([col, saved]) => {
+          setColadas(new Set(col))
+          setAnuncios(saved.map(a => {
+            const info = allStickersFlat.find(s => s.sid === a.sid)
+            return {
+              sid:     a.sid,
+              gNum:    typeof a.gNum === 'number' ? a.gNum : Number(a.gNum) || 0,
+              nome:    a.nome,
+              catName: info?.catName ?? '',
+              tipo:    a.tipo as StickerType,
+              acao:    a.preco != null && a.preco > 0 ? 'venda' : 'troca',
+              preco:   a.preco != null && a.preco > 0 ? String(a.preco.toFixed(2)) : '',
+              qty:     a.qty,
+            }
+          }))
+          setAdulto(true)
+          setLoading(false)
         })
       })
     })
   }, [])
-  const [coladasSet, setColadasSet] = useState<Set<string>>(new Set())
-  const [modal, setModal]   = useState<QtyModal | null>(null)
-  const [modalQty, setModalQty] = useState(1)
 
-  const [configs, setConfigs] = useState<Record<StickerType, TipoConfig>>({
-    normal:    { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
-    escudo:    { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
-    brilhante: { ativo: false, tipoAnuncio: 'venda', preco: '', selecionadas: emptySel(), expandido: false },
-    especial:  { ativo: false, tipoAnuncio: 'troca', preco: '', selecionadas: emptySel(), expandido: false },
-  })
+  // Stickers colados que ainda não foram anunciados
+  const disponiveis = useMemo(() =>
+    allStickersFlat.filter(s => coladas.has(s.sid) && !anuncios.some(a => a.sid === s.sid)),
+    [coladas, anuncios]
+  )
 
-  const [openCats, setOpenCats] = useState<Set<string>>(new Set())
+  const disponiveisFiltrados = useMemo(() => {
+    let lista = disponiveis
+    if (busca.trim()) {
+      const q = busca.toLowerCase()
+      lista = lista.filter(s => s.nome.toLowerCase().includes(q) || String(s.gNum).includes(q) || s.catName.toLowerCase().includes(q))
+    }
+    return lista
+  }, [disponiveis, busca])
 
-  function update<K extends keyof TipoConfig>(tipo: StickerType, field: K, value: TipoConfig[K]) {
-    setConfigs(prev => ({ ...prev, [tipo]: { ...prev[tipo], [field]: value } }))
-  }
+  const anunciosFiltrados = useMemo(() => {
+    if (filtroAcao === 'todos') return anuncios
+    return anuncios.filter(a => a.acao === filtroAcao)
+  }, [anuncios, filtroAcao])
 
-  // Toca no quadradinho → abre modal de quantidade
-  function abrirModal(tipo: StickerType, sid: string, gNum: number | string, nome: string) {
-    const qtdAtual = configs[tipo].selecionadas[configs[tipo].tipoAnuncio].get(sid) ?? 0
-    setModal({ tipo, sid, gNum, nome, qtdAtual })
-    setModalQty(qtdAtual > 0 ? qtdAtual : 1)
-  }
-
-  // Confirma a quantidade no modal
-  function confirmarModal() {
-    if (!modal) return
-    setConfigs(prev => {
-      const acao = prev[modal.tipo].tipoAnuncio
-      const next = new Map(prev[modal.tipo].selecionadas[acao])
-      if (modalQty <= 0) { next.delete(modal.sid) } else { next.set(modal.sid, modalQty) }
-      return { ...prev, [modal.tipo]: { ...prev[modal.tipo], selecionadas: { ...prev[modal.tipo].selecionadas, [acao]: next } } }
+  function abrirModal(s: typeof allStickersFlat[0]) {
+    setModal({
+      sid:   s.sid,
+      gNum:  s.gNum,
+      nome:  s.nome,
+      tipo:  s.tipo,
+      acao:  'troca',
+      preco: PRECO_SUGERIDO[s.tipo],
+      qty:   1,
+      isNew: true,
     })
+  }
+
+  function editarModal(a: AnuncioLocal) {
+    setModal({
+      sid:   a.sid,
+      gNum:  a.gNum,
+      nome:  a.nome,
+      tipo:  a.tipo,
+      acao:  a.acao,
+      preco: a.preco || PRECO_SUGERIDO[a.tipo],
+      qty:   a.qty,
+      isNew: false,
+    })
+  }
+
+  async function confirmarModal() {
+    if (!modal) return
+    const novo: AnuncioLocal = {
+      sid:     modal.sid,
+      gNum:    modal.gNum,
+      nome:    modal.nome,
+      catName: allStickersFlat.find(s => s.sid === modal.sid)?.catName ?? '',
+      tipo:    modal.tipo,
+      acao:    modal.acao,
+      preco:   modal.acao === 'venda' ? modal.preco : '',
+      qty:     modal.qty,
+    }
+    const next = modal.isNew
+      ? [...anuncios, novo]
+      : anuncios.map(a => a.sid === modal.sid ? novo : a)
+    setAnuncios(next)
+    await salvar(next)
     setModal(null)
   }
 
-  // Remove figurinha direto (sem passar pelo modal)
-  function removerSticker(tipo: StickerType, sid: string) {
-    setConfigs(prev => {
-      const acao = prev[tipo].tipoAnuncio
-      const next = new Map(prev[tipo].selecionadas[acao])
-      next.delete(sid)
-      return { ...prev, [tipo]: { ...prev[tipo], selecionadas: { ...prev[tipo].selecionadas, [acao]: next } } }
-    })
+  async function remover(sid: string) {
+    const next = anuncios.filter(a => a.sid !== sid)
+    setAnuncios(next)
+    await salvar(next)
   }
 
-  function toggleCat(id: string) {
-    setOpenCats(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  async function removerModal() {
+    if (!modal) return
+    const next = anuncios.filter(a => a.sid !== modal.sid)
+    setAnuncios(next)
+    await salvar(next)
+    setModal(null)
   }
 
-  // Atualiza qty de um ativo (aba Ativos)
-  function setAtivoQty(id: string, delta: number) {
-    setAtivos(prev => {
-      const next = prev.map(a => a.id === id ? { ...a, qtd: Math.max(1, a.qtd + delta) } : a)
-      persistAtivos(next)
-      return next
-    })
-  }
-  function removeAtivo(id: string) {
-    setAtivos(prev => {
-      const next = prev.filter(a => a.id !== id)
-      persistAtivos(next)
-      return next
-    })
-  }
-
-  function persistAtivos(lista: AtivoItem[]) {
-    dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
-      sid:   a.id,
-      gNum:  Number(a.id.split('-')[1]) || a.id,
+  async function salvar(lista: AnuncioLocal[]) {
+    setSalvando(true)
+    await dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
+      sid:   a.sid,
+      gNum:  a.gNum,
       nome:  a.nome,
-      qty:   a.qtd,
-      tipo:  a.tipo as StickerType,
-      preco: a.anuncio === 'venda' && a.preco !== '—'
-        ? parseFloat(a.preco.replace('R$ ', '').replace(',', '.'))
-        : undefined,
+      qty:   a.qty,
+      tipo:  a.tipo,
+      preco: a.acao === 'venda' && a.preco ? parseFloat(a.preco) : undefined,
     })))
+    setSalvando(false)
+    setSalvo(true)
+    setTimeout(() => setSalvo(false), 2000)
   }
 
-  function publicar() {
-    // Converte configs → AtivoItem e adiciona aos ativos
-    const novos: AtivoItem[] = []
-    for (const [tipoKey, cfg] of Object.entries(configs) as [StickerType, TipoConfig][]) {
-      if (!cfg.ativo) continue
-      const acao = cfg.tipoAnuncio
-      for (const [sid, qty] of cfg.selecionadas[acao]) {
-        const s = allStickersFlat.find(x => stickerId(x.catCode, x.number) === sid)
-        if (!s) continue
-        if (ativos.some(a => a.id === sid)) continue // já existe
-        novos.push({
-          id:      sid,
-          nome:    s.name,
-          seleção: s.catName,
-          tipo:    tipoKey,
-          anuncio: acao,
-          preco:   acao === 'venda' && cfg.preco ? `R$ ${parseFloat(cfg.preco).toFixed(2).replace('.', ',')}` : '—',
-          qtd:     qty,
-        })
-      }
-    }
-    if (!novos.length) return
-    setAtivos(prev => {
-      const next = [...prev, ...novos]
-      persistAtivos(next)
-      return next
-    })
-    setPublicado(true)
-    setTimeout(() => setPublicado(false), 3000)
-    setTab('ativos')
+  const TIPO_ICON: Record<StickerType, string> = {
+    normal: '', escudo: '🛡️', brilhante: '✨', especial: '⭐',
   }
 
-  const stickersPorTipo = useMemo(() => {
-    const map: Record<StickerType, { cat: typeof albumCopa2026.categories[0]; stickers: typeof albumCopa2026.categories[0]['stickers'] }[]> = {
-      normal: [], escudo: [], brilhante: [], especial: [],
-    }
-    for (const cat of albumCopa2026.categories) {
-      for (const tipo of Object.keys(map) as StickerType[]) {
-        const filtered = cat.stickers.filter(s => s.type === tipo)
-        if (filtered.length) map[tipo].push({ cat, stickers: filtered })
-      }
-    }
-    return map
-  }, [])
-
-  // Total de figurinhas (soma de quantidades)
-  const totalSelecionado = Object.values(configs).reduce((acc, c) => {
-    if (!c.ativo) return acc
-    for (const m of Object.values(c.selecionadas)) for (const qty of m.values()) acc += qty
-    return acc
-  }, 0)
-
-  // Total de IDs únicos selecionados (para o badge)
-  const totalUnicos = Object.values(configs).reduce((acc, c) => {
-    if (!c.ativo) return acc
-    for (const m of Object.values(c.selecionadas)) acc += m.size
-    return acc
-  }, 0)
-
-  const allStickersFlat = useMemo(() =>
-    albumCopa2026.categories.flatMap(c => c.stickers.map(s => ({ ...s, catCode: c.code, catName: c.name }))), [])
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto px-3 py-10 text-center">
+        <span className="w-8 h-8 border-2 border-green-400 border-t-transparent rounded-full animate-spin inline-block" />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
-
       <BannerMenorDeIdade />
 
-      {/* ── MODAL DE QUANTIDADE ── */}
+      {/* Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
-
-            {/* Info figurinha */}
-            <p className="text-xs text-slate-400 mb-1">Figurinha #{modal.gNum}</p>
+            <p className="text-xs text-slate-400 mb-0.5">Figurinha #{modal.gNum} {TIPO_ICON[modal.tipo]}</p>
             <p className="font-black text-slate-800 text-lg leading-tight mb-4">{modal.nome}</p>
 
-            {/* Pergunta */}
-            <p className="text-sm text-slate-600 mb-4">
-              Quantas unidades você tem{modal.qtdAtual > 0 ? ' (toque para atualizar)' : ''} disponíveis para anunciar?
-            </p>
+            {/* Venda ou Troca */}
+            <p className="text-xs font-semibold text-slate-500 mb-2">Tipo de anúncio</p>
+            <div className="flex gap-2 mb-4">
+              {(['troca', 'venda'] as TipoAnuncio[]).map(tipo => (
+                <button key={tipo}
+                  onClick={() => setModal(m => m ? { ...m, acao: tipo } : m)}
+                  className={['flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all',
+                    modal.acao === tipo
+                      ? tipo === 'venda' ? 'bg-green-500 border-green-500 text-white' : 'bg-blue-500 border-blue-500 text-white'
+                      : 'border-slate-200 text-slate-500'].join(' ')}>
+                  {tipo === 'venda' ? '💰 Venda' : '🔁 Troca'}
+                </button>
+              ))}
+            </div>
 
-            {/* Stepper grande */}
+            {/* Preço (só venda) */}
+            {modal.acao === 'venda' && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-500 mb-2">Preço por unidade</p>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-green-400">
+                  <span className="text-sm font-semibold text-slate-400">R$</span>
+                  <input
+                    type="number" min="0.50" step="0.50"
+                    value={modal.preco}
+                    onChange={e => setModal(m => m ? { ...m, preco: e.target.value } : m)}
+                    className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
+                    placeholder="0,00"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Sugerido: R$ {PRECO_SUGERIDO[modal.tipo].replace('.', ',')}</p>
+              </div>
+            )}
+
+            {/* Quantidade */}
+            <p className="text-xs font-semibold text-slate-500 mb-2">Quantas repetidas você tem?</p>
             <div className="flex items-center justify-center gap-5 mb-6">
-              <button
-                onClick={() => setModalQty(q => Math.max(1, q - 1))}
-                disabled={modalQty <= 1}
-                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center"
-              >
+              <button onClick={() => setModal(m => m ? { ...m, qty: Math.max(1, m.qty - 1) } : m)}
+                disabled={modal.qty <= 1}
+                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center">
                 −
               </button>
               <div className="text-center">
-                <span className="text-5xl font-black text-slate-800">{modalQty}</span>
-                <p className="text-xs text-slate-400 mt-1">unidade{modalQty > 1 ? 's' : ''}</p>
+                <span className="text-5xl font-black text-slate-800">{modal.qty}</span>
+                <p className="text-xs text-slate-400 mt-1">unidade{modal.qty > 1 ? 's' : ''}</p>
               </div>
-              <button
-                onClick={() => setModalQty(q => q + 1)}
-                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center"
-              >
+              <button onClick={() => setModal(m => m ? { ...m, qty: m.qty + 1 } : m)}
+                className="w-14 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 text-3xl font-black text-slate-700 transition-colors flex items-center justify-center">
                 +
               </button>
             </div>
 
-            {/* Ações */}
             <div className="flex gap-2">
-              {modal.qtdAtual > 0 && (
-                <button
-                  onClick={() => { removerSticker(modal.tipo, modal.sid); setModal(null) }}
-                  className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
-                >
+              {!modal.isNew && (
+                <button onClick={removerModal}
+                  className="px-4 py-3 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
                   Remover
                 </button>
               )}
-              <button
-                onClick={() => setModal(null)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
-              >
+              <button onClick={() => setModal(null)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold">
                 Cancelar
               </button>
-              <button
-                onClick={confirmarModal}
-                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-black transition-colors"
-              >
-                Confirmar
+              <button onClick={confirmarModal}
+                className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-black transition-colors">
+                {modal.isNew ? 'Anunciar' : 'Salvar'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="mb-4">
-        <h1 className="text-xl font-black text-slate-800">Anúncios</h1>
-        <p className="text-sm text-slate-500">Escolha quais figurinhas repetidas deseja anunciar</p>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-black text-slate-800">Anúncios</h1>
+          <p className="text-sm text-slate-500">Selecione suas repetidas para anunciar</p>
+        </div>
+        {(salvando || salvo) && (
+          <span className={['text-xs font-semibold px-3 py-1.5 rounded-full transition-all',
+            salvando ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-700'].join(' ')}>
+            {salvando ? 'Salvando...' : '✓ Salvo'}
+          </span>
+        )}
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {[
-          { label: 'Selecionadas', value: totalUnicos,    bg: 'bg-green-50',  text: 'text-green-700' },
-          { label: 'Ativas',       value: ativos.length,  bg: 'bg-blue-50',   text: 'text-blue-700'  },
-          { label: 'Matches',      value: 0,              bg: 'bg-amber-50',  text: 'text-amber-700' },
-        ].map(s => (
-          <div key={s.label} className={`${s.bg} rounded-2xl px-3 py-3 text-center`}>
-            <p className={`text-2xl font-black ${s.text}`}>{s.value}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Abas */}
-      <div className="flex gap-2 mb-4">
-        {([
-          { key: 'configurar', label: '⚙️ Configurar' },
-          { key: 'ativos',     label: `📋 Ativos (${ativos.length})` },
-        ] as const).map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
-              tab === t.key ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── ABA CONFIGURAR ── */}
-      {tab === 'configurar' && (
-        <div className="space-y-3 animate-fadein">
-          {TIPOS.map(({ key, label, desc, icon }) => {
-            const cfg    = configs[key]
-            const preco  = STICKER_PRICES[key]
-            const grupos = stickersPorTipo[key]
-            const selMap = cfg.selecionadas[cfg.tipoAnuncio]
-            const selIds = [...selMap.keys()]
-
-            return (
-              <div key={key}
-                className={['bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all',
-                  cfg.ativo ? 'border-green-300' : 'border-slate-100'].join(' ')}>
-
-                {/* Header do tipo */}
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-2xl">{icon}</span>
-                  <div className="flex-1">
-                    <p className="font-bold text-slate-800 text-sm">{label}</p>
-                    <p className="text-xs text-slate-400">{desc}</p>
-                  </div>
-                  {cfg.ativo && selIds.length > 0 && (
-                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                      {selIds.length} fig. · {[...selMap.values()].reduce((a, b) => a + b, 0)} unid.
-                    </span>
-                  )}
-                  <button
-                    onClick={() => update(key, 'ativo', !cfg.ativo)}
-                    className={['w-12 h-6 rounded-full transition-all relative', cfg.ativo ? 'bg-green-500' : 'bg-slate-200'].join(' ')}
-                  >
-                    <span className={['absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
-                      cfg.ativo ? 'left-6' : 'left-0.5'].join(' ')} />
-                  </button>
-                </div>
-
-                {/* Corpo (só se ativo) */}
-                {cfg.ativo && (
-                  <div className="border-t border-slate-50">
-
-                    {/* Ação + preço */}
-                    <div className="px-4 pt-3 pb-3 space-y-3">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-500 block mb-1.5">Quero</label>
-                        <div className="flex gap-2">
-                          {(['venda', 'troca'] as TipoAnuncio[]).map(tipo => (
-                            <button key={tipo}
-                              onClick={() => update(key, 'tipoAnuncio', tipo)}
-                              className={['flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all',
-                                cfg.tipoAnuncio === tipo
-                                  ? `${ANUNCIO_CONFIG[tipo].btn} text-white`
-                                  : 'border-slate-200 text-slate-500 hover:border-slate-300'].join(' ')}>
-                              {tipo === 'venda' ? '💰 Venda' : '🔁 Troca'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {cfg.tipoAnuncio === 'venda' && (
-                        <div>
-                          <label className="text-xs font-semibold text-slate-500 block mb-1.5">Preço por figurinha</label>
-                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-green-400">
-                            <span className="text-sm font-semibold text-slate-400">R$</span>
-                            <input
-                              type="number" min={preco.min} step={0.5}
-                              placeholder={`${preco.min},00`}
-                              value={cfg.preco}
-                              onChange={e => update(key, 'preco', e.target.value)}
-                              className="flex-1 bg-transparent text-sm font-bold text-slate-800 focus:outline-none"
-                            />
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-1">Sugerido: R$ {preco.min},00 – R$ {preco.max},00</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Seletor de figurinhas */}
-                    <div className="border-t border-slate-100">
-                      <button
-                        onClick={() => update(key, 'expandido', !cfg.expandido)}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors text-left"
-                      >
-                        <span className="text-sm font-semibold text-slate-700">
-                          {selIds.length === 0
-                            ? 'Selecionar figurinhas'
-                            : `${selIds.length} figurinha${selIds.length > 1 ? 's' : ''} selecionada${selIds.length > 1 ? 's' : ''}`}
-                        </span>
-                        <span className={`text-slate-400 text-xs transition-transform ${cfg.expandido ? 'rotate-180' : ''}`}>▼</span>
-                      </button>
-
-                      {cfg.expandido && (
-                        <div className="px-4 pb-4 space-y-2 max-h-[28rem] overflow-y-auto">
-
-                          {/* Grid por categoria */}
-                          {grupos.map(({ cat, stickers }) => {
-                            const catId  = `${key}-${cat.id}`
-                            const isOpen = openCats.has(catId)
-                            const selQty = stickers.filter(s => selMap.has(stickerId(cat.code, s.number))).length
-
-                            return (
-                              <div key={cat.id} className="border border-slate-100 rounded-xl overflow-hidden">
-                                <button
-                                  onClick={() => toggleCat(catId)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left"
-                                >
-                                  <span className="text-base">{cat.flag ?? '📌'}</span>
-                                  <span className="flex-1 text-sm font-semibold text-slate-700">{cat.name}</span>
-                                  {selQty > 0 && (
-                                    <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">{selQty}✓</span>
-                                  )}
-                                  <span className="text-xs text-slate-400">{isOpen ? '▲' : '▼'}</span>
-                                </button>
-
-                                {isOpen && (
-                                  <div className="px-3 pb-3 pt-1 flex flex-wrap gap-1.5 border-t border-slate-50">
-                                    {stickers.map(s => {
-                                      const sid      = stickerId(cat.code, s.number)
-                                      const qty      = selMap.get(sid) ?? 0
-                                      const selected = qty > 0
-                                      const gNum     = globalNumbers.get(sid) ?? s.number
-                                      const naoTem   = !coladasSet.has(sid)
-
-                                      const btnColor = naoTem
-                                        ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                        : selected
-                                          ? cfg.tipoAnuncio === 'venda'  ? 'bg-green-600 border-green-700 text-white'
-                                          : 'bg-blue-500 border-blue-600 text-white'
-                                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
-
-                                      return (
-                                        <button
-                                          key={sid}
-                                          disabled={naoTem}
-                                          onClick={() => !naoTem && abrirModal(key, sid, gNum, s.name)}
-                                          title={naoTem ? `#${gNum} · ${s.name} · não colada` : selected ? `#${gNum} · ${s.name} · ${qty} unid. (toque para editar)` : `#${gNum} · ${s.name} · toque para adicionar`}
-                                          className={[
-                                            'w-11 h-11 rounded-lg border-2 relative flex items-center justify-center transition-all text-[10px] font-bold',
-                                            naoTem ? 'opacity-35' : 'active:scale-90 hover:scale-105',
-                                            btnColor,
-                                          ].join(' ')}
-                                        >
-                                          <span className="text-[11px] font-black leading-none">{gNum}</span>
-                                          {selected && (
-                                            <span className="absolute bottom-0.5 right-1 text-[8px] font-black leading-none opacity-90">
-                                              {qty}×
-                                            </span>
-                                          )}
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
-
-                          {/* Dica */}
-                          <p className="text-[10px] text-slate-400 text-center pt-1">
-                            {selIds.length > 0
-                              ? 'Toque em qualquer figurinha selecionada para editar a quantidade'
-                              : 'Figurinhas acinzentadas não estão coladas no seu álbum'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-
-          {/* Publicar */}
-          {totalSelecionado > 0 && (
-            adulto ? (
-              <button
-                onClick={publicar}
-                className={[
-                  'w-full font-black py-4 rounded-2xl text-sm transition-all shadow-sm',
-                  publicado
-                    ? 'bg-green-200 text-green-800 cursor-default'
-                    : 'bg-green-600 hover:bg-green-700 text-white',
-                ].join(' ')}
-              >
-                {publicado
-                  ? '✓ Publicado com sucesso!'
-                  : `📢 Publicar ${totalUnicos} figurinha${totalUnicos > 1 ? 's' : ''} · ${totalSelecionado} unidade${totalSelecionado > 1 ? 's' : ''} no total`}
-              </button>
-            ) : (
-              <div className="w-full py-4 rounded-2xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
-                🔒 Anúncios disponíveis apenas para maiores de 18
-              </div>
-            )
-          )}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="bg-green-50 rounded-2xl px-4 py-3 text-center">
+          <p className="text-2xl font-black text-green-700">{coladas.size}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Figurinhas no álbum</p>
         </div>
-      )}
+        <div className="bg-blue-50 rounded-2xl px-4 py-3 text-center">
+          <p className="text-2xl font-black text-blue-700">{anuncios.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Anunciadas</p>
+        </div>
+      </div>
 
-      {/* ── ABA ATIVOS ── */}
-      {tab === 'ativos' && (
-        <div className="animate-fadein space-y-2">
-          {ativos.length === 0 && (
-            <div className="text-center py-10 text-slate-400">
-              <p className="text-3xl mb-2">📭</p>
-              <p className="text-sm">Nenhum anúncio ativo</p>
+      {coladas.size === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+          <p className="text-4xl mb-3">📋</p>
+          <p className="font-black text-slate-800 text-base mb-1">Álbum vazio</p>
+          <p className="text-sm text-slate-500 mb-4">Marque suas figurinhas no álbum primeiro para poder anunciá-las.</p>
+          <a href="/album" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+            📋 Ir para o álbum →
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-4">
+
+          {/* ── ANUNCIADAS ── */}
+          {anuncios.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-slate-700">📢 Anunciadas</p>
+                <div className="flex gap-1">
+                  {(['todos', 'troca', 'venda'] as const).map(f => (
+                    <button key={f} onClick={() => setFiltroAcao(f)}
+                      className={['px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all',
+                        filtroAcao === f ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'].join(' ')}>
+                      {f === 'todos' ? 'Todas' : f === 'venda' ? '💰 Venda' : '🔁 Troca'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {anunciosFiltrados.map(a => (
+                  <div key={a.sid} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 flex items-center gap-3">
+                    <div className={['w-11 h-11 rounded-xl flex flex-col items-center justify-center flex-shrink-0 border-2',
+                      a.acao === 'venda' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-blue-50 border-blue-200 text-blue-700'].join(' ')}>
+                      <span className="text-xs font-black leading-none">{a.gNum}</span>
+                      {TIPO_ICON[a.tipo] && <span className="text-[8px] leading-none mt-0.5">{TIPO_ICON[a.tipo]}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-slate-800 truncate">{a.nome}</p>
+                      <p className="text-xs text-slate-400">{a.catName}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className={['text-[10px] font-bold px-2 py-0.5 rounded-full',
+                        a.acao === 'venda' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'].join(' ')}>
+                        {a.acao === 'venda' ? `R$ ${parseFloat(a.preco || '0').toFixed(2).replace('.', ',')}` : '🔁 Troca'}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{a.qty} unid.</span>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => editarModal(a)}
+                        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-colors flex items-center justify-center">
+                        ✏️
+                      </button>
+                      <button onClick={() => remover(a.sid)}
+                        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 text-base transition-colors flex items-center justify-center">
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-          {ativos.map(item => {
-            const cfg = ANUNCIO_CONFIG[item.anuncio as TipoAnuncio]
-            return (
-              <div key={item.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                <div className="flex items-center gap-3">
-                  {/* Num */}
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-black text-slate-500">{item.id.split('-')[1]}</span>
-                  </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-slate-800 truncate">{item.nome}</p>
-                    <p className="text-xs text-slate-400">{item.seleção}</p>
-                  </div>
+          {/* ── DISPONÍVEIS PARA ANUNCIAR ── */}
+          {disponiveis.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-slate-700">
+                  📋 Disponíveis para anunciar
+                  <span className="ml-1.5 text-[11px] font-semibold text-slate-400">({disponiveis.length})</span>
+                </p>
+              </div>
 
-                  {/* Tipo + preço */}
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
-                    {item.preco !== '—' && <span className="text-xs font-semibold text-slate-500">{item.preco}</span>}
-                  </div>
+              {/* Busca */}
+              <div className="relative mb-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Buscar por número ou nome..."
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
 
-                  {/* Remover */}
-                  <button
-                    onClick={() => removeAtivo(item.id)}
-                    className="text-slate-300 hover:text-red-400 transition-colors ml-1 text-lg flex-shrink-0"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* Quantidade */}
-                {(
-                  <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-medium">Quantidade disponível</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setAtivoQty(item.id, -1)}
-                        disabled={item.qtd <= 1}
-                        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 font-black text-base transition-colors flex items-center justify-center"
-                      >
-                        −
-                      </button>
-                      <span className="w-8 text-center text-base font-black text-slate-800">{item.qtd}</span>
-                      <button
-                        onClick={() => setAtivoQty(item.id, +1)}
-                        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-base transition-colors flex items-center justify-center"
-                      >
-                        +
-                      </button>
-                      <span className="text-xs text-slate-400 ml-1">unid.</span>
+              <div className="space-y-1.5">
+                {disponiveisFiltrados.map(s => (
+                  <button key={s.sid} onClick={() => adulto ? abrirModal(s) : null}
+                    className="w-full bg-white rounded-xl border border-slate-100 shadow-sm p-3 flex items-center gap-3 hover:border-green-300 hover:bg-green-50 transition-all text-left active:scale-[0.99]">
+                    <div className="w-11 h-11 rounded-xl bg-slate-50 border-2 border-slate-200 flex flex-col items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-black text-slate-600 leading-none">{s.gNum}</span>
+                      {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none mt-0.5">{TIPO_ICON[s.tipo]}</span>}
                     </div>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-800 truncate">{s.nome}</p>
+                      <p className="text-xs text-slate-400">{s.catName}</p>
+                    </div>
+                    <span className="text-xs text-green-600 font-semibold flex-shrink-0">+ Anunciar</span>
+                  </button>
+                ))}
+                {disponiveisFiltrados.length === 0 && busca && (
+                  <p className="text-center text-sm text-slate-400 py-4">Nenhuma figurinha encontrada</p>
                 )}
               </div>
-            )
-          })}
+
+              {!adulto && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 text-center font-semibold">
+                  🔒 Anúncios disponíveis apenas para maiores de 18
+                </div>
+              )}
+            </div>
+          )}
+
+          {disponiveis.length === 0 && anuncios.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+              <p className="text-2xl mb-1">✅</p>
+              <p className="text-sm font-bold text-green-800">Todas as figurinhas estão anunciadas!</p>
+            </div>
+          )}
         </div>
       )}
-
     </div>
   )
 }
