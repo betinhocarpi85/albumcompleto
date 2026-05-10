@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
 import type { AlbumId } from '@/data/albums-registry'
 import StickerSquare from '@/components/StickerSquare'
-import { getSession, dbGetActiveAlbums, dbGetProfile, dbGetColadas, dbGetMatches, dbEnviarProposta } from '@/lib/db'
+import { getSession, dbGetActiveAlbums, dbGetProfile, dbGetColadas, dbGetMatches, dbEnviarProposta, dbGetPlano } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
+import UpgradeModal from '@/components/UpgradeModal'
 
 // Mapa globalNumber → info da figurinha (nome, código, tipo)
 interface StickerInfo { name: string; code: string; tipo: string }
@@ -76,7 +77,9 @@ export default function MatchesPage() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [propostaSucesso, setPropostaSucesso] = useState<{ nome: string } | null>(null)
   const [interesseEnviado, setInteresseEnviado] = useState<Record<string, boolean>>({})
-  const [adulto, setAdulto]       = useState(true)
+  const [adulto, setAdulto]         = useState(true)
+  const [isPro, setIsPro]           = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const [meuTenhoSet,   setMeuTenhoSet]   = useState<Set<number>>(new Set())
   const [meuPrecisoSet, setMeuPrecisoSet] = useState<Set<number>>(new Set())
   const [matches,  setMatches]  = useState<MatchRecord[]>([])
@@ -88,6 +91,7 @@ export default function MatchesPage() {
     getSession().then(session => {
       if (!session) { setAdulto(true); setLoadingMatches(false); return }
       dbGetProfile().then(p => setAdulto(!!p.maior18))
+      dbGetPlano().then(({ plano }) => setIsPro(plano === 'pro'))
       dbGetActiveAlbums().then(ids => {
         const id = ids[0] ?? 'copa-2026'
         setAlbumId(id)
@@ -185,6 +189,10 @@ export default function MatchesPage() {
   return (
     <div className="max-w-2xl mx-auto py-4 animate-fadein">
       <BannerMenorDeIdade />
+
+      {/* Modal upgrade PRO */}
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+
       <div className="px-3">
 
         {/* Modal proposta/interesse enviado */}
@@ -368,11 +376,20 @@ export default function MatchesPage() {
                       )}
 
                       {adulto ? (
-                        <button disabled={!equilibrado}
-                          onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
-                          className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}>
-                          🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
-                        </button>
+                        isPro ? (
+                          <button disabled={!equilibrado}
+                            onClick={() => equilibrado && enviarProposta(match, oferta, deles)}
+                            className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}>
+                            🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setShowUpgrade(true)}
+                            className="w-full font-bold py-3 rounded-xl text-sm bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white transition-colors"
+                          >
+                            🏆 Seja PRO para enviar propostas
+                          </button>
+                        )
                       ) : (
                         <div className="w-full py-3 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
                           🔒 Trocas disponíveis apenas para maiores de 18

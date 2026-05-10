@@ -463,6 +463,22 @@ export async function dbUpdateProposta(
   await sb.from('propostas').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
 }
 
+// ─── Plano ───────────────────────────────────────────────────────────────────
+
+export async function dbGetPlano(): Promise<{ plano: 'free' | 'pro'; expira_em: string | null }> {
+  const uid = await getUserId()
+  if (!uid) return { plano: 'free', expira_em: null }
+  const sb = createClient()
+  const { data } = await sb.from('profiles').select('plano, plano_expira_em').eq('id', uid).single()
+  const plano     = (data?.plano as 'free' | 'pro') ?? 'free'
+  const expira_em = (data?.plano_expira_em as string | null) ?? null
+  // Verifica expiração
+  if (plano === 'pro' && expira_em && new Date(expira_em) < new Date()) {
+    return { plano: 'free', expira_em: null }
+  }
+  return { plano, expira_em }
+}
+
 // ─── Trocas / Estatísticas ────────────────────────────────────────────────────
 
 export async function dbGetTradeCount(userId: string): Promise<number> {
