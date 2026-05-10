@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { dbGetPublicProfile, type PublicProfileData } from '@/lib/db'
+import type { PublicProfileData } from '@/lib/db'
 
 function StarRating({ media, count }: { media: number | null; count: number }) {
   if (media === null || count === 0) {
@@ -35,10 +35,12 @@ export default function PerfilPublicoPage() {
 
   useEffect(() => {
     if (!id) return
-    dbGetPublicProfile(id).then(data => {
-      setPerfil(data)
-      setLoading(false)
-    })
+    fetch(`/api/public-profile?id=${encodeURIComponent(id)}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: PublicProfileData | null) => {
+        setPerfil(data)
+        setLoading(false)
+      })
   }, [id])
 
   function copiarLink() {
