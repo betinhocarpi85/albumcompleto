@@ -11,7 +11,8 @@ import {
 } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
-type Aba = 'recebidas' | 'enviadas'
+type Aba    = 'recebidas' | 'enviadas'
+type Filtro = 'todos' | 'troca' | 'compra'
 
 const STATUS_CONFIG = {
   pendente: { label: 'Aguardando', bg: 'bg-amber-100',  text: 'text-amber-700'  },
@@ -96,6 +97,7 @@ type AvaliacaoModal = { proposta: PropostaComPerfil; nota: number; comentario: s
 
 export default function PropostasPage() {
   const [aba, setAba]             = useState<Aba>('recebidas')
+  const [filtro, setFiltro]       = useState<Filtro>('todos')
   const [recebidas, setRecebidas] = useState<PropostaComPerfil[]>([])
   const [enviadas, setEnviadas]   = useState<PropostaComPerfil[]>([])
   const [phones, setPhones]       = useState<Record<string, string>>({})
@@ -180,6 +182,9 @@ export default function PropostasPage() {
   const pendentesRecebidas = recebidas.filter(p => p.status === 'pendente').length
   const pendentesEnviadas  = enviadas.filter(p => p.status === 'pendente').length
 
+  const recebidasFiltradas = filtro === 'todos' ? recebidas : recebidas.filter(p => p.tipo === filtro)
+  const enviadasFiltradas  = filtro === 'todos' ? enviadas  : enviadas.filter(p => p.tipo === filtro)
+
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
 
@@ -215,18 +220,42 @@ export default function PropostasPage() {
         ))}
       </div>
 
+      {/* Filtro por tipo */}
+      <div className="flex gap-2 mb-4">
+        {([
+          { key: 'todos',  label: 'Todos'  },
+          { key: 'troca',  label: '🔄 Troca'  },
+          { key: 'compra', label: '🛒 Compra' },
+        ] as { key: Filtro; label: string }[]).map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFiltro(f.key)}
+            className={[
+              'px-3 py-1.5 rounded-full text-xs font-semibold transition-all border',
+              filtro === f.key
+                ? 'bg-green-500 text-white border-green-500'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-green-300 hover:text-green-600',
+            ].join(' ')}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── RECEBIDAS ── */}
       {aba === 'recebidas' && (
         <div className="space-y-3 animate-fadein">
-          {recebidas.length === 0 && (
+          {recebidasFiltradas.length === 0 && (
             <div className="text-center py-16">
               <p className="text-4xl mb-3">📭</p>
-              <p className="font-bold text-slate-700">Nenhuma proposta recebida</p>
+              <p className="font-bold text-slate-700">
+                {filtro === 'todos' ? 'Nenhuma proposta recebida' : `Nenhuma proposta de ${filtro} recebida`}
+              </p>
               <p className="text-sm text-slate-400 mt-1">Quando alguém quiser trocar com você, aparece aqui.</p>
             </div>
           )}
 
-          {recebidas.map(p => {
+          {recebidasFiltradas.map(p => {
             const st    = STATUS_CONFIG[p.status]
             const tipo  = TIPO_CONFIG[p.tipo]
             const phone = phones[p.id]
@@ -365,10 +394,12 @@ export default function PropostasPage() {
       {/* ── ENVIADAS ── */}
       {aba === 'enviadas' && (
         <div className="space-y-3 animate-fadein">
-          {enviadas.length === 0 && (
+          {enviadasFiltradas.length === 0 && (
             <div className="text-center py-16">
               <p className="text-4xl mb-3">📤</p>
-              <p className="font-bold text-slate-700">Nenhuma proposta enviada</p>
+              <p className="font-bold text-slate-700">
+                {filtro === 'todos' ? 'Nenhuma proposta enviada' : `Nenhuma proposta de ${filtro} enviada`}
+              </p>
               <p className="text-sm text-slate-400 mt-1">
                 Vá para{' '}
                 <Link href="/matches" className="text-green-600 font-semibold">Matches</Link>
@@ -377,7 +408,7 @@ export default function PropostasPage() {
             </div>
           )}
 
-          {enviadas.map(p => {
+          {enviadasFiltradas.map(p => {
             const st    = STATUS_CONFIG[p.status]
             const tipo  = TIPO_CONFIG[p.tipo]
             const phone = phones[p.id]
