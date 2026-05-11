@@ -93,17 +93,10 @@ function fmtDate(dateStr: string | null) {
 }
 
 function PlanoBadge({ plano, expirado }: { plano: string; expirado: boolean }) {
-  if (plano === 'anual') {
+  if (plano === 'pro' || plano === 'anual' || plano === 'mensal') {
     return (
       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${expirado ? 'bg-slate-500/20 text-slate-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-        {expirado ? 'anual expirado' : '★ anual'}
-      </span>
-    )
-  }
-  if (plano === 'mensal') {
-    return (
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${expirado ? 'bg-slate-500/20 text-slate-400' : 'bg-blue-500/20 text-blue-400'}`}>
-        {expirado ? 'mensal expirado' : '● mensal'}
+        {expirado ? 'PRO expirado' : '★ PRO'}
       </span>
     )
   }

@@ -34,9 +34,9 @@ export default async function AdminDashboardPage() {
 
   const users = (authData?.users ?? []).map(u => {
     const p = profilesMap.get(u.id)
-    const plano_expira = p?.plano_expira ?? null
+    const plano_expira = p?.plano_expira_em ?? null
     const plano = p?.plano ?? 'free'
-    const planoExpirado = plano !== 'free' && plano_expira && new Date(plano_expira) < new Date()
+    const planoExpirado = plano === 'pro' && plano_expira && new Date(plano_expira) < new Date()
     return {
       id:                  u.id,
       email:               u.email ?? '',
