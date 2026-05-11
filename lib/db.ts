@@ -411,6 +411,7 @@ export async function dbGetPropostasRecebidas(): Promise<PropostaComPerfil[]> {
     .from('propostas')
     .select('*')
     .eq('para_user_id', uid)
+    .neq('status', 'recusada')   // recusadas não aparecem em recebidas
     .order('created_at', { ascending: false })
   return enrichPropostas((data ?? []) as Record<string, unknown>[], 'de_user_id')
 }
