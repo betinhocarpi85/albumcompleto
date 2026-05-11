@@ -9,9 +9,10 @@ import {
 } from '@/lib/store'
 import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano, dbGetHistorico, type HistoricoItem } from '@/lib/db'
 import UpgradeModal from '@/components/UpgradeModal'
+import TutorialSection from '@/components/TutorialSection'
 
 
-type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'tutorial' | 'seguranca'
 
 const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
@@ -20,6 +21,7 @@ const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
+  { key: 'tutorial',    icon: '📖', label: 'Tutorial'   },
   { key: 'seguranca',   icon: '🔒', label: 'Segurança' },
 ]
 
@@ -69,7 +71,7 @@ function ContaPageInner() {
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
-    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','seguranca']
+    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','tutorial','seguranca']
     if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
@@ -834,6 +836,9 @@ function ContaPageInner() {
               </div>
             </div>
           )}
+
+          {/* TUTORIAL */}
+          {section === 'tutorial' && <TutorialSection />}
 
           {/* SEGURANÇA */}
           {section === 'seguranca' && (
