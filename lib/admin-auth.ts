@@ -18,8 +18,16 @@ export async function isAdminAuth(): Promise<boolean> {
   }
 }
 
-/** Verifica credenciais: banco tem prioridade sobre env vars */
+/** Verifica credenciais: env vars têm prioridade; DB é fallback para credenciais alteradas via painel */
 export async function verifyCredentials(user: string, pass: string): Promise<boolean> {
+  // 1) Env vars (Vercel / .env.local) — fonte primária
+  const envUser = (process.env.ADMIN_USERNAME ?? '').trim()
+  const envPass = (process.env.ADMIN_PASSWORD ?? '').trim()
+  if (envUser && envPass) {
+    return user === envUser && pass === envPass
+  }
+
+  // 2) Banco de dados — credenciais alteradas via painel admin
   try {
     const sb = createAdminClient()
     const { data } = await sb
@@ -33,10 +41,8 @@ export async function verifyCredentials(user: string, pass: string): Promise<boo
     if (dbUser && dbPass) {
       return user === dbUser && pass === dbPass
     }
-  } catch { /* fallback abaixo */ }
+  } catch { /* segue */ }
 
-  // Fallback: env vars
-  const envUser = (process.env.ADMIN_USERNAME ?? 'admin').trim()
-  const envPass = (process.env.ADMIN_PASSWORD ?? 'admin').trim()
-  return user === envUser && pass === envPass
+  // 3) Último recurso: padrão seguro (funciona só se nada estiver configurado)
+  return user === 'admin' && pass === 'admin'
 }
