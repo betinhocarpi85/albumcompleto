@@ -73,6 +73,16 @@ export async function POST(request: NextRequest) {
         accepted_payment_methods: ['credit_card', 'pix'],
         pix: { expires_in: 1440 },
         success_url: `${appUrl}/pagamento/sucesso?plano=${plano}`,
+        ...(address ? {
+          billing_address: {
+            line_1:   address.line_1,
+            line_2:   address.line_2 || '',
+            zip_code: address.zip_code,
+            city:     address.city,
+            state:    address.state,
+            country:  'BR',
+          }
+        } : {}),
       },
     }],
   }
