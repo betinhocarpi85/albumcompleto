@@ -9,7 +9,8 @@ import {
   savePedidos,
   type Pedido, type UserProfile,
 } from '@/lib/store'
-import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount } from '@/lib/db'
+import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano } from '@/lib/db'
+import UpgradeModal from '@/components/UpgradeModal'
 
 
 type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
@@ -64,6 +65,9 @@ function ContaPageInner() {
   const [activeAlbums, setActiveAlbums] = useState<Set<AlbumId>>(new Set())
   const [activeAlbumView, setActiveAlbumView] = useState<AlbumId>('copa-2026')
   const [userId, setUserId] = useState<string | null>(null)
+  const [isPro, setIsPro] = useState(false)
+  const [planoExpira, setPlanoExpira] = useState<Date | null>(null)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   async function sair() {
     await signOut()
@@ -118,6 +122,10 @@ function ContaPageInner() {
     getUserId().then(id => {
       setUserId(id)
       if (id) dbGetTradeCount(id).then(setTradeCount)
+    })
+    dbGetPlano().then(({ plano, expira_em }) => {
+      setIsPro(plano === 'pro')
+      setPlanoExpira(expira_em ? new Date(expira_em) : null)
     })
     dbGetActiveAlbums().then(ids => {
       setActiveAlbums(new Set(ids))
@@ -188,7 +196,13 @@ function ContaPageInner() {
               </span>
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
+                {isPro
+                  ? <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full flex-shrink-0">PRO</span>
+                  : <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full flex-shrink-0">Grátis</span>
+                }
+              </div>
               <p className="text-xs text-slate-400">{[perfil.bairro, perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
               {userId && (
                 <div className="flex items-center gap-2 mt-0.5">
@@ -244,6 +258,37 @@ function ContaPageInner() {
           {/* VISÃO GERAL */}
           {section === 'visao-geral' && (
             <div className="space-y-4 animate-fadein">
+
+              {/* Card de plano */}
+              {isPro ? (
+                <div className="bg-gradient-to-r from-amber-400 to-yellow-300 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+                  <span className="text-3xl">🏆</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-amber-900 text-sm">Plano PRO ativo</p>
+                    <p className="text-amber-800 text-xs mt-0.5">
+                      {planoExpira
+                        ? `Válido até ${planoExpira.toLocaleDateString('pt-BR')}`
+                        : 'Acesso vitalício'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-black bg-amber-900/20 text-amber-900 px-2 py-1 rounded-full flex-shrink-0">ATIVO</span>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-4 flex items-center gap-4">
+                  <span className="text-3xl">⭐</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-800 text-sm">Plano Grátis</p>
+                    <p className="text-slate-400 text-xs mt-0.5">Seja PRO para enviar propostas ilimitadas</p>
+                  </div>
+                  <button
+                    onClick={() => setShowUpgrade(true)}
+                    className="text-xs font-black bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-xl transition-colors flex-shrink-0"
+                  >
+                    Upgrade →
+                  </button>
+                </div>
+              )}
+
               {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
@@ -959,6 +1004,8 @@ function ContaPageInner() {
           </div>
         </div>
       )}
+
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
 
       {/* Modal excluir conta */}
       {showDeleteConfirm && (
