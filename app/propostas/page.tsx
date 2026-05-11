@@ -13,6 +13,7 @@ import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type Aba    = 'recebidas' | 'enviadas'
 type Filtro = 'todos' | 'troca' | 'compra'
+type Proposta = PropostaComPerfil & { telefone?: string; avaliado?: boolean }
 
 const STATUS_CONFIG = {
   pendente: { label: 'Aguardando', bg: 'bg-amber-100',  text: 'text-amber-700'  },
@@ -99,10 +100,8 @@ export default function PropostasPage() {
   const [aba, setAba]             = useState<Aba>('recebidas')
   const [filtro, setFiltro]       = useState<Filtro>('todos')
   const [ocultarIds, setOcultarIds] = useState<Set<string>>(new Set())
-  const [recebidas, setRecebidas] = useState<PropostaComPerfil[]>([])
-  const [enviadas, setEnviadas]   = useState<PropostaComPerfil[]>([])
-  const [phones, setPhones]       = useState<Record<string, string>>({})
-  const [jaAvaliou, setJaAvaliou] = useState<Record<string, boolean>>({})
+  const [recebidas, setRecebidas] = useState<Proposta[]>([])
+  const [enviadas, setEnviadas]   = useState<Proposta[]>([])
   const [confirmando, setConfirmando] = useState<{ id: string; acao: 'aceitar' | 'recusar' } | null>(null)
   const [avalModal, setAvalModal] = useState<AvaliacaoModal | null>(null)
   const [avalSalvando, setAvalSalvando] = useState(false)
@@ -117,41 +116,43 @@ export default function PropostasPage() {
         dbGetPropostasEnviadas(),
         dbGetProfile(),
       ])
-      setRecebidas(rec)
-      setEnviadas(env)
       setAdulto(!!prof.maior18)
 
-      // Fetch phones for all already-accepted proposals
+      // Para propostas aceitas, carrega telefone e status de avaliação
       const aceitas = [...rec, ...env].filter(p => p.status === 'aceita')
-      if (aceitas.length === 0) return
-      const entries = await Promise.all(
-        aceitas.map(async p => {
-          const phone = await dbGetPhoneForProposta(p.id)
-          return [p.id, phone] as [string, string | null]
-        })
-      )
-      const newPhones: Record<string, string> = {}
-      entries.forEach(([id, phone]) => { if (phone) newPhones[id] = phone })
-      setPhones(newPhones)
+      const extras = aceitas.length > 0
+        ? await Promise.all(aceitas.map(async p => {
+            const [phone, avaliado] = await Promise.all([
+              dbGetPhoneForProposta(p.id),
+              dbJaAvaliou(p.id),
+            ])
+            return { id: p.id, telefone: phone ?? undefined, avaliado }
+          }))
+        : []
 
-      // Verifica quais já foram avaliadas
-      const avalChecks = await Promise.all(
-        aceitas.map(async p => [p.id, await dbJaAvaliou(p.id)] as [string, boolean])
-      )
-      const avalMap: Record<string, boolean> = {}
-      avalChecks.forEach(([id, done]) => { avalMap[id] = done })
-      setJaAvaliou(avalMap)
+      const extrasMap = new Map(extras.map(e => [e.id, e]))
+      const enrich = (p: PropostaComPerfil): Proposta => {
+        const ex = extrasMap.get(p.id)
+        return ex ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado } : p
+      }
+
+      setRecebidas(rec.map(enrich))
+      setEnviadas(env.map(enrich))
     })
   }, [])
 
   async function salvarAvaliacao() {
     if (!avalModal || avalSalvando) return
     setAvalSalvando(true)
-    const contraparte_id = avalModal.proposta.de_user_id === (await import('@/lib/db').then(m => m.getUserId()))
+    const propostaId    = avalModal.proposta.id
+    const contraparteId = avalModal.proposta.de_user_id === (await import('@/lib/db').then(m => m.getUserId()))
       ? avalModal.proposta.para_user_id
       : avalModal.proposta.de_user_id
-    await dbAvaliar(avalModal.proposta.id, contraparte_id, avalModal.nota, avalModal.comentario)
-    setJaAvaliou(prev => ({ ...prev, [avalModal.proposta.id]: true }))
+    await dbAvaliar(propostaId, contraparteId, avalModal.nota, avalModal.comentario)
+    // Marca avaliado diretamente na proposta — não usa estado separado
+    const marcar = (p: Proposta) => p.id === propostaId ? { ...p, avaliado: true } : p
+    setRecebidas(prev => prev.map(marcar))
+    setEnviadas(prev => prev.map(marcar))
     setAvalSalvando(false)
     setAvalModal(null)
   }
@@ -177,7 +178,11 @@ export default function PropostasPage() {
       await dbUpdateProposta(id, { status: novoStatus })
       if (acao === 'aceitar') {
         const phone = await dbGetPhoneForProposta(id)
-        if (phone) setPhones(prev => ({ ...prev, [id]: phone }))
+        if (phone) {
+          const addPhone = (p: Proposta) => p.id === id ? { ...p, telefone: phone } : p
+          setRecebidas(prev => prev.map(addPhone))
+          setEnviadas(prev => prev.map(addPhone))
+        }
       }
     } finally {
       setLoading(false)
@@ -264,7 +269,7 @@ export default function PropostasPage() {
           {recebidasFiltradas.map(p => {
             const st    = STATUS_CONFIG[p.status]
             const tipo  = TIPO_CONFIG[p.tipo]
-            const phone = phones[p.id]
+            const phone = p.telefone
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
@@ -370,7 +375,7 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
-                    {jaAvaliou[p.id] ? (
+                    {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
                       <button
@@ -417,7 +422,7 @@ export default function PropostasPage() {
           {enviadasFiltradas.map(p => {
             const st    = STATUS_CONFIG[p.status]
             const tipo  = TIPO_CONFIG[p.tipo]
-            const phone = phones[p.id]
+            const phone = p.telefone
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
@@ -481,7 +486,7 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
-                    {jaAvaliou[p.id] ? (
+                    {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
                       <button
