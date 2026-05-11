@@ -98,6 +98,7 @@ type AvaliacaoModal = { proposta: PropostaComPerfil; nota: number; comentario: s
 export default function PropostasPage() {
   const [aba, setAba]             = useState<Aba>('recebidas')
   const [filtro, setFiltro]       = useState<Filtro>('todos')
+  const [ocultarIds, setOcultarIds] = useState<Set<string>>(new Set())
   const [recebidas, setRecebidas] = useState<PropostaComPerfil[]>([])
   const [enviadas, setEnviadas]   = useState<PropostaComPerfil[]>([])
   const [phones, setPhones]       = useState<Record<string, string>>({})
@@ -163,7 +164,7 @@ export default function PropostasPage() {
     // Atualiza UI imediatamente (optimistic update)
     setConfirmando(null)
     if (novoStatus === 'recusada') {
-      setRecebidas(prev => prev.filter(p => p.id !== id))
+      setOcultarIds(prev => new Set([...prev, id]))
     } else {
       const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
       setRecebidas(prev => prev.map(patch))
@@ -186,7 +187,8 @@ export default function PropostasPage() {
   const pendentesRecebidas = recebidas.filter(p => p.status === 'pendente').length
   const pendentesEnviadas  = enviadas.filter(p => p.status === 'pendente').length
 
-  const recebidasFiltradas = filtro === 'todos' ? recebidas : recebidas.filter(p => p.tipo === filtro)
+  const recebidasFiltradas = (filtro === 'todos' ? recebidas : recebidas.filter(p => p.tipo === filtro))
+    .filter(p => !ocultarIds.has(p.id))
   const enviadasFiltradas  = filtro === 'todos' ? enviadas  : enviadas.filter(p => p.tipo === filtro)
 
   return (
