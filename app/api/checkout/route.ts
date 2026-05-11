@@ -24,8 +24,13 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await sb.from('profiles').select('nome').eq('id', user.id).single()
   const nome = profile?.nome || user.email?.split('@')[0] || 'Usuário'
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://albumcompleto.vercel.app'
-  const apiKey = process.env.PAGARME_API_KEY!
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
+  const apiKey = process.env.PAGARME_API_KEY
+  if (!apiKey) {
+    console.error('[checkout] PAGARME_API_KEY não definida')
+    return NextResponse.json({ error: 'Configuração de pagamento ausente' }, { status: 500 })
+  }
+  console.log('[checkout] key prefix:', apiKey.slice(0, 10))
   const auth   = Buffer.from(`${apiKey}:`).toString('base64')
 
   const body = {
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
   const data = await res.json()
 
   if (!res.ok) {
-    console.error('[checkout] pagar.me error:', data)
+    console.error('[checkout] pagar.me error status:', res.status, 'body:', JSON.stringify(data))
     return NextResponse.json({ error: data.message ?? 'Erro ao criar checkout' }, { status: 502 })
   }
 
