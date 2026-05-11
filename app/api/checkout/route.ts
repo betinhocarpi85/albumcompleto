@@ -19,10 +19,24 @@ export async function POST(request: NextRequest) {
 
   const p = PLANOS[plano as keyof typeof PLANOS]
 
-  // Busca nome do perfil
+  // Busca dados do perfil
   const sb = createAdminClient()
-  const { data: profile } = await sb.from('profiles').select('nome').eq('id', user.id).single()
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('nome, cep, bairro, cidade, uf')
+    .eq('id', user.id)
+    .single()
   const nome = profile?.nome || user.email?.split('@')[0] || 'Usuário'
+
+  // Monta endereço para pular a etapa no checkout
+  const address = profile?.cep ? {
+    zip_code: profile.cep.replace(/\D/g, ''),
+    line_1:   profile.bairro || profile.cidade || 'Centro',
+    line_2:   profile.bairro ? profile.cidade : '',
+    city:     profile.cidade || 'São Paulo',
+    state:    profile.uf     || 'SP',
+    country:  'BR',
+  } : undefined
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
   const apiKey = process.env.PAGARME_API_KEY
@@ -35,9 +49,10 @@ export async function POST(request: NextRequest) {
 
   const body = {
     customer: {
-      name:  nome,
-      email: user.email,
-      type:  'individual',
+      name:    nome,
+      email:   user.email,
+      type:    'individual',
+      ...(address ? { address } : {}),
     },
     items: [{
       amount:      p.amount,
