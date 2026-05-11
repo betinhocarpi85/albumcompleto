@@ -66,9 +66,33 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/api') ||
       pathname.startsWith('/entrar') ||
       pathname.startsWith('/cadastro')
+
     if (!permitido) {
-      return NextResponse.redirect(new URL('/completar-cadastro', request.url))
+      // Cookie presente mas pode estar desatualizado — verifica o DB como fonte de verdade
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('telefone, cep, aceitou_termos, aceitou_privacidade')
+        .eq('id', user.id)
+        .single()
+
+      const completo =
+        profile?.telefone && profile?.cep &&
+        profile?.aceitou_termos && profile?.aceitou_privacidade
+
+      if (!completo) {
+        return NextResponse.redirect(new URL('/completar-cadastro', request.url))
+      }
+
+      // Perfil completo no DB: limpa o cookie stale e deixa passar
+      supabaseResponse.cookies.set('profile_pending', '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        path:     '/',
+        maxAge:   0,
+      })
+      return supabaseResponse
     }
+
     return supabaseResponse
   }
 
