@@ -5,11 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
 import {
-  getPedidos,
-  savePedidos,
-  type Pedido, type UserProfile,
+  type UserProfile,
 } from '@/lib/store'
-import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano } from '@/lib/db'
+import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano, dbGetHistorico, type HistoricoItem } from '@/lib/db'
 import UpgradeModal from '@/components/UpgradeModal'
 
 
@@ -33,23 +31,16 @@ const ALBUM_PROGRESS_FALLBACK: Record<AlbumId, number> = {
   'brasileirao-fem-2026':    0,
 }
 
-const TYPE_CONFIG = {
-  troca:  { label: 'Troca',  bg: 'bg-blue-100',   text: 'text-blue-700'   },
-  venda:  { label: 'Venda',  bg: 'bg-green-100',  text: 'text-green-700'  },
-}
 
 function ContaPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [section, setSection]   = useState<Section>('visao-geral')
-  const [pedidos, setPedidos]   = useState<Pedido[]>([])
+  const [historico, setHistorico] = useState<HistoricoItem[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [tradeCount, setTradeCount] = useState(0)
   const [notifNaoVistas, setNotifNaoVistas]         = useState(0)
-  const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'venda'>('todos')
-  const [avaliacaoModal, setAvaliacaoModal] = useState<Pedido | null>(null)
-  const [estrelas, setEstrelas] = useState(5)
-  const [avaliacaoEnviada, setAvaliacaoEnviada] = useState<string | null>(null)
+  const [filtroPedido, setFiltroPedido] = useState<'todos' | 'troca' | 'compra'>('todos')
   const [albumProgress, setAlbumProgress] = useState<Record<AlbumId, number>>(ALBUM_PROGRESS_FALLBACK)
   const [editDados, setEditDados] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
@@ -75,16 +66,6 @@ function ContaPageInner() {
     window.location.href = '/entrar'
   }
 
-  function enviarAvaliacao() {
-    if (!avaliacaoModal) return
-    const atualizados = pedidos.map(p =>
-      p.id === avaliacaoModal.id ? { ...p, status: 'concluido' as const } : p
-    )
-    setPedidos(atualizados)
-    savePedidos(atualizados)
-    setAvaliacaoEnviada(avaliacaoModal.id)
-    setAvaliacaoModal(null)
-  }
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
@@ -93,7 +74,7 @@ function ContaPageInner() {
   }, [searchParams])
 
   useEffect(() => {
-    queueMicrotask(() => setPedidos(getPedidos()))
+    dbGetHistorico().then(setHistorico)
     dbGetPropostasRecebidas().then(rec => {
       const pend = rec.filter(p => p.status === 'pendente').length
       setPropostasPendentes(pend)
@@ -147,7 +128,7 @@ function ContaPageInner() {
     return m
   })
 
-  const nVendas  = pedidos.filter(p => p.tipo === 'venda').length
+  const nVendas  = historico.filter(p => p.tipo === 'compra').length
 
   // tradeCount = trocas confirmadas por avaliação mútua (fonte confiável para ranking/badges)
   const BADGE_DEFS = [
@@ -296,7 +277,7 @@ function ContaPageInner() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                   { label: 'Trocas',    value: tradeCount,                                       color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '🔁' },
-                  { label: 'Vendas',    value: pedidos.filter(p => p.tipo === 'venda').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
+                  { label: 'Vendas',    value: historico.filter(p => p.tipo === 'compra').length,   color: 'text-green-600',  bg: 'bg-green-50',  icon: '🟢' },
                   { label: 'Avaliações',value: 0,                                                color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⭐' },
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
@@ -380,17 +361,19 @@ function ContaPageInner() {
                   <p className="font-bold text-slate-800">Últimas transações</p>
                   <button onClick={() => setSection('historico')} className="text-xs text-green-600 font-medium hover:underline">Ver todas →</button>
                 </div>
-                {pedidos.length === 0 ? (
+                {historico.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-4">Nenhuma transação ainda.</p>
                 ) : (
                   <div className="space-y-2">
-                    {pedidos.slice(0, 3).map((p) => (
+                    {historico.slice(0, 3).map((p) => (
                       <div key={p.id} className="flex items-center gap-3 text-sm">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TYPE_CONFIG[p.tipo].bg} ${TYPE_CONFIG[p.tipo].text}`}>
-                          {TYPE_CONFIG[p.tipo].label}
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo === 'troca' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {p.tipo === 'troca' ? '🔄 Troca' : '🛒 Compra'}
                         </span>
-                        <span className="text-slate-700 truncate flex-1">{p.fig}</span>
-                        <span className="text-slate-400 text-xs flex-shrink-0">{p.data}</span>
+                        <span className="text-slate-700 truncate flex-1">com {p.contraparte}</span>
+                        <span className="text-slate-400 text-xs flex-shrink-0">
+                          {new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -492,7 +475,7 @@ function ContaPageInner() {
               {/* Badges por categoria */}
               {[
                 {
-                  label: 'Vendas', icon: '💰', value: pedidos.filter(p => p.tipo === 'venda').length,
+                  label: 'Vendas', icon: '💰', value: historico.filter(p => p.tipo === 'compra').length,
                   color: { bar: 'bg-green-500', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500', dotOff: 'bg-slate-200' },
                   levels: [
                     { nome: 'Estreante',  meta: 1    },
@@ -812,51 +795,37 @@ function ContaPageInner() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-50 flex items-center justify-between">
                   <p className="font-bold text-slate-800 text-sm">Transações</p>
-                  <p className="text-xs text-slate-400">{pedidos.filter(p => filtroPedido === 'todos' || p.tipo === filtroPedido).length} registros</p>
+                  <p className="text-xs text-slate-400">{historico.filter(p => filtroPedido === 'todos' || p.tipo === filtroPedido).length} registros</p>
                 </div>
                 <div className="divide-y divide-slate-50">
-                  {pedidos
+                  {historico
                     .filter(p => filtroPedido === 'todos' || p.tipo === filtroPedido)
                     .map(p => {
-                      const cfg = TYPE_CONFIG[p.tipo]
-                      const statusCfg = p.status === 'concluido'
-                        ? { label: 'Concluído', color: 'text-green-600' }
-                        : p.status === 'pendente'
-                        ? { label: 'Pendente',  color: 'text-amber-600' }
-                        : { label: 'Cancelado', color: 'text-red-500'   }
+                      const emoji = p.tipo === 'troca' ? '🔄' : '🛒'
+                      const label = p.tipo === 'troca' ? 'Troca' : 'Compra'
+                      const bg    = p.tipo === 'troca' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                      const data  = new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
                       return (
                         <div key={p.id} className="flex items-center gap-3 px-4 py-3.5">
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${cfg.bg} ${cfg.text}`}>
-                            {cfg.label}
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${bg}`}>
+                            {emoji} {label}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{p.fig}</p>
-                            <p className="text-xs text-slate-400">com {p.contraparte}</p>
-                            {p.enderecoEntrega && (
-                              <p className="text-[10px] text-slate-300 truncate mt-0.5">📍 {p.enderecoEntrega}</p>
-                            )}
+                            <p className="text-sm font-semibold text-slate-800">com {p.contraparte}</p>
+                            <p className="text-xs text-slate-400 truncate">
+                              {p.figurinhas.length} figurinha{p.figurinhas.length !== 1 ? 's' : ''}
+                              {p.figurinhas.length <= 5 && ` · #${p.figurinhas.join(', #')}`}
+                            </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-xs text-slate-400">{p.data}</p>
-                            <p className={`text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</p>
-                            {p.valor && <p className="text-xs font-bold text-green-600">R$ {p.valor.toFixed(2).replace('.',',')}</p>}
-                            {p.status === 'concluido' && !avaliacaoEnviada?.includes(p.id) && (
-                              <button
-                                onClick={() => { setAvaliacaoModal(p); setEstrelas(5) }}
-                                className="text-[10px] text-amber-600 font-semibold hover:underline mt-0.5 block"
-                              >
-                                ⭐ Avaliar
-                              </button>
-                            )}
-                            {avaliacaoEnviada?.includes(p.id) && (
-                              <p className="text-[10px] text-green-600 font-medium mt-0.5">✓ Avaliado</p>
-                            )}
+                            <p className="text-xs text-slate-400">{data}</p>
+                            <p className="text-xs font-medium text-green-600">✓ Confirmada</p>
                           </div>
                         </div>
                       )
                     })}
                 </div>
-                {pedidos.filter(p => filtroPedido === 'todos' || p.tipo === filtroPedido).length === 0 && (
+                {historico.filter(p => filtroPedido === 'todos' || p.tipo === filtroPedido).length === 0 && (
                   <div className="py-10 text-center">
                     <p className="text-3xl mb-2">📭</p>
                     <p className="text-sm text-slate-500">Nenhum registro encontrado</p>
@@ -916,42 +885,6 @@ function ContaPageInner() {
 
         </div>
       </div>
-
-      {/* Modal avaliação */}
-      {avaliacaoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setAvaliacaoModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
-            <p className="font-black text-slate-800 text-lg mb-1">Avaliar transação</p>
-            <p className="text-sm text-slate-500 mb-4">
-              Como foi sua experiência com <span className="font-semibold">{avaliacaoModal.contraparte}</span>?
-            </p>
-            <div className="flex justify-center gap-2 mb-4">
-              {[1,2,3,4,5].map(n => (
-                <button key={n} onClick={() => setEstrelas(n)}
-                  className={`text-3xl transition-all ${n <= estrelas ? 'opacity-100 scale-110' : 'opacity-30'}`}>
-                  ⭐
-                </button>
-              ))}
-            </div>
-            <textarea
-              placeholder="Comentário opcional..."
-              rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-400 mb-4"
-            />
-            <div className="flex gap-2">
-              <button onClick={() => setAvaliacaoModal(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">
-                Cancelar
-              </button>
-              <button onClick={enviarAvaliacao}
-                className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold">
-                Enviar avaliação
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal alterar senha */}
       {showSenhaModal && (

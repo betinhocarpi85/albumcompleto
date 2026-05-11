@@ -591,6 +591,74 @@ export async function dbJaAvaliou(proposta_id: string): Promise<boolean> {
   return (count ?? 0) > 0
 }
 
+// ─── Histórico ───────────────────────────────────────────────────────────────
+
+export interface HistoricoItem {
+  id:             string
+  tipo:           TipoProposta
+  contraparte:    string
+  figurinhas:     number[]   // eu_ofereco (enviadas) ou eu_recebo (recebidas)
+  created_at:     string
+}
+
+export async function dbGetHistorico(): Promise<HistoricoItem[]> {
+  const uid = await getUserId()
+  if (!uid) return []
+  const sb = createClient()
+
+  // 1. Busca avaliações agrupadas por proposta — só propostas com 2 avaliações (mútua)
+  const { data: avals } = await sb
+    .from('avaliacoes')
+    .select('proposta_id, de_user_id, para_user_id')
+
+  if (!avals || avals.length === 0) return []
+
+  // Filtra proposta_ids que envolvem o usuário E têm 2 avaliações
+  const counts = new Map<string, number>()
+  for (const a of avals) {
+    if (a.de_user_id === uid || a.para_user_id === uid) {
+      counts.set(a.proposta_id, (counts.get(a.proposta_id) ?? 0) + 1)
+    }
+  }
+  const propostaIds = [...counts.entries()]
+    .filter(([, n]) => n >= 2)
+    .map(([id]) => id)
+
+  if (propostaIds.length === 0) return []
+
+  // 2. Busca os dados das propostas confirmadas
+  const { data: propostas } = await sb
+    .from('propostas')
+    .select('id, tipo, de_user_id, para_user_id, eu_ofereco, eu_recebo, created_at')
+    .in('id', propostaIds)
+    .order('created_at', { ascending: false })
+
+  if (!propostas || propostas.length === 0) return []
+
+  // 3. Busca nomes das contrapartes
+  const contraparteIds = [...new Set(propostas.map(p =>
+    p.de_user_id === uid ? p.para_user_id : p.de_user_id
+  ))]
+  const { data: profiles } = await sb
+    .from('profiles')
+    .select('id, nome')
+    .in('id', contraparteIds)
+  const nomeMap = new Map((profiles ?? []).map(p => [p.id, p.nome ?? 'Usuário']))
+
+  return propostas.map(p => {
+    const isEnviada      = p.de_user_id === uid
+    const contraparteId  = isEnviada ? p.para_user_id : p.de_user_id
+    const figurinhas     = isEnviada ? (p.eu_ofereco as number[]) : (p.eu_recebo as number[])
+    return {
+      id:          p.id,
+      tipo:        p.tipo as TipoProposta,
+      contraparte: nomeMap.get(contraparteId) ?? 'Usuário',
+      figurinhas,
+      created_at:  p.created_at as string,
+    }
+  })
+}
+
 // ─── Conta ────────────────────────────────────────────────────────────────────
 
 export async function dbDeleteAccount(): Promise<{ error: string | null }> {
