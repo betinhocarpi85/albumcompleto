@@ -357,7 +357,8 @@ export default function AdminDashboard({
         setPlanUser(null)
         router.refresh()
       } else {
-        alert('Erro ao definir plano.')
+        const d = await res.json().catch(() => ({}))
+        alert('Erro ao definir plano: ' + (d?.error ?? res.status))
       }
     } finally {
       setPlanLoading(false)
