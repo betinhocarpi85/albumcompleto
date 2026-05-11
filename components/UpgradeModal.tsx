@@ -22,7 +22,7 @@ export default function UpgradeModal({ onClose }: Props) {
       })
       const data = await res.json()
       if (data.url) {
-        window.location.href = data.url
+        window.open(data.url, '_blank', 'noopener,noreferrer')
       } else {
         setErro(data.error ?? 'Erro ao iniciar pagamento. Tente novamente.')
         setLoading(null)
