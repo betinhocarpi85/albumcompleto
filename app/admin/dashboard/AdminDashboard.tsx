@@ -1069,20 +1069,21 @@ export default function AdminDashboard({
               </p>
               <div>
                 <label className="text-xs font-semibold text-slate-400 block mb-1.5">Plano</label>
-                <div className="flex gap-2">
-                  {(['free', 'mensal', 'anual'] as const).map(p => (
+                <div className="flex gap-2 flex-wrap">
+                  {(['free', 'pro', 'mensal', 'anual'] as const).map(p => (
                     <button
                       key={p}
                       onClick={() => setPlanValue(p)}
                       className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all border ${
                         planValue === p
                           ? p === 'anual'  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                          : p === 'pro'    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
                           : p === 'mensal' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
                           :                  'bg-slate-600 text-white border-slate-500'
                           : 'bg-slate-800 text-slate-400 border-slate-700'
                       }`}
                     >
-                      {p}
+                      {p === 'pro' ? '★ PRO' : p}
                     </button>
                   ))}
                 </div>
