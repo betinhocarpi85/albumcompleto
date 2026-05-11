@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
     console.error('[checkout] PAGARME_API_KEY não definida')
     return NextResponse.json({ error: 'Configuração de pagamento ausente' }, { status: 500 })
   }
-  console.log('[checkout] key prefix:', apiKey.slice(0, 10))
   const auth   = Buffer.from(`${apiKey}:`).toString('base64')
 
   const body = {

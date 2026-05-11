@@ -436,7 +436,24 @@ export async function dbEnviarProposta(
 ): Promise<{ error: string | null }> {
   const uid = await getUserId()
   if (!uid) return { error: 'Não autenticado' }
+  if (uid === para_user_id) return { error: 'Não é possível enviar proposta para si mesmo' }
   const sb = createClient()
+
+  // Bloqueia spam: verifica se já existe proposta pendente entre os dois para o mesmo álbum
+  const { data: existente } = await sb
+    .from('propostas')
+    .select('id')
+    .eq('de_user_id', uid)
+    .eq('para_user_id', para_user_id)
+    .eq('album_id', album_id)
+    .eq('tipo', tipo)
+    .eq('status', 'pendente')
+    .limit(1)
+
+  if (existente && existente.length > 0) {
+    return { error: 'JA_ENVIADA' }
+  }
+
   const { error } = await sb.from('propostas').insert({
     de_user_id:   uid,
     para_user_id,

@@ -4,7 +4,11 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/album'
+
+  // Whitelist de destinos para prevenir open redirect
+  const nextParam = searchParams.get('next') ?? '/album'
+  const ALLOWED_PATHS = ['/album', '/matches', '/anuncios', '/conta', '/notificacoes', '/completar-cadastro']
+  const next = ALLOWED_PATHS.includes(nextParam) ? nextParam : '/album'
 
   if (code) {
     const supabase = await createClient()

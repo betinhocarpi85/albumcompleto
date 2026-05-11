@@ -75,6 +75,7 @@ export default function MatchesPage() {
   const [ordemVenda, setOrdemVenda] = useState<OrdemVenda>('padrao')
   const [filtroTroca, setFiltroTroca] = useState<FiltroTroca>('todos')
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [propostaDuplicada, setPropostaDuplicada] = useState(false)
   const [propostaSucesso, setPropostaSucesso] = useState<{ nome: string } | null>(null)
   const [interesseEnviado, setInteresseEnviado] = useState<Record<string, boolean>>({})
   const [adulto, setAdulto]         = useState(true)
@@ -152,12 +153,14 @@ export default function MatchesPage() {
 
   async function enviarProposta(match: MatchRecord, oferta: number[], recebe: number[]) {
     const { error } = await dbEnviarProposta(match.id, albumId, oferta, recebe, 'troca')
+    if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
     if (error) { alert('Não foi possível enviar a proposta. Tente novamente.'); return }
     setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
   }
 
   async function enviarInteresse(userId: string, nome: string, stickers: number[], tipo: 'compra') {
     const { error } = await dbEnviarProposta(userId, albumId, [], stickers, tipo)
+    if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
     if (error) { alert('Não foi possível enviar. Tente novamente.'); return }
     setInteresseEnviado(prev => ({ ...prev, [userId]: true }))
     setPropostaSucesso({ nome: nome.split(' ')[0] })
@@ -195,19 +198,91 @@ export default function MatchesPage() {
 
       <div className="px-3">
 
+        {/* Modal proposta duplicada */}
+        {propostaDuplicada && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setPropostaDuplicada(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein text-center">
+              <p className="text-4xl mb-2">⏳</p>
+              <p className="font-black text-slate-800 text-lg mb-1">Proposta já enviada</p>
+              <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+                Você já tem uma proposta <strong>pendente</strong> com este usuário para este álbum.
+                Aguarde a resposta antes de enviar outra.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPropostaDuplicada(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                <Link
+                  href="/propostas"
+                  onClick={() => setPropostaDuplicada(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold text-center transition-colors"
+                >
+                  Ver propostas →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Modal proposta/interesse enviado */}
         {propostaSucesso && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="absolute inset-0 bg-black/40" onClick={() => setPropostaSucesso(null)} />
-            <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein text-center">
-              <p className="text-4xl mb-3">🤝</p>
-              <p className="font-black text-slate-800 text-lg mb-1">Solicitação enviada!</p>
-              <p className="text-sm text-slate-500 mb-4">
-                {propostaSucesso.nome} receberá sua solicitação. Se aceitar, vocês recebem o contato um do outro para combinar diretamente.
-              </p>
+            <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-fadein">
+
+              {/* Header */}
+              <div className="text-center mb-4">
+                <p className="text-4xl mb-2">🤝</p>
+                <p className="font-black text-slate-800 text-lg">Proposta enviada!</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  <strong>{propostaSucesso.nome}</strong> receberá sua proposta e poderá aceitar ou recusar.
+                  Quando aceita, vocês recebem o contato um do outro para combinar a troca diretamente.
+                </p>
+              </div>
+
+              {/* Aguarde */}
+              <div className="bg-blue-50 rounded-xl px-4 py-3 mb-3">
+                <p className="text-xs font-bold text-blue-700 mb-1.5">⏳ O que acontece agora?</p>
+                {[
+                  'Aguarde a resposta — você será notificado quando aceitar ou recusar',
+                  'Não envie múltiplas propostas para o mesmo usuário',
+                  'Você pode acompanhar em "Propostas" a qualquer momento',
+                ].map(t => (
+                  <p key={t} className="text-xs text-blue-600 leading-relaxed">• {t}</p>
+                ))}
+              </div>
+
+              {/* Segurança */}
+              <div className="bg-amber-50 rounded-xl px-4 py-3 mb-4">
+                <p className="text-xs font-bold text-amber-700 mb-1.5">🔒 Sua segurança em primeiro lugar</p>
+                {[
+                  'Combine a troca somente após a confirmação na plataforma',
+                  'Prefira locais públicos e movimentados para a entrega',
+                  'Não envie figurinhas antes de receber as suas',
+                  'Em caso de problema, use o botão de denúncia no perfil',
+                ].map(t => (
+                  <p key={t} className="text-xs text-amber-700 leading-relaxed">• {t}</p>
+                ))}
+              </div>
+
               <div className="flex gap-2">
-                <button onClick={() => setPropostaSucesso(null)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600">Fechar</button>
-                <Link href="/propostas" onClick={() => setPropostaSucesso(null)} className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-bold text-center">Ver propostas →</Link>
+                <button
+                  onClick={() => setPropostaSucesso(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                <Link
+                  href="/propostas"
+                  onClick={() => setPropostaSucesso(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold text-center transition-colors"
+                >
+                  Ver propostas →
+                </Link>
               </div>
             </div>
           </div>

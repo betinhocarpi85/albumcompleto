@@ -1,19 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { timingSafeEqual } from 'crypto'
+
+function verifyBasicAuth(authHeader: string): boolean {
+  const user   = (process.env.PAGARME_WEBHOOK_USER   ?? '').trim()
+  const secret = (process.env.PAGARME_WEBHOOK_SECRET ?? '').trim()
+
+  if (!user || !secret) {
+    console.warn('[webhook/pagarme] ⚠️  PAGARME_WEBHOOK_USER ou PAGARME_WEBHOOK_SECRET não configurados — verificação ignorada')
+    return true
+  }
+
+  if (!authHeader.startsWith('Basic ')) return false
+
+  const decoded  = Buffer.from(authHeader.slice(6), 'base64').toString('utf8')
+  const expected = `${user}:${secret}`
+
+  try {
+    const a = Buffer.alloc(512); a.write(decoded)
+    const b = Buffer.alloc(512); b.write(expected)
+    return timingSafeEqual(a, b)
+  } catch {
+    return false
+  }
+}
 
 export async function POST(request: NextRequest) {
+  const authHeader = request.headers.get('authorization') ?? ''
+
+  if (!verifyBasicAuth(authHeader)) {
+    console.warn('[webhook/pagarme] ❌ autenticação inválida')
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   const body = await request.json()
 
   console.log('[webhook/pagarme] evento recebido:', body.type)
 
-  // Aceita order.paid e charge.paid
   if (body.type !== 'order.paid' && body.type !== 'charge.paid') {
     return NextResponse.json({ ok: true })
   }
 
-  // Pagar.me v5: metadata pode vir em lugares diferentes dependendo do evento
-  // order.paid  → body.data.metadata
-  // charge.paid → body.data.metadata OU body.data.order.metadata
   const metadata =
     body.data?.metadata ??
     body.data?.order?.metadata ??

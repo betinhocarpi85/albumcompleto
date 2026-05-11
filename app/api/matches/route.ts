@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const debug = request.nextUrl.searchParams.has('debug')
   const albumId = (request.nextUrl.searchParams.get('albumId') ?? 'copa-2026') as AlbumId
   const sb = createAdminClient()
 
@@ -56,19 +55,6 @@ export async function GET(request: NextRequest) {
       if (display) emailMap.set(id, display)
     } catch { /* silencioso */ }
   }))
-
-  if (debug) {
-    return NextResponse.json({
-      myUserId:      user.id,
-      profilesError: profilesRes.error?.message ?? null,
-      profilesCount: profilesRes.data?.length ?? 0,
-      profiles:      profilesRes.data,
-      emailMapEntries: Object.fromEntries(emailMap),
-      othersAdsCount:  othersAdsRes.data?.length ?? 0,
-      othersAdsError:  othersAdsRes.error?.message ?? null,
-      otherUserIds,
-    })
-  }
 
   const dbProfileMap = new Map((profilesRes.data ?? []).map(p => [p.id, p]))
   const allRelevantIds = [user.id, ...otherUserIds]

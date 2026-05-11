@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server'
 import { isAdminAuth } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+// Chaves que não podem ser alteradas via painel (gerenciadas por env vars ou rota dedicada)
+const PROTECTED_KEYS = new Set([
+  'admin_username',
+  'admin_password_plain',
+  'admin_password_hash',
+])
+
 export async function GET() {
   if (!await isAdminAuth()) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -13,6 +20,8 @@ export async function GET() {
 
   const settings: Record<string, string> = {}
   for (const row of data ?? []) {
+    // Nunca expõe hashes/senhas na resposta
+    if (PROTECTED_KEYS.has(row.key)) continue
     settings[row.key] = row.value
   }
 
@@ -26,6 +35,10 @@ export async function POST(request: Request) {
 
   const { key, value } = await request.json()
   if (!key) return NextResponse.json({ error: 'key obrigatório' }, { status: 400 })
+
+  if (PROTECTED_KEYS.has(key)) {
+    return NextResponse.json({ error: 'Chave protegida. Use a rota de credenciais.' }, { status: 403 })
+  }
 
   const sb = createAdminClient()
 
