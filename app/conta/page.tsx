@@ -198,10 +198,13 @@ function ContaPageInner() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <p className="font-bold text-sm text-slate-800 truncate">{perfil.nome || 'Minha Conta'}</p>
-                {isPro
-                  ? <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full flex-shrink-0">PRO</span>
-                  : <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full flex-shrink-0">Grátis</span>
-                }
+                {/* badge só no mobile — no desktop aparece no Navbar */}
+                <span className="md:hidden">
+                  {isPro
+                    ? <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full flex-shrink-0">PRO</span>
+                    : <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full flex-shrink-0">Grátis</span>
+                  }
+                </span>
               </div>
               <p className="text-xs text-slate-400">{[perfil.bairro, perfil.cidade, perfil.uf].filter(Boolean).join(', ') || 'Complete seu perfil'}</p>
               {userId && (

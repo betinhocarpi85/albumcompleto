@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { getSession, dbGetProfile } from '@/lib/db'
+import { getSession, dbGetProfile, dbGetPlano } from '@/lib/db'
 
 function iniciais(nome?: string) {
   if (!nome) return '?'
@@ -15,13 +15,17 @@ function iniciais(nome?: string) {
 export default function Navbar() {
   const path = usePathname()
   const [notifCount, setNotifCount] = useState(0)
-  const [logado, setLogado]         = useState(false)
+  const [logado, setLogado]           = useState(false)
   const [nomeUsuario, setNomeUsuario] = useState('')
+  const [isPro, setIsPro]             = useState(false)
 
   useEffect(() => {
     getSession().then(session => {
       setLogado(!!session)
-      if (session) dbGetProfile().then(p => setNomeUsuario(p.nome ?? ''))
+      if (session) {
+        dbGetProfile().then(p => setNomeUsuario(p.nome ?? ''))
+        dbGetPlano().then(({ plano }) => setIsPro(plano === 'pro'))
+      }
     })
   }, [])
 
@@ -77,7 +81,11 @@ export default function Navbar() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
                 <span className="text-white text-xs font-black">{iniciais(nomeUsuario) || 'EU'}</span>
               </div>
-              {nomeUsuario ? nomeUsuario.split(' ')[0] : 'Minha Conta'}
+              <span>{nomeUsuario ? nomeUsuario.split(' ')[0] : 'Minha Conta'}</span>
+              {isPro
+                ? <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full">PRO</span>
+                : <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">Grátis</span>
+              }
             </Link>
           ) : (
             <>
