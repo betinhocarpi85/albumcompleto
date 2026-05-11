@@ -163,10 +163,14 @@ export default function PropostasPage() {
       const novoStatus: 'aceita' | 'recusada' = acao === 'aceitar' ? 'aceita' : 'recusada'
       await dbUpdateProposta(id, { status: novoStatus })
 
-      // Update local state for both lists
-      const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
-      setRecebidas(prev => prev.map(patch))
-      setEnviadas(prev => prev.map(patch))
+      // Recusada: remove da lista de recebidas; atualiza enviadas normalmente
+      if (novoStatus === 'recusada') {
+        setRecebidas(prev => prev.filter(p => p.id !== id))
+      } else {
+        const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
+        setRecebidas(prev => prev.map(patch))
+        setEnviadas(prev => prev.map(patch))
+      }
 
       // Reveal phone if accepted
       if (acao === 'aceitar') {
