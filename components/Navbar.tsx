@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getSession, dbGetProfile } from '@/lib/db'
@@ -36,13 +37,8 @@ export default function Navbar() {
     <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="max-w-6xl mx-auto w-full px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-            <span className="text-white text-sm font-black">C</span>
-          </div>
-          <span className="font-black text-slate-800 text-lg tracking-tight">
-            completan<span className="text-green-500">do</span>
-          </span>
+        <Link href="/">
+          <Image src="/logo.png" alt="Completando" height={40} width={180} className="h-10 w-auto" priority />
         </Link>
 
         {/* Links */}

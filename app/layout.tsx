@@ -7,6 +7,16 @@ export const metadata: Metadata = {
   title: 'Completando — Troque e Venda Figurinhas',
   description: 'A plataforma brasileira para troca e venda de figurinhas de álbuns colecionáveis. Match automático, combine diretamente. Copa do Mundo 2026 e mais.',
   keywords: ['figurinhas', 'álbum', 'copa do mundo', 'troca', 'venda', 'colecionáveis'],
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png', sizes: '96x96' },
+    ],
+    apple: '/icon.png',
+  },
+  openGraph: {
+    images: [{ url: '/logo-bg.png' }],
+  },
 }
 
 export const viewport: Viewport = {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn, signInWithGoogle, getSession, dbGetProfile } from '@/lib/db'
 import { Suspense } from 'react'
@@ -63,13 +64,8 @@ function EntrarForm() {
       <div className="w-full max-w-sm animate-fadein">
 
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-              <span className="text-white text-base font-black">C</span>
-            </div>
-            <span className="font-black text-white text-xl tracking-tight">
-              completan<span className="text-green-400">do</span>
-            </span>
+          <Link href="/" className="inline-block mb-2">
+            <Image src="/logo.png" alt="Completando" width={200} height={56} className="h-12 w-auto" priority />
           </Link>
           <p className="text-slate-400 text-sm mt-1">Entre na sua conta</p>
         </div>
