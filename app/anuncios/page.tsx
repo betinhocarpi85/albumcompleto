@@ -90,7 +90,7 @@ export default function AnunciosPage() {
   const [modal,    setModal]    = useState<VendaModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
-  const [filtroAcao, setFiltroAcao]   = useState<'todos' | TipoAnuncio>('todos')
+  const [filtroAcao, setFiltroAcao]   = useState<TipoAnuncio>('troca')
   // disponíveis
   const [openTipos, setOpenTipos]     = useState<Set<StickerType>>(new Set(['normal']))
   const [openCats,  setOpenCats]      = useState<Set<string>>(new Set())
@@ -242,11 +242,9 @@ export default function AnunciosPage() {
     setTimeout(() => setSalvo(false), 2000)
   }
 
-  const anunciosFiltrados = useMemo(() => {
-    let lista = anuncios
-    if (filtroAcao !== 'todos') lista = lista.filter(a => a.acao === filtroAcao)
-    return lista
-  }, [anuncios, filtroAcao])
+  const anunciosFiltrados = useMemo(() =>
+    anuncios.filter(a => a.acao === filtroAcao)
+  , [anuncios, filtroAcao])
 
   // Agrupa anúncios filtrados por tipo → por categoria (para a aba Anunciadas)
   const anunciadosPorTipoECat = useMemo(() => {
@@ -398,7 +396,7 @@ export default function AnunciosPage() {
                 tab === 'disponiveis' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
               📋 Disponíveis
             </button>
-            <button onClick={() => setTab('anunciadas')}
+            <button onClick={() => { setTab('anunciadas'); setFiltroAcao('troca') }}
               className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
                 tab === 'anunciadas' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
               📢 Anunciadas
@@ -532,7 +530,7 @@ export default function AnunciosPage() {
                   {/* Filtro Troca / Venda */}
                   <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
                     {(['troca', 'venda'] as const).map(f => (
-                      <button key={f} onClick={() => setFiltroAcao(f === filtroAcao ? 'todos' : f)}
+                      <button key={f} onClick={() => setFiltroAcao(f)}
                         className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
                           filtroAcao === f
                             ? f === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'
