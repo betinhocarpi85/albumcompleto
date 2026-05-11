@@ -110,6 +110,9 @@ export default async function AdminDashboardPage() {
     siteSettings[row.key] = row.value
   }
 
+  const isPro = (u: typeof users[0]) =>
+    (u.plano === 'pro' || u.plano === 'anual' || u.plano === 'mensal') && !u.plano_expirado
+
   const stats = {
     totalUsers:       users.length,
     totalAnuncios:    (anuncios ?? []).length,
@@ -119,6 +122,8 @@ export default async function AdminDashboardPage() {
     completeProfiles: users.filter(u => u.profile_complete).length,
     bannedUsers:      users.filter(u => u.banned).length,
     onlineHoje,
+    totalPro:         users.filter(isPro).length,
+    totalFree:        users.filter(u => !isPro(u)).length,
   }
 
   return (

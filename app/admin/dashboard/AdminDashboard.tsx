@@ -37,6 +37,8 @@ type Stats = {
   completeProfiles: number
   bannedUsers: number
   onlineHoje: number
+  totalPro: number
+  totalFree: number
 }
 
 type Anuncio = {
@@ -233,6 +235,7 @@ export default function AdminDashboard({
 
   // Users tab state
   const [search, setSearch] = useState('')
+  const [filterPlano, setFilterPlano] = useState<'todos' | 'pro' | 'free'>('todos')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -439,12 +442,18 @@ export default function AdminDashboard({
   }
 
   // ── Filtered data ──
-  const filteredUsers = users.filter(u =>
-    !search ||
-    u.nome.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase()) ||
-    u.cidade.toLowerCase().includes(search.toLowerCase())
-  )
+  const isProUser = (u: User) => (u.plano === 'pro' || u.plano === 'anual' || u.plano === 'mensal') && !u.plano_expirado
+
+  const filteredUsers = users.filter(u => {
+    if (filterPlano === 'pro'  && !isProUser(u)) return false
+    if (filterPlano === 'free' &&  isProUser(u)) return false
+    return (
+      !search ||
+      u.nome.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      u.cidade.toLowerCase().includes(search.toLowerCase())
+    )
+  })
 
   const filteredAnuncios = anuncios.filter(a => {
     if (anuncioFilter !== 'todos' && a.tipo !== anuncioFilter) return false
@@ -455,13 +464,13 @@ export default function AdminDashboard({
   // ── Stat cards ──
   const STAT_CARDS = [
     { label: 'Usuários',        value: stats.totalUsers,        icon: '👥', color: 'from-blue-500 to-blue-600'     },
+    { label: '★ PRO',           value: stats.totalPro,          icon: '🏆', color: 'from-yellow-500 to-amber-600'  },
+    { label: 'Free',            value: stats.totalFree,         icon: '🆓', color: 'from-slate-500 to-slate-600'   },
     { label: 'Perfis completos',value: stats.completeProfiles,  icon: '✅', color: 'from-green-500 to-green-600'   },
     { label: 'Online hoje',     value: stats.onlineHoje,        icon: '🟢', color: 'from-emerald-500 to-emerald-600'},
     { label: 'Banidos',         value: stats.bannedUsers,       icon: '🚫', color: 'from-red-500 to-red-600'       },
-    { label: 'Figurinhas',      value: stats.totalColadas,      icon: '🃏', color: 'from-purple-500 to-purple-600' },
     { label: 'Anúncios',        value: stats.totalAnuncios,     icon: '📢', color: 'from-orange-500 to-orange-600' },
     { label: 'Propostas',       value: stats.totalPropostas,    icon: '🔁', color: 'from-cyan-500 to-cyan-600'     },
-    { label: 'Pedidos',         value: stats.totalPedidos,      icon: '📦', color: 'from-rose-500 to-rose-600'     },
   ]
 
   return (
@@ -583,6 +592,27 @@ export default function AdminDashboard({
                 onChange={e => setSearch(e.target.value)}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
+              <div className="flex gap-2">
+                {([
+                  { key: 'todos', label: 'Todos' },
+                  { key: 'pro',   label: '★ PRO' },
+                  { key: 'free',  label: 'Free'  },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilterPlano(key)}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                      filterPlano === key
+                        ? key === 'pro'  ? 'bg-yellow-500 text-black'
+                        : key === 'free' ? 'bg-slate-500 text-white'
+                        :                  'bg-orange-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={exportCSV}
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition-colors whitespace-nowrap"
