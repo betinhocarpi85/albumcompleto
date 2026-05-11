@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
         billing_address_editable: false,
         customer_editable:        false,
         accepted_payment_methods: ['credit_card', 'pix', 'boleto'],
+        pix: { expires_in: 1440 },
+        boleto: { instructions: 'Pague este boleto para ativar seu plano PRO no Completando.', due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() },
         success_url: `${appUrl}/pagamento/sucesso?plano=${plano}`,
       },
     }],
@@ -77,8 +79,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: data.message ?? 'Erro ao criar checkout' }, { status: 502 })
   }
 
-  // Pagar.me v5: URL do checkout fica em charges[0].last_transaction.url
-  const url = data?.charges?.[0]?.last_transaction?.url as string | undefined
+  // Pagar.me v5: URL do checkout fica em checkouts[0].payment_url
+  const url = data?.checkouts?.[0]?.payment_url as string | undefined
   if (!url) {
     console.error('[checkout] no url in response:', JSON.stringify(data))
     return NextResponse.json({ error: 'URL de checkout não encontrada' }, { status: 502 })
