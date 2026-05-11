@@ -157,29 +157,29 @@ export default function PropostasPage() {
 
   async function confirmar() {
     if (!confirmando || loading) return
+    const { id, acao } = confirmando
+    const novoStatus: 'aceita' | 'recusada' = acao === 'aceitar' ? 'aceita' : 'recusada'
+
+    // Atualiza UI imediatamente (optimistic update)
+    setConfirmando(null)
+    if (novoStatus === 'recusada') {
+      setRecebidas(prev => prev.filter(p => p.id !== id))
+    } else {
+      const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
+      setRecebidas(prev => prev.map(patch))
+      setEnviadas(prev => prev.map(patch))
+    }
+
+    // Persiste no banco em background
     setLoading(true)
     try {
-      const { id, acao } = confirmando
-      const novoStatus: 'aceita' | 'recusada' = acao === 'aceitar' ? 'aceita' : 'recusada'
       await dbUpdateProposta(id, { status: novoStatus })
-
-      // Recusada: remove da lista de recebidas; atualiza enviadas normalmente
-      if (novoStatus === 'recusada') {
-        setRecebidas(prev => prev.filter(p => p.id !== id))
-      } else {
-        const patch = (p: PropostaComPerfil) => p.id === id ? { ...p, status: novoStatus } : p
-        setRecebidas(prev => prev.map(patch))
-        setEnviadas(prev => prev.map(patch))
-      }
-
-      // Reveal phone if accepted
       if (acao === 'aceitar') {
         const phone = await dbGetPhoneForProposta(id)
         if (phone) setPhones(prev => ({ ...prev, [id]: phone }))
       }
     } finally {
       setLoading(false)
-      setConfirmando(null)
     }
   }
 
