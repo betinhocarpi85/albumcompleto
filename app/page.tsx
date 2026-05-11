@@ -95,9 +95,9 @@ export default function Home() {
             <h2 className="text-2xl md:text-3xl font-black">2 formas de completar seu álbum</h2>
             <p className="text-slate-400 mt-2">Você escolhe como quer participar</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-wrap justify-center gap-4">
             {FEATURES.map((f) => (
-              <div key={f.title} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-5 transition-colors">
+              <div key={f.title} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-5 transition-colors w-64">
                 <div className={`w-8 h-8 rounded-lg ${f.color} flex items-center justify-center mb-3`}>
                   <span className="w-3 h-3 rounded-full bg-white/50" />
                 </div>
