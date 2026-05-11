@@ -17,12 +17,6 @@ const DEMO_STICKERS = [
   { number: 99,  status: 'colada' as const, type: 'normal'    as const },
 ]
 
-const STATS = [
-  { value: '0', label: 'Colecionadores' },
-  { value: '0', label: 'Figurinhas anunciadas' },
-  { value: '0', label: 'Trocas concluídas' },
-  { value: '0', label: 'Vendas realizadas' },
-]
 
 const STEPS = [
   { icon: '📋', title: 'Monte seu álbum', desc: 'Marque as figurinhas que você tem e as que ainda precisa para completar sua coleção.' },
@@ -92,19 +86,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── STATS ── */}
-      <section className="bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-2xl md:text-3xl font-black text-slate-800">{s.value}</div>
-                <div className="text-xs md:text-sm text-slate-500 mt-0.5">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
 
       {/* ── 4 TIPOS ── */}
