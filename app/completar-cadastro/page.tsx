@@ -104,33 +104,43 @@ export default function CompletarCadastroPage() {
     setErros([])
     setLoading(true)
 
-    // Verifica telefone duplicado (exclui o próprio usuário logado)
-    const session = await getSession()
-    const tel = telefone.replace(/\D/g, '')
-    const exclude = session?.user?.id ?? ''
-    const checkRes = await fetch(`/api/check-phone?tel=${tel}&exclude=${exclude}`)
-    const { available } = await checkRes.json()
-    if (!available) {
-      setErros(['Este telefone já está cadastrado em outra conta.'])
-      setLoading(false)
-      return
-    }
+    try {
+      // Verifica telefone duplicado (exclui o próprio usuário logado)
+      const session = await getSession()
+      const tel = telefone.replace(/\D/g, '')
+      const exclude = session?.user?.id ?? ''
+      const checkRes = await fetch(`/api/check-phone?tel=${tel}&exclude=${exclude}`)
 
-    await dbSaveProfile({
-      nome:               nome.trim(),
-      telefone:           telefone.replace(/\D/g, ''),
-      cep:                cep.replace(/\D/g, ''),
-      bairro,
-      cidade,
-      uf,
-      maior18:            true,
-      aceitouTermos,
-      aceitouPrivacidade,
-    })
-    // Limpa o cookie de cadastro pendente
-    await fetch('/api/complete-profile', { method: 'POST' })
-    setConcluido(true)
-    setLoading(false)
+      // Só bloqueia se a API confirmar duplicidade (ignora erros de auth/rede)
+      if (checkRes.ok) {
+        const { available } = await checkRes.json()
+        if (!available) {
+          setErros(['Este telefone já está cadastrado em outra conta.'])
+          return
+        }
+      }
+
+      await dbSaveProfile({
+        nome:               nome.trim(),
+        telefone:           telefone.replace(/\D/g, ''),
+        cep:                cep.replace(/\D/g, ''),
+        bairro,
+        cidade,
+        uf,
+        maior18:            true,
+        aceitouTermos,
+        aceitouPrivacidade,
+      })
+
+      // Limpa o cookie de cadastro pendente
+      await fetch('/api/complete-profile', { method: 'POST' })
+      setConcluido(true)
+    } catch (err) {
+      console.error('[completar-cadastro] erro ao salvar:', err)
+      setErros(['Ocorreu um erro ao salvar. Tente novamente.'])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCancel() {
