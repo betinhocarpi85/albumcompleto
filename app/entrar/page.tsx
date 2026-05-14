@@ -47,9 +47,9 @@ function EntrarForm() {
       const p = await dbGetProfile()
       if (!p.telefone || !p.cep || !p.aceitouTermos || !p.aceitouPrivacidade) {
         await fetch('/api/set-pending', { method: 'POST' })
-        router.replace('/completar-cadastro')
+        window.location.href = '/completar-cadastro'
       } else {
-        router.replace(next)
+        window.location.href = next
       }
     }
   }

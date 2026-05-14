@@ -47,8 +47,9 @@ export default function CadastroPage() {
 
     if (data.session) {
       // Email confirm desativado no Supabase → sessão imediata
+      // window.location garante reload completo para sincronizar cookies da sessão
       await fetch('/api/set-pending', { method: 'POST' })
-      router.replace('/completar-cadastro')
+      window.location.href = '/completar-cadastro'
     } else {
       // Email confirm ativado → raro neste projeto, mas trata
       setErros(['Confirme seu e-mail antes de continuar.'])
