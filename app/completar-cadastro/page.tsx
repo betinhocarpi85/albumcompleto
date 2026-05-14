@@ -105,39 +105,36 @@ export default function CompletarCadastroPage() {
     setLoading(true)
 
     try {
-      // Verifica telefone duplicado (exclui o próprio usuário logado)
-      const session = await getSession()
-      const tel = telefone.replace(/\D/g, '')
-      const exclude = session?.user?.id ?? ''
-      const checkRes = await fetch(`/api/check-phone?tel=${tel}&exclude=${exclude}`)
-
-      // Só bloqueia se a API confirmar duplicidade (ignora erros de auth/rede)
-      if (checkRes.ok) {
-        const { available } = await checkRes.json()
-        if (!available) {
-          setErros(['Este telefone já está cadastrado em outra conta.'])
-          return
-        }
-      }
-
-      await dbSaveProfile({
-        nome:               nome.trim(),
-        telefone:           telefone.replace(/\D/g, ''),
-        cep:                cep.replace(/\D/g, ''),
-        bairro,
-        cidade,
-        uf,
-        maior18:            true,
-        aceitouTermos,
-        aceitouPrivacidade,
+      const res = await fetch('/api/save-profile', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome:               nome.trim(),
+          telefone:           telefone.replace(/\D/g, ''),
+          cep:                cep.replace(/\D/g, ''),
+          bairro,
+          cidade,
+          uf,
+          aceitouTermos,
+          aceitouPrivacidade,
+        }),
       })
 
-      // Limpa o cookie de cadastro pendente
-      await fetch('/api/complete-profile', { method: 'POST' })
+      if (res.status === 409) {
+        setErros(['Este telefone já está cadastrado em outra conta.'])
+        return
+      }
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setErros([d?.error ?? 'Erro ao salvar. Tente novamente.'])
+        return
+      }
+
       setConcluido(true)
     } catch (err) {
       console.error('[completar-cadastro] erro ao salvar:', err)
-      setErros(['Ocorreu um erro ao salvar. Tente novamente.'])
+      setErros(['Erro de conexão. Verifique sua internet e tente novamente.'])
     } finally {
       setLoading(false)
     }
