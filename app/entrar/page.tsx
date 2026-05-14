@@ -60,7 +60,7 @@ function EntrarForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-green-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-green-900 flex items-center justify-center px-4 py-12 pb-32">
       <div className="w-full max-w-sm animate-fadein">
 
         <div className="text-center mb-8">
