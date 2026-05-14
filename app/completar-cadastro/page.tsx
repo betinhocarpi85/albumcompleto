@@ -129,7 +129,7 @@ export default function CompletarCadastroPage() {
         return
       }
 
-      setConcluido(true)
+      window.location.href = '/api/go-to-album'
     } catch (err) {
       console.error('[completar-cadastro] erro ao salvar:', err)
       setErros(['Erro de conexão. Verifique sua internet e tente novamente.'])
