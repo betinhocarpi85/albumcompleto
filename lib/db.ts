@@ -329,29 +329,46 @@ export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
 
 // ─── Preferências ─────────────────────────────────────────────────────────────
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+const LS_KEY = 'cdo_active_albums'
+
+export async function dbGetActiveAlbums(): Promise<AlbumId[]> {
+  // 1) localStorage — resposta imediata, sem depender de auth
+  try {
+    const local = localStorage.getItem(LS_KEY)
+    if (local) {
+      const parsed = JSON.parse(local) as AlbumId[]
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch { /* ignora */ }
+
+  // 2) DB via API com token no header
   try {
     const token = await Promise.race([
       getSession().then(s => s?.access_token ?? '').catch(() => ''),
       new Promise<string>(r => setTimeout(() => r(''), 2000)),
     ])
-    return token ? { 'Authorization': `Bearer ${token}` } : {}
-  } catch { return {} }
-}
-
-export async function dbGetActiveAlbums(): Promise<AlbumId[]> {
-  try {
-    const headers = await getAuthHeader()
+    const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {}
     const res = await fetch('/api/active-albums', { headers })
     if (!res.ok) return []
     const { albums } = await res.json()
+    if (Array.isArray(albums) && albums.length > 0) {
+      localStorage.setItem(LS_KEY, JSON.stringify(albums))
+    }
     return (albums ?? []) as AlbumId[]
   } catch { return [] }
 }
 
 export async function dbSaveActiveAlbums(ids: AlbumId[]): Promise<void> {
+  // Salva sempre em localStorage (imediato, sem auth)
+  try { localStorage.setItem(LS_KEY, JSON.stringify(ids)) } catch { /* ignora */ }
+
+  // Sincroniza com DB em background
   try {
-    const headers = await getAuthHeader()
+    const token = await Promise.race([
+      getSession().then(s => s?.access_token ?? '').catch(() => ''),
+      new Promise<string>(r => setTimeout(() => r(''), 2000)),
+    ])
+    const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {}
     await fetch('/api/active-albums', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...headers },
