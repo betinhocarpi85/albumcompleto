@@ -84,6 +84,22 @@ function AlbumPageInner() {
 
   // Carrega álbum ativo do usuário (ignora se ?escolher=1)
   useEffect(() => {
+    // Tenta localStorage primeiro (instantâneo, sem auth)
+    if (!escolher) {
+      try {
+        const local = localStorage.getItem('cdo_active_albums')
+        if (local) {
+          const ids = JSON.parse(local) as AlbumId[]
+          if (Array.isArray(ids) && ids.length > 0) {
+            setAlbumId(ids[0])
+            setActiveAlbums(ids)
+            setLoading(false)
+            return
+          }
+        }
+      } catch { /* ignora */ }
+    }
+    // Fallback: busca no DB
     dbGetActiveAlbums().then(ativos => {
       setActiveAlbums(ativos)
       if (ativos.length > 0 && !escolher) {
@@ -148,7 +164,11 @@ function AlbumPageInner() {
 
   // Sem álbum escolhido → tela de onboarding
   if (!albumId) {
-    return <EscolherAlbum onEscolher={id => setAlbumId(id)} />
+    return <EscolherAlbum onEscolher={id => {
+      try { localStorage.setItem('cdo_active_albums', JSON.stringify([id])) } catch { /* ignora */ }
+      setAlbumId(id)
+      setActiveAlbums([id])
+    }} />
   }
 
   const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)!
