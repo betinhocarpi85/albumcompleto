@@ -3,8 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
+  const admin = createAdminClient()
+
+  // Tenta autenticar via cookie (fluxo OAuth/desktop)
+  let user: { id: string } | null = null
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user: cookieUser } } = await supabase.auth.getUser()
+  user = cookieUser
+
+  // Fallback: autenticar via Bearer token no header (mobile/manual signup)
+  if (!user) {
+    const authHeader = request.headers.get('authorization') ?? ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+    if (token) {
+      const { data: { user: tokenUser } } = await admin.auth.getUser(token)
+      user = tokenUser
+    }
+  }
 
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -18,7 +33,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Verifica duplicidade de telefone (exclui o próprio usuário)
-  const admin = createAdminClient()
   const { data: dup } = await admin
     .from('profiles')
     .select('id')
