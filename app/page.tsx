@@ -268,8 +268,9 @@ export default function Home() {
             <div className="space-y-3 flex-1">
               {[
                 { ok: true,  text: 'Controle do álbum (marcar coladas/faltando)' },
-                { ok: false, text: 'Anunciar figurinhas para troca e venda' },
-                { ok: false, text: 'Receber matches automáticos' },
+                { ok: true,  text: 'Anunciar figurinhas para troca e venda' },
+                { ok: true,  text: 'Aparecer nos matches de outros colecionadores' },
+                { ok: false, text: 'Enviar propostas de troca ou compra' },
                 { ok: false, text: 'Contato revelado ao aceitar proposta' },
               ].map((f, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm">
@@ -301,10 +302,10 @@ export default function Home() {
 
             <div className="space-y-3 flex-1">
               {[
-                'Controle do álbum (marcar coladas/faltando)',
-                'Anunciar figurinhas para troca e venda',
-                'Match automático bidirecional',
-                'Contato revelado ao aceitar proposta',
+                'Tudo do plano Grátis',
+                'Enviar propostas de troca ou compra',
+                'Ver contato de quem aceitar sua proposta',
+                'Match automático bidirecional completo',
                 'Sistema de reputação e badges',
                 'Suporte prioritário',
               ].map((f, i) => (
