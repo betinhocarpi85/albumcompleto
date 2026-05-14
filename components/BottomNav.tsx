@@ -73,10 +73,11 @@ export default function BottomNav() {
   ]
 
   const ITEMS_NAO_LOGADO = [
-    { href: '/',        icon: '🏠', label: 'Início'  },
-    { href: '/album',   icon: '📋', label: 'Álbum'   },
-    { href: '/matches', icon: '🔁', label: 'Matches' },
-    { href: '/entrar',  icon: '🔑', label: 'Entrar'  },
+    { href: '/',        icon: '🏠', label: 'Início'   },
+    { href: '/album',   icon: '📋', label: 'Álbum'    },
+    { href: '/anuncios', icon: '📢', label: 'Anúncios' },
+    { href: '/matches', icon: '🔁', label: 'Matches'  },
+    { href: '/entrar',  icon: '🔑', label: 'Entrar'   },
   ]
 
   const ITEMS = logado === false ? ITEMS_NAO_LOGADO : ITEMS_LOGADO
