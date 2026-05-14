@@ -103,9 +103,11 @@ export default function CompletarCadastroPage() {
     setLoading(true)
 
     try {
-      // Inclui o access token no header para garantir auth em mobile (Safari/iOS)
-      const session = await getSession()
-      const token   = session?.access_token ?? ''
+      // Tenta pegar o token com timeout de 3s (getSession pode travar no mobile)
+      const token = await Promise.race([
+        getSession().then(s => s?.access_token ?? '').catch(() => ''),
+        new Promise<string>(res => setTimeout(() => res(''), 3000)),
+      ])
 
       const res = await fetch('/api/save-profile', {
         method:  'POST',
@@ -136,9 +138,7 @@ export default function CompletarCadastroPage() {
         return
       }
 
-      window.location.href = token
-        ? `/api/go-to-album?t=${encodeURIComponent(token)}`
-        : '/api/go-to-album'
+      window.location.href = '/api/go-to-album' + (token ? `?t=${encodeURIComponent(token)}` : '')
     } catch (err) {
       console.error('[completar-cadastro] erro ao salvar:', err)
       setErros(['Erro de conexão. Verifique sua internet e tente novamente.'])
