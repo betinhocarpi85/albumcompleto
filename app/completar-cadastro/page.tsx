@@ -39,7 +39,10 @@ export default function CompletarCadastroPage() {
   const [primeiroNome,    setPrimeiroNome]    = useState('')
 
   useEffect(() => {
-    getSession().then(session => {
+    Promise.race([
+      getSession().catch(() => null),
+      new Promise<null>(r => setTimeout(() => r(null), 3000)),
+    ]).then(session => {
       if (!session) { router.replace('/entrar'); return }
 
       // Pré-preenche com metadados do magic link (nome, telefone, cep passados no cadastro)

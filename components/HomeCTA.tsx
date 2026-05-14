@@ -8,7 +8,10 @@ export default function HomeCTA() {
   const [logado, setLogado] = useState<boolean | null>(null)
 
   useEffect(() => {
-    getSession().then(s => setLogado(!!s))
+    Promise.race([
+      getSession().catch(() => null),
+      new Promise<null>(r => setTimeout(() => r(null), 3000)),
+    ]).then(s => setLogado(!!s))
   }, [])
 
   // Enquanto verifica, mostra placeholder invisível para não ter layout shift

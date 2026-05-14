@@ -18,7 +18,10 @@ export default function CadastroPage() {
 
   // Redireciona usuário já logado direto para o álbum
   useEffect(() => {
-    getSession().then(session => {
+    Promise.race([
+      getSession().catch(() => null),
+      new Promise<null>(r => setTimeout(() => r(null), 3000)),
+    ]).then(session => {
       if (session) router.replace('/album')
     })
   }, [router])
