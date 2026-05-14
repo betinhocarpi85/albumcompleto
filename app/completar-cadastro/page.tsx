@@ -48,9 +48,7 @@ export default function CompletarCadastroPage() {
       // Tenta carregar do banco primeiro (usuário pode já ter dados parciais)
       dbGetProfile().then(async p => {
         if (p.telefone && p.cep && p.aceitouTermos && p.aceitouPrivacidade) {
-          // Garante que o cookie de cadastro pendente seja removido antes de redirecionar
-          await fetch('/api/complete-profile', { method: 'POST' })
-          window.location.replace('/album'); return
+          window.location.replace('/api/go-to-album'); return
         }
 
         // Prioriza dados do DB, usa metadados do magic link como fallback
@@ -169,7 +167,7 @@ export default function CompletarCadastroPage() {
               Seu cadastro está completo. Agora marque suas figurinhas e comece a trocar e vender.
             </p>
             <button
-              onClick={() => { window.location.href = '/album?escolher=1' }}
+              onClick={() => { window.location.href = '/api/go-to-album' }}
               className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
               📋 Montar meu álbum agora
             </button>
