@@ -662,7 +662,8 @@ export async function dbGetHistorico(): Promise<HistoricoItem[]> {
 // ─── Conta ────────────────────────────────────────────────────────────────────
 
 export async function dbDeleteAccount(): Promise<{ error: string | null }> {
-  const sb = createClient()
-  const { error } = await sb.rpc('delete_my_account')
-  return { error: error?.message ?? null }
+  const res = await fetch('/api/delete-account', { method: 'POST' })
+  if (res.ok) return { error: null }
+  const d = await res.json().catch(() => ({}))
+  return { error: d?.error ?? `Erro ${res.status}` }
 }
