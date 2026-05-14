@@ -5,19 +5,11 @@ import { useEffect, useState } from 'react'
 import { getSession } from '@/lib/db'
 
 export default function HomeCTA() {
-  const [logado, setLogado] = useState<boolean | null>(null)
+  const [logado, setLogado] = useState(false)
 
   useEffect(() => {
-    Promise.race([
-      getSession().catch(() => null),
-      new Promise<null>(r => setTimeout(() => r(null), 3000)),
-    ]).then(s => setLogado(!!s))
+    getSession().catch(() => null).then(s => { if (s) setLogado(true) })
   }, [])
-
-  // Enquanto verifica, mostra placeholder invisível para não ter layout shift
-  if (logado === null) {
-    return <div className="h-12" />
-  }
 
   if (logado) {
     return (
