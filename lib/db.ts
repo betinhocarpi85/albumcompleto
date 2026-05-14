@@ -329,27 +329,35 @@ export async function dbGetMatches(albumId: AlbumId): Promise<MatchResult> {
 
 // ─── Preferências ─────────────────────────────────────────────────────────────
 
+async function getAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const token = await Promise.race([
+      getSession().then(s => s?.access_token ?? '').catch(() => ''),
+      new Promise<string>(r => setTimeout(() => r(''), 2000)),
+    ])
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
+  } catch { return {} }
+}
+
 export async function dbGetActiveAlbums(): Promise<AlbumId[]> {
-  const uid = await getUserId()
-  if (!uid) return []
-  const sb = createClient()
-  const { data } = await sb
-    .from('user_preferences')
-    .select('active_albums')
-    .eq('user_id', uid)
-    .single()
-  return (data?.active_albums ?? []) as AlbumId[]
+  try {
+    const headers = await getAuthHeader()
+    const res = await fetch('/api/active-albums', { headers })
+    if (!res.ok) return []
+    const { albums } = await res.json()
+    return (albums ?? []) as AlbumId[]
+  } catch { return [] }
 }
 
 export async function dbSaveActiveAlbums(ids: AlbumId[]): Promise<void> {
-  const uid = await getUserId()
-  if (!uid) return
-  const sb = createClient()
-  await sb.from('user_preferences').upsert({
-    user_id:       uid,
-    active_albums: ids,
-    updated_at:    new Date().toISOString(),
-  })
+  try {
+    const headers = await getAuthHeader()
+    await fetch('/api/active-albums', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body:    JSON.stringify({ albums: ids }),
+    })
+  } catch { /* silencioso */ }
 }
 
 // ─── Propostas ────────────────────────────────────────────────────────────────
