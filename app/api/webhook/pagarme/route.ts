@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { timingSafeEqual } from 'crypto'
+import { sendPagamentoEmail } from '@/lib/email'
 
 function verifyBasicAuth(authHeader: string): boolean {
   const user   = (process.env.PAGARME_WEBHOOK_USER   ?? '').trim()
@@ -75,5 +76,19 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(`[webhook/pagarme] ✅ plano ${plano} ativado para ${userId} até ${expira.toISOString()}`)
+
+  // Email de confirmação (fire-and-forget)
+  const { data: authUser } = await sb.auth.admin.getUserById(userId)
+  const { data: profile }  = await sb.from('profiles').select('nome, email').eq('id', userId).single()
+  const emailDest = profile?.email ?? authUser?.user?.email
+  if (emailDest) {
+    sendPagamentoEmail({
+      to:     emailDest,
+      nome:   profile?.nome ?? 'Usuário',
+      plano,
+      expira,
+    }).catch(e => console.error('[webhook/pagarme] email:', e))
+  }
+
   return NextResponse.json({ ok: true })
 }

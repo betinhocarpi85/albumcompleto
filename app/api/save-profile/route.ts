@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendBoasVindasEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   const admin = createAdminClient()
@@ -61,6 +62,14 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[save-profile] erro:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Email de boas-vindas (fire-and-forget, não bloqueia a resposta)
+  const userEmail = (await admin.auth.admin.getUserById(user.id)).data?.user?.email
+  if (userEmail) {
+    sendBoasVindasEmail({ to: userEmail, nome }).catch(e =>
+      console.error('[save-profile] email boas-vindas:', e)
+    )
   }
 
   // Limpa o cookie de cadastro pendente
