@@ -405,6 +405,7 @@ function ContaPageInner() {
                         key={album.id}
                         className={[
                           'rounded-2xl border-2 transition-all overflow-hidden',
+                          !album.available ? 'opacity-60' : '',
                           isActive ? 'border-green-400 shadow-sm' : 'border-slate-100',
                         ].join(' ')}
                       >
@@ -416,15 +417,18 @@ function ContaPageInner() {
                             <p className="text-white/70 text-[11px]">{album.description}</p>
                           </div>
                           <button
-                            onClick={() => toggleAlbum(album.id)}
+                            onClick={() => album.available ? toggleAlbum(album.id) : undefined}
+                            disabled={!album.available}
                             className={[
                               'flex-shrink-0 text-xs font-bold px-4 py-2 rounded-xl transition-all',
-                              isActive
-                                ? 'bg-white text-slate-700 hover:bg-slate-100'
-                                : 'bg-white/20 text-white hover:bg-white/30 border border-white/40',
+                              !album.available
+                                ? 'bg-white/10 text-white/50 cursor-not-allowed border border-white/20'
+                                : isActive
+                                  ? 'bg-white text-slate-700 hover:bg-slate-100'
+                                  : 'bg-white/20 text-white hover:bg-white/30 border border-white/40',
                             ].join(' ')}
                           >
-                            {isActive ? '✓ Colecionando' : '+ Adicionar'}
+                            {!album.available ? '🔒 Em breve' : isActive ? '✓ Colecionando' : '+ Adicionar'}
                           </button>
                         </div>
 

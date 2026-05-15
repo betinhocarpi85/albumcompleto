@@ -2,27 +2,39 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
+import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
+import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import type { AlbumId } from '@/data/albums-registry'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import StickerSquare from '@/components/StickerSquare'
 import { getSession, dbGetActiveAlbums, dbGetProfile, dbGetColadas, dbGetMatches, dbEnviarProposta, dbGetPlano } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 import UpgradeModal from '@/components/UpgradeModal'
 
-// Mapa globalNumber → info da figurinha (nome, código, tipo)
+// ─── Mapas por álbum ─────────────────────────────────────────────────────────
 interface StickerInfo { name: string; code: string; tipo: string }
-const globalInfoMap = new Map<number, StickerInfo>()
-{
+
+function buildAlbumMaps(album: Album) {
+  const globalInfo = new Map<number, StickerInfo>()
+  const sidToGlobal = buildGlobalNumberMap(album)
   let counter = 1
-  for (const cat of albumCopa2026.categories) {
+  for (const cat of album.categories) {
     for (const s of cat.stickers) {
-      globalInfoMap.set(counter++, { name: s.name, code: cat.code, tipo: s.type })
+      globalInfo.set(counter++, { name: s.name, code: cat.code, tipo: s.type })
     }
   }
+  return { globalInfo, sidToGlobal }
 }
 
-// Mapa stickerId → globalNumber (para converter coladas)
-const sidToGlobal = buildGlobalNumberMap(albumCopa2026)
+const ALBUM_MAPS: Record<string, ReturnType<typeof buildAlbumMaps>> = {
+  'copa-2026':              buildAlbumMaps(albumCopa2026),
+  'brasileirao-masc-2026': buildAlbumMaps(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':  buildAlbumMaps(albumBrasileiraoFem2026),
+}
+
+// Fallback Copa (para evitar undefined)
+const { globalInfo: globalInfoMap, sidToGlobal } = ALBUM_MAPS['copa-2026']
 
 function pronome(gender: 'M' | 'F') {
   return {
@@ -86,7 +98,45 @@ export default function MatchesPage() {
   const [matches,  setMatches]  = useState<MatchRecord[]>([])
   const [vendas,   setVendas]   = useState<VendaRecord[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
-  const [albumId, setAlbumId]   = useState<AlbumId>('copa-2026')
+  const [albumId,      setAlbumId]      = useState<AlbumId>('copa-2026')
+  const [activeAlbums, setActiveAlbums] = useState<AlbumId[]>([])
+  const [mostrarSeletor, setMostrarSeletor] = useState(false)
+
+  function trocarAlbum(id: AlbumId) {
+    setAlbumId(id)
+    setMostrarSeletor(false)
+    setMatches([]); setVendas([])
+    setLoadingMatches(true)
+    carregarMatches(id)
+  }
+
+  function processarResultado(id: AlbumId, coladas: string[], result: { trocas: unknown[]; vendas: unknown[] }) {
+    const maps = ALBUM_MAPS[id] ?? ALBUM_MAPS['copa-2026']
+    const coladasSet = new Set(coladas)
+    const tenho = new Set<number>(); const preciso = new Set<number>()
+    for (const [sid, gnum] of maps.sidToGlobal) {
+      if (coladasSet.has(sid)) tenho.add(gnum); else preciso.add(gnum)
+    }
+    setMeuTenhoSet(tenho); setMeuPrecisoSet(preciso)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setMatches((result.trocas as any[]).map((t: any) => ({
+      id: t.id, user: toMatchUser(t),
+      type: (t.tem_para_mim.length === t.eu_tenho_para.length ? 'exato' : 'parcial') as MatchType,
+      temParaMim: t.tem_para_mim, euTenhoPara: t.eu_tenho_para,
+      balance: t.eu_tenho_para.length - t.tem_para_mim.length,
+    })))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setVendas((result.vendas as any[]).map((v: any) => ({
+      id: v.id, user: toVendaUser(v),
+      items: v.items.map((i: any) => ({ num: i.gnum, preco: i.preco, tipo: (i.tipo ?? 'normal') as StickerTipo })),
+    })))
+    setLoadingMatches(false)
+  }
+
+  async function carregarMatches(id: AlbumId) {
+    const [coladas, result] = await Promise.all([dbGetColadas(id), dbGetMatches(id)])
+    processarResultado(id, coladas, result)
+  }
 
   useEffect(() => {
     getSession().then(session => {
@@ -94,31 +144,11 @@ export default function MatchesPage() {
       dbGetProfile().then(p => setAdulto(!!p.maior18))
       dbGetPlano().then(({ plano }) => setIsPro(plano === 'pro'))
       dbGetActiveAlbums().then(ids => {
+        setActiveAlbums(ids)
         const id = ids[0] ?? 'copa-2026'
         setAlbumId(id)
         Promise.all([dbGetColadas(id), dbGetMatches(id)]).then(([coladas, result]) => {
-          if (id !== 'copa-2026') {
-            setMatches([]); setVendas([])
-            setLoadingMatches(false); return
-          }
-          const coladasSet = new Set(coladas)
-          const tenho = new Set<number>(); const preciso = new Set<number>()
-          for (const [sid, gnum] of sidToGlobal) {
-            if (coladasSet.has(sid)) tenho.add(gnum); else preciso.add(gnum)
-          }
-          setMeuTenhoSet(tenho); setMeuPrecisoSet(preciso)
-
-          setMatches(result.trocas.map(t => ({
-            id: t.id, user: toMatchUser(t),
-            type: (t.tem_para_mim.length === t.eu_tenho_para.length ? 'exato' : 'parcial') as MatchType,
-            temParaMim: t.tem_para_mim, euTenhoPara: t.eu_tenho_para,
-            balance: t.eu_tenho_para.length - t.tem_para_mim.length,
-          })))
-          setVendas(result.vendas.map(v => ({
-            id: v.id, user: toVendaUser(v),
-            items: v.items.map(i => ({ num: i.gnum, preco: i.preco, tipo: (i.tipo ?? 'normal') as StickerTipo })),
-          })))
-          setLoadingMatches(false)
+          processarResultado(id, coladas, result)
         })
       })
     })
@@ -168,26 +198,43 @@ export default function MatchesPage() {
 
   const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-  // ── Early return para álbuns sem catálogo ────────────────────────────────────
-  if (albumId !== 'copa-2026') {
+  // ── Seletor de álbum (helper inline) ────────────────────────────────────────
+  function AlbumSelector() {
+    if (activeAlbums.length <= 1) return null
+    const meta = ALBUMS_REGISTRY.find(a => a.id === albumId)!
     return (
-      <div className="max-w-2xl mx-auto py-4 animate-fadein">
-        <BannerMenorDeIdade />
-        <div className="px-3">
-          <div className="mb-4">
-            <h1 className="text-xl font-black text-slate-800">Matches</h1>
-            <p className="text-sm text-slate-500">Colecionadores com figurinhas do seu interesse</p>
+      <div className="mb-4">
+        <button onClick={() => setMostrarSeletor(s => !s)}
+          className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm">
+          <span className="text-2xl">{meta.emoji}</span>
+          <div className="flex-1 text-left min-w-0">
+            <p className="font-black text-sm text-slate-800 truncate">{meta.name}</p>
+            <p className="text-xs text-slate-400">{meta.description}</p>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
-            <p className="text-5xl mb-3">⏳</p>
-            <p className="font-black text-slate-800 text-lg mb-1">Em breve</p>
-            <p className="text-sm text-slate-500 mb-4">O catálogo digital e os matches para este álbum ainda estão em preparação.</p>
-            <Link href="/album" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">Voltar ao álbum →</Link>
+          <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
+        </button>
+        {mostrarSeletor && (
+          <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
+            {ALBUMS_REGISTRY.filter(a => activeAlbums.includes(a.id)).map(a => (
+              <button key={a.id} onClick={() => trocarAlbum(a.id)}
+                className={['w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b border-slate-50 last:border-0',
+                  a.id === albumId ? 'bg-green-50' : 'hover:bg-slate-50'].join(' ')}>
+                <span className="text-xl">{a.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-slate-800 truncate">{a.name}</p>
+                  <p className="text-xs text-slate-400">{a.description}</p>
+                </div>
+                {a.id === albumId && <span className="text-green-500 text-sm flex-shrink-0">✓</span>}
+              </button>
+            ))}
           </div>
-        </div>
+        )}
       </div>
     )
   }
+
+  // Mapa de info do álbum atual (para renderizar nomes de figurinhas)
+  const currentGlobalInfo = ALBUM_MAPS[albumId]?.globalInfo ?? globalInfoMap
 
   return (
     <div className="max-w-2xl mx-auto py-4 animate-fadein">
@@ -293,6 +340,9 @@ export default function MatchesPage() {
           <h1 className="text-xl font-black text-slate-800">Matches</h1>
           <p className="text-sm text-slate-500">Colecionadores com figurinhas do seu interesse</p>
         </div>
+
+        {/* Seletor de álbum */}
+        <AlbumSelector />
 
         {/* Banner de status */}
         {loadingMatches ? (
@@ -405,7 +455,7 @@ export default function MatchesPage() {
                           <p className="text-xs font-semibold text-blue-600 mb-2">🔵 Para você</p>
                           <div className="flex flex-wrap gap-1.5">
                             {match.temParaMim.map(num => {
-                              const info = globalInfoMap.get(num)
+                              const info = currentGlobalInfo.get(num)
                               const removido = remDele.has(num)
                               return (
                                 <button key={num} onClick={() => toggleRemovidoDele(match.id, num)}
@@ -422,7 +472,7 @@ export default function MatchesPage() {
                           <p className="text-xs font-semibold text-green-600 mb-2">🟢 Sua oferta</p>
                           <div className="flex flex-wrap gap-1.5">
                             {match.euTenhoPara.map(num => {
-                              const info = globalInfoMap.get(num)
+                              const info = currentGlobalInfo.get(num)
                               const removido = rem.has(num)
                               return (
                                 <button key={num} onClick={() => toggleRemovido(match.id, num)}
@@ -568,7 +618,7 @@ export default function MatchesPage() {
                             const jaColada    = meuTenhoSet.size > 0 && meuTenhoSet.has(item.num)
                             const isBrilhante = item.tipo === 'brilhante'
                             const isEscudo    = item.tipo === 'escudo'
-                            const info        = globalInfoMap.get(item.num)
+                            const info        = currentGlobalInfo.get(item.num)
                             return (
                               <div key={item.num}
                                 title={info ? `${info.code}-${item.num} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}

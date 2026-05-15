@@ -11,7 +11,7 @@
 import type { AlbumId } from '@/data/albums-registry'
 export type { AlbumId }
 export type TipoAnuncio = 'tenho' | 'preciso'
-export type TipoSticker = 'normal' | 'brilhante' | 'escudo' | 'especial'
+export type TipoSticker = 'normal' | 'brilhante' | 'escudo' | 'especial' | 'extra-gold' | 'extra-silver' | 'extra-bronze' | 'extra-purple' | 'coca-cola'
 
 export interface AnuncioItem {
   sid:   string

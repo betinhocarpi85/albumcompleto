@@ -1,9 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
+
+let SESSION_TIMEOUT_MS = 30 * 60 * 1000  // 30 minutos (sobrescrito por localStorage)
+const SESSION_WARN_MS  =  5 * 60 * 1000  // avisa 5 min antes
+
+const USERS_PER_PAGE = 25
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface Toast { id: number; msg: string; type: 'ok' | 'err' | 'info' }
 
 type User = {
   id: string
@@ -80,6 +88,8 @@ type Props = {
   ufDistrib: { uf: string; count: number }[]
   adminLogs: AdminLog[]
   siteSettings: Record<string, string>
+  initialTotalUsers: number
+  initialTotalAnuncios: number
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -188,7 +198,7 @@ function HBarChart({ data }: { data: { uf: string; count: number }[] }) {
 
 // ─── Tab button ───────────────────────────────────────────────────────────────
 
-type TabKey = 'overview' | 'users' | 'anuncios' | 'propostas' | 'settings'
+type TabKey = 'overview' | 'users' | 'anuncios' | 'propostas' | 'logs' | 'settings'
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -218,6 +228,29 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   )
 }
 
+// ─── Toast container ──────────────────────────────────────────────────────────
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className={[
+            'px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl text-white pointer-events-auto',
+            'transition-all duration-300 translate-x-0',
+            t.type === 'ok'   ? 'bg-green-600 border border-green-500/50' :
+            t.type === 'err'  ? 'bg-red-600 border border-red-500/50' :
+                                'bg-blue-600 border border-blue-500/50',
+          ].join(' ')}
+        >
+          {t.type === 'ok' ? '✓ ' : t.type === 'err' ? '✕ ' : 'ℹ '}{t.msg}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard({
@@ -229,13 +262,66 @@ export default function AdminDashboard({
   ufDistrib,
   adminLogs,
   siteSettings,
+  initialTotalUsers,
+  initialTotalAnuncios,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('overview')
 
+  // ── Toast system ──
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const toastIdRef = useRef(0)
+
+  const showToast = useCallback((msg: string, type: 'ok' | 'err' | 'info' = 'info') => {
+    const id = ++toastIdRef.current
+    setToasts(prev => [...prev, { id, msg, type }])
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+    }, 3500)
+  }, [])
+
+  // ── Server-side pagination state — users ──
+  const [usersData, setUsersData]         = useState<User[]>(users)
+  const [totalUsers, setTotalUsers]       = useState(initialTotalUsers)
+  const [usersLoading, setUsersLoading]   = useState(false)
+
+  // ── Server-side pagination state — anuncios ──
+  const [anunciosData, setAnunciosData]         = useState<Anuncio[]>(anuncios)
+  const [totalAnuncios, setTotalAnuncios]       = useState(initialTotalAnuncios)
+  const [anunciosLoading, setAnunciosLoading]   = useState(false)
+  const [anuncioPage, setAnuncioPage]           = useState(1)
+
+  // ── Refresh state ──
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    router.refresh()
+    await new Promise(r => setTimeout(r, 1200))
+    setRefreshing(false)
+    setLastRefresh(new Date())
+  }, [router])
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh()
+      setLastRefresh(new Date())
+    }, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [router])
+
   // Users tab state
   const [search, setSearch] = useState('')
   const [filterPlano, setFilterPlano] = useState<'todos' | 'pro' | 'free'>('todos')
+  const [filterUF, setFilterUF] = useState('')
+  const [filterComplete, setFilterComplete] = useState<'todos' | 'completo' | 'incompleto'>('todos')
+  const [filterBanned, setFilterBanned] = useState<'todos' | 'ativos' | 'banidos'>('todos')
+  const [sortBy, setSortBy] = useState<'created_at' | 'nome' | 'last_sign_in'>('created_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [usersPage, setUsersPage] = useState(1)
+
   const [deleting, setDeleting] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -255,7 +341,14 @@ export default function AdminDashboard({
   // Anuncios tab state
   const [anuncioFilter, setAnuncioFilter] = useState<'todos' | 'tenho' | 'preciso'>('todos')
   const [anuncioAlbum, setAnuncioAlbum] = useState('')
+  const [filterAnuncioUser, setFilterAnuncioUser] = useState('')
   const [deletingAnuncio, setDeletingAnuncio] = useState<string | null>(null)
+  const [confirmAnuncio, setConfirmAnuncio] = useState<string | null>(null)
+
+  // Session timeout state
+  const [sessionWarning, setSessionWarning] = useState(false)
+  const [minsLeft, setMinsLeft] = useState(30)
+  const lastActivityRef = useRef(Date.now())
 
   // Settings tab state
   const [maintenance, setMaintenance] = useState(siteSettings.maintenance_mode === 'true')
@@ -268,11 +361,165 @@ export default function AdminDashboard({
   const [credLoading, setCredLoading] = useState(false)
   const [credMsg, setCredMsg] = useState('')
 
+  // Session timeout configurable
+  const [sessionTimeoutMin, setSessionTimeoutMin] = useState(30)
+
+  // Notify modal
+  const [notifyModal, setNotifyModal] = useState(false)
+  const [notifyMsg, setNotifyMsg] = useState('')
+  const [notifyLoading, setNotifyLoading] = useState(false)
+
+  // Album available toggles (local state)
+  const [albumAvail, setAlbumAvail] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    ALBUMS_REGISTRY.forEach(a => {
+      init[a.id] = siteSettings[`album_${a.id}_available`] !== 'false' && a.available
+    })
+    return init
+  })
+
+  // Load session timeout from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem('admin_session_timeout')
+    if (stored) {
+      const val = parseInt(stored, 10)
+      if (!isNaN(val) && val >= 5 && val <= 120) {
+        setSessionTimeoutMin(val)
+        SESSION_TIMEOUT_MS = val * 60 * 1000
+      }
+    }
+  }, [])
+
   // ── Logout ──
-  async function logout() {
+  const logout = useCallback(async () => {
     await fetch('/api/admin/logout', { method: 'POST' })
     router.push('/admin')
-  }
+  }, [router])
+
+  // ── Timeout de inatividade ──
+  useEffect(() => {
+    const resetTimer = () => { lastActivityRef.current = Date.now() }
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }))
+
+    const tick = setInterval(() => {
+      const idle      = Date.now() - lastActivityRef.current
+      const remaining = SESSION_TIMEOUT_MS - idle
+
+      if (remaining <= 0) {
+        logout()
+      } else if (remaining <= SESSION_WARN_MS) {
+        setSessionWarning(true)
+        setMinsLeft(Math.ceil(remaining / 60_000))
+      } else {
+        setSessionWarning(false)
+      }
+    }, 30_000) // verifica a cada 30s
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer))
+      clearInterval(tick)
+    }
+  }, [logout])
+
+  // Reset usersPage when filters change
+  useEffect(() => {
+    setUsersPage(1)
+  }, [search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir])
+
+  // ── fetchUsers — server-side ──
+  const fetchUsers = useCallback(async (
+    page: number,
+    searchVal: string,
+    planoVal: string,
+    ufVal: string,
+    completeVal: string,
+    bannedVal: string,
+    sortByVal: string,
+    sortDirVal: string,
+  ) => {
+    setUsersLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page:     String(page),
+        limit:    '25',
+        search:   searchVal,
+        plano:    planoVal,
+        uf:       ufVal,
+        complete: completeVal,
+        banned:   bannedVal,
+        sortBy:   sortByVal,
+        sortDir:  sortDirVal,
+      })
+      const res = await fetch(`/api/admin/users?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setUsersData(data.users ?? [])
+        setTotalUsers(data.total ?? 0)
+      }
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [])
+
+  // Debounce search for users
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      fetchUsers(usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir)
+    }, 400)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir, fetchUsers])
+
+  // ── fetchAnuncios — server-side ──
+  const fetchAnuncios = useCallback(async (
+    page: number,
+    tipoVal: string,
+    albumVal: string,
+    userVal: string,
+  ) => {
+    setAnunciosLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page:  String(page),
+        limit: '25',
+        tipo:  tipoVal,
+        album: albumVal,
+        user:  userVal,
+      })
+      const res = await fetch(`/api/admin/anuncios?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAnunciosData(data.anuncios ?? [])
+        setTotalAnuncios(data.total ?? 0)
+      }
+    } finally {
+      setAnunciosLoading(false)
+    }
+  }, [])
+
+  // Debounce for anuncio filters
+  const anuncioDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (anuncioDebounceRef.current) clearTimeout(anuncioDebounceRef.current)
+    anuncioDebounceRef.current = setTimeout(() => {
+      fetchAnuncios(anuncioPage, anuncioFilter, anuncioAlbum, filterAnuncioUser)
+    }, 400)
+    return () => {
+      if (anuncioDebounceRef.current) clearTimeout(anuncioDebounceRef.current)
+    }
+  }, [anuncioPage, anuncioFilter, anuncioAlbum, filterAnuncioUser, fetchAnuncios])
+
+  // Reset anuncioPage when anuncio filters change
+  useEffect(() => {
+    setAnuncioPage(1)
+  }, [anuncioFilter, anuncioAlbum, filterAnuncioUser])
 
   // ── Delete user ──
   async function deleteUser(user: User) {
@@ -285,9 +532,10 @@ export default function AdminDashboard({
       })
       if (res.ok) {
         setConfirmDelete(null)
-        router.refresh()
+        showToast('Usuário deletado com sucesso.', 'ok')
+        fetchUsers(usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir)
       } else {
-        alert('Erro ao deletar usuário.')
+        showToast('Erro ao deletar usuário.', 'err')
       }
     } finally {
       setDeleting(null)
@@ -313,10 +561,11 @@ export default function AdminDashboard({
       })
       if (res.ok) {
         setEditUser(null)
-        router.refresh()
+        showToast('Usuário atualizado.', 'ok')
+        fetchUsers(usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir)
       } else {
         const d = await res.json()
-        alert(d.error ?? 'Erro ao editar.')
+        showToast(d.error ?? 'Erro ao editar.', 'err')
       }
     } finally {
       setEditLoading(false)
@@ -334,9 +583,10 @@ export default function AdminDashboard({
       })
       if (res.ok) {
         setBanModal(null)
-        router.refresh()
+        showToast(banned ? 'Usuário banido.' : 'Usuário desbanido.', 'ok')
+        fetchUsers(usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir)
       } else {
-        alert('Erro ao alterar ban.')
+        showToast('Erro ao alterar ban.', 'err')
       }
     } finally {
       setBanLoading(null)
@@ -355,10 +605,11 @@ export default function AdminDashboard({
       })
       if (res.ok) {
         setPlanUser(null)
-        router.refresh()
+        showToast('Plano atualizado.', 'ok')
+        fetchUsers(usersPage, search, filterPlano, filterUF, filterComplete, filterBanned, sortBy, sortDir)
       } else {
         const d = await res.json().catch(() => ({}))
-        alert('Erro ao definir plano: ' + (d?.error ?? res.status))
+        showToast('Erro ao definir plano: ' + (d?.error ?? res.status), 'err')
       }
     } finally {
       setPlanLoading(false)
@@ -367,7 +618,7 @@ export default function AdminDashboard({
 
   // ── Delete anuncio ──
   async function deleteAnuncio(id: string) {
-    if (!confirm('Deletar este anúncio?')) return
+    setConfirmAnuncio(null)
     setDeletingAnuncio(id)
     try {
       const res = await fetch('/api/admin/anuncios', {
@@ -375,8 +626,12 @@ export default function AdminDashboard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ anuncioId: id }),
       })
-      if (res.ok) router.refresh()
-      else alert('Erro ao deletar anúncio.')
+      if (res.ok) {
+        showToast('Anúncio deletado.', 'ok')
+        fetchAnuncios(anuncioPage, anuncioFilter, anuncioAlbum, filterAnuncioUser)
+      } else {
+        showToast('Erro ao deletar anúncio.', 'err')
+      }
     } finally {
       setDeletingAnuncio(null)
     }
@@ -410,7 +665,7 @@ export default function AdminDashboard({
 
   async function saveAnnouncement() {
     await saveSetting('global_announcement', announcement)
-    alert('Aviso global salvo.')
+    showToast('Aviso global salvo.', 'ok')
   }
 
   // ── Update credentials ──
@@ -442,25 +697,55 @@ export default function AdminDashboard({
     window.open('/api/admin/export-users', '_blank')
   }
 
-  // ── Filtered data ──
+  // ── Notify all ──
+  async function submitNotify() {
+    if (!notifyMsg.trim()) return
+    setNotifyLoading(true)
+    try {
+      await saveSetting('global_announcement', notifyMsg)
+      await saveSetting('announcement_active', 'true')
+      setAnnouncementActive(true)
+      setAnnouncement(notifyMsg)
+      setNotifyModal(false)
+      setNotifyMsg('')
+      showToast('Notificação enviada para todos os usuários.', 'ok')
+    } finally {
+      setNotifyLoading(false)
+    }
+  }
+
+  // ── Toggle album availability ──
+  async function toggleAlbumAvail(albumId: string) {
+    const next = !albumAvail[albumId]
+    setAlbumAvail(prev => ({ ...prev, [albumId]: next }))
+    await saveSetting(`album_${albumId}_available`, String(next))
+    showToast(`Álbum ${next ? 'ativado' : 'desativado'}.`, 'info')
+  }
+
+  // ── Save session timeout ──
+  function saveSessionTimeout() {
+    localStorage.setItem('admin_session_timeout', String(sessionTimeoutMin))
+    SESSION_TIMEOUT_MS = sessionTimeoutMin * 60 * 1000
+    showToast(`Tempo de inatividade definido: ${sessionTimeoutMin} min.`, 'ok')
+  }
+
+  // ── Server-side paginated data ──
   const isProUser = (u: User) => (u.plano === 'pro' || u.plano === 'anual' || u.plano === 'mensal') && !u.plano_expirado
 
-  const filteredUsers = users.filter(u => {
-    if (filterPlano === 'pro'  && !isProUser(u)) return false
-    if (filterPlano === 'free' &&  isProUser(u)) return false
-    return (
-      !search ||
-      u.nome.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.cidade.toLowerCase().includes(search.toLowerCase())
-    )
-  })
+  // pagedUsers comes directly from server (already filtered + paginated)
+  const pagedUsers = usersData
+  const totalUsersPages = Math.max(1, Math.ceil(totalUsers / USERS_PER_PAGE))
 
-  const filteredAnuncios = anuncios.filter(a => {
-    if (anuncioFilter !== 'todos' && a.tipo !== anuncioFilter) return false
-    if (anuncioAlbum && !a.album_id.toLowerCase().includes(anuncioAlbum.toLowerCase())) return false
-    return true
-  })
+  // anunciosData comes directly from server (already filtered + paginated)
+  const filteredAnuncios = anunciosData
+  const totalAnunciosPages = Math.max(1, Math.ceil(totalAnuncios / 25))
+
+  // ── Revenue metrics ──
+  const totalProAtivo = stats.totalPro
+  const receitaMensal = totalProAtivo * 19.90
+  const taxaConversao = stats.totalUsers > 0
+    ? (totalProAtivo / stats.totalUsers * 100).toFixed(1)
+    : '0.0'
 
   // ── Stat cards ──
   const STAT_CARDS = [
@@ -474,6 +759,21 @@ export default function AdminDashboard({
     { label: 'Propostas',       value: stats.totalPropostas,    icon: '🔁', color: 'from-cyan-500 to-cyan-600'     },
   ]
 
+  function SortHeader({ col, label }: { col: 'created_at' | 'nome' | 'last_sign_in'; label: string }) {
+    const active = sortBy === col
+    return (
+      <th
+        className="text-left px-4 py-3 font-semibold cursor-pointer select-none hover:text-white transition-colors"
+        onClick={() => {
+          if (active) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+          else { setSortBy(col); setSortDir('desc') }
+        }}
+      >
+        {label} {active ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+      </th>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
 
@@ -485,6 +785,31 @@ export default function AdminDashboard({
             <span className="font-black text-white">Completando <span className="text-orange-400 font-normal text-sm">Admin</span></span>
           </div>
           <div className="flex items-center gap-3">
+            {sessionWarning && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-3 py-1 rounded-lg animate-pulse">
+                ⚠️ Sessão expira em {minsLeft} min
+              </span>
+            )}
+            {lastRefresh && (
+              <span className="text-[10px] text-slate-600 hidden sm:block">
+                Atualizado: {lastRefresh.toLocaleTimeString('pt-BR', { timeStyle: 'short' })}
+              </span>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Atualizar dados"
+              className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300 transition-colors flex items-center gap-1.5"
+            >
+              <span className={refreshing ? 'animate-spin inline-block' : ''}>↻</span>
+              {refreshing ? 'Atualizando...' : 'Refresh'}
+            </button>
+            <button
+              onClick={() => setNotifyModal(true)}
+              className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-white transition-colors"
+            >
+              📣 Notificar
+            </button>
             <a href="/" target="_blank" className="text-xs text-slate-400 hover:text-white transition-colors">
               Ver site →
             </a>
@@ -503,6 +828,7 @@ export default function AdminDashboard({
           <TabBtn active={tab === 'users'}     onClick={() => setTab('users')}>👥 Usuários ({stats.totalUsers})</TabBtn>
           <TabBtn active={tab === 'anuncios'}  onClick={() => setTab('anuncios')}>📢 Anúncios ({stats.totalAnuncios})</TabBtn>
           <TabBtn active={tab === 'propostas'} onClick={() => setTab('propostas')}>🔁 Propostas ({stats.totalPropostas})</TabBtn>
+          <TabBtn active={tab === 'logs'}      onClick={() => setTab('logs')}>📋 Logs</TabBtn>
           <TabBtn active={tab === 'settings'}  onClick={() => setTab('settings')}>⚙️ Configurações</TabBtn>
         </div>
 
@@ -521,6 +847,27 @@ export default function AdminDashboard({
                   <div className="text-[10px] text-white/70 mt-0.5 font-medium leading-tight">{s.label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Revenue metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-4 text-center shadow-lg">
+                <div className="text-2xl mb-0.5">💰</div>
+                <div className="text-2xl font-black">
+                  R$ {receitaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-xs text-white/70 mt-0.5 font-medium">Receita Est. Mensal</div>
+              </div>
+              <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-4 text-center shadow-lg">
+                <div className="text-2xl mb-0.5">📈</div>
+                <div className="text-2xl font-black">{taxaConversao}%</div>
+                <div className="text-xs text-white/70 mt-0.5 font-medium">Taxa de Conversão PRO</div>
+              </div>
+              <div className="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-2xl p-4 text-center shadow-lg">
+                <div className="text-2xl mb-0.5">⭐</div>
+                <div className="text-2xl font-black">{totalProAtivo}</div>
+                <div className="text-xs text-white/70 mt-0.5 font-medium">PRO Ativo</div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -554,7 +901,7 @@ export default function AdminDashboard({
                 </button>
               </div>
               <div className="divide-y divide-slate-800">
-                {users.slice(0, 8).map(u => (
+                {usersData.slice(0, 8).map(u => (
                   <div key={u.id} className="flex items-center gap-3 px-5 py-3">
                     <Avatar name={u.nome} email={u.email} />
                     <div className="flex-1 min-w-0">
@@ -569,7 +916,7 @@ export default function AdminDashboard({
                     </div>
                   </div>
                 ))}
-                {users.length === 0 && (
+                {usersData.length === 0 && (
                   <p className="text-center text-slate-500 py-8">Nenhum usuário cadastrado.</p>
                 )}
               </div>
@@ -584,7 +931,7 @@ export default function AdminDashboard({
         {tab === 'users' && (
           <div className="space-y-4">
 
-            {/* Toolbar */}
+            {/* Toolbar row 1 */}
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
@@ -622,8 +969,68 @@ export default function AdminDashboard({
               </button>
             </div>
 
-            <p className="text-xs text-slate-500">
-              {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''} encontrado{filteredUsers.length !== 1 ? 's' : ''}
+            {/* Toolbar row 2 — advanced filters */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <input
+                type="text"
+                placeholder="Filtrar UF..."
+                value={filterUF}
+                onChange={e => setFilterUF(e.target.value)}
+                maxLength={2}
+                className="w-24 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 uppercase"
+              />
+              <div className="flex gap-1">
+                {([
+                  { key: 'todos',      label: 'Todos' },
+                  { key: 'completo',   label: 'Completo' },
+                  { key: 'incompleto', label: 'Incompleto' },
+                ] as const).map(({ key, label }) => (
+                  <button key={key} onClick={() => setFilterComplete(key)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${filterComplete === key ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                {([
+                  { key: 'todos',   label: 'Todos' },
+                  { key: 'ativos',  label: 'Ativos' },
+                  { key: 'banidos', label: 'Banidos' },
+                ] as const).map(({ key, label }) => (
+                  <button key={key} onClick={() => setFilterBanned(key)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${filterBanned === key ? 'bg-red-700 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={`${sortBy}:${sortDir}`}
+                onChange={e => {
+                  const [col, dir] = e.target.value.split(':')
+                  setSortBy(col as 'created_at' | 'nome' | 'last_sign_in')
+                  setSortDir(dir as 'asc' | 'desc')
+                }}
+                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="created_at:desc">Cadastro ↓</option>
+                <option value="created_at:asc">Cadastro ↑</option>
+                <option value="nome:asc">Nome A-Z</option>
+                <option value="nome:desc">Nome Z-A</option>
+                <option value="last_sign_in:desc">Último acesso</option>
+              </select>
+            </div>
+
+            <p className="text-xs text-slate-500 flex items-center gap-2">
+              {usersLoading
+                ? <span className="text-slate-600">Carregando...</span>
+                : <>
+                    {totalUsers} usuário{totalUsers !== 1 ? 's' : ''} encontrado{totalUsers !== 1 ? 's' : ''}
+                    {totalUsers > 0 && (
+                      <span className="ml-1">(mostrando {(usersPage - 1) * USERS_PER_PAGE + 1}–{Math.min(usersPage * USERS_PER_PAGE, totalUsers)} de {totalUsers})</span>
+                    )}
+                  </>
+              }
+              {usersLoading && <Spinner />}
             </p>
 
             {/* Tabela */}
@@ -632,16 +1039,17 @@ export default function AdminDashboard({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wide">
-                      <th className="text-left px-4 py-3 font-semibold">Usuário</th>
+                      <SortHeader col="nome" label="Usuário" />
                       <th className="text-left px-4 py-3 font-semibold">Localização</th>
                       <th className="text-left px-4 py-3 font-semibold">Telefone</th>
-                      <th className="text-left px-4 py-3 font-semibold">Cadastro</th>
+                      <SortHeader col="created_at" label="Cadastro" />
+                      <SortHeader col="last_sign_in" label="Último acesso" />
                       <th className="text-left px-4 py-3 font-semibold">Status</th>
                       <th className="text-right px-4 py-3 font-semibold">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {filteredUsers.map(u => (
+                    {pagedUsers.map(u => (
                       <tr key={u.id} className={`hover:bg-slate-800/50 transition-colors ${u.banned ? 'opacity-60' : ''}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -658,10 +1066,8 @@ export default function AdminDashboard({
                           {u.cep && <p className="text-[10px] text-slate-500">{u.cep}</p>}
                         </td>
                         <td className="px-4 py-3 text-slate-300 text-xs">{u.telefone || '—'}</td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">
-                          <p>{fmtDate(u.created_at)}</p>
-                          {u.last_sign_in && <p className="text-slate-600">Último: {fmtDate(u.last_sign_in)}</p>}
-                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{fmtDate(u.created_at)}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{u.last_sign_in ? fmtDate(u.last_sign_in) : '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${u.profile_complete ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
@@ -697,13 +1103,36 @@ export default function AdminDashboard({
                     ))}
                   </tbody>
                 </table>
-                {filteredUsers.length === 0 && (
+                {pagedUsers.length === 0 && !usersLoading && (
                   <div className="py-12 text-center">
                     <p className="text-slate-500">Nenhum usuário encontrado.</p>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Pagination */}
+            {totalUsersPages > 1 && (
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                  disabled={usersPage <= 1}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-sm text-slate-300 transition-colors"
+                >
+                  ← Anterior
+                </button>
+                <span className="text-sm text-slate-400">
+                  Página {usersPage} de {totalUsersPages}
+                </span>
+                <button
+                  onClick={() => setUsersPage(p => Math.min(totalUsersPages, p + 1))}
+                  disabled={usersPage >= totalUsersPages}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-sm text-slate-300 transition-colors"
+                >
+                  Próxima →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -730,9 +1159,22 @@ export default function AdminDashboard({
                 onChange={e => setAnuncioAlbum(e.target.value)}
                 className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
+              <input
+                type="text"
+                placeholder="Filtrar por usuário..."
+                value={filterAnuncioUser}
+                onChange={e => setFilterAnuncioUser(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
             </div>
 
-            <p className="text-xs text-slate-500">{filteredAnuncios.length} anúncio{filteredAnuncios.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-slate-500 flex items-center gap-2">
+              {anunciosLoading
+                ? <span className="text-slate-600">Carregando...</span>
+                : <>{totalAnuncios} anúncio{totalAnuncios !== 1 ? 's' : ''} (pág. {anuncioPage} de {totalAnunciosPages})</>
+              }
+              {anunciosLoading && <Spinner />}
+            </p>
 
             <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
               <div className="overflow-x-auto">
@@ -764,25 +1206,55 @@ export default function AdminDashboard({
                         </td>
                         <td className="px-4 py-3 text-slate-400 text-xs">{fmtDate(a.created_at)}</td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => deleteAnuncio(a.id)}
-                            disabled={deletingAnuncio === a.id}
-                            className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            {deletingAnuncio === a.id ? <Spinner /> : 'Deletar'}
-                          </button>
+                          {confirmAnuncio === a.id ? (
+                            <span className="flex items-center justify-end gap-2">
+                              <button onClick={() => deleteAnuncio(a.id)} className="text-xs text-red-400 hover:text-red-300 font-bold">Confirmar</button>
+                              <button onClick={() => setConfirmAnuncio(null)} className="text-xs text-slate-500 hover:text-slate-300">Cancelar</button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmAnuncio(a.id)}
+                              disabled={deletingAnuncio === a.id}
+                              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              {deletingAnuncio === a.id ? <Spinner /> : 'Deletar'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {filteredAnuncios.length === 0 && (
+                {filteredAnuncios.length === 0 && !anunciosLoading && (
                   <div className="py-12 text-center">
                     <p className="text-slate-500">Nenhum anúncio encontrado.</p>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Anuncios Pagination */}
+            {totalAnunciosPages > 1 && (
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setAnuncioPage(p => Math.max(1, p - 1))}
+                  disabled={anuncioPage <= 1 || anunciosLoading}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-sm text-slate-300 transition-colors"
+                >
+                  ← Anterior
+                </button>
+                <span className="text-sm text-slate-400">
+                  Página {anuncioPage} de {totalAnunciosPages}
+                </span>
+                <button
+                  onClick={() => setAnuncioPage(p => Math.min(totalAnunciosPages, p + 1))}
+                  disabled={anuncioPage >= totalAnunciosPages || anunciosLoading}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-sm text-slate-300 transition-colors"
+                >
+                  Próxima →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -824,7 +1296,50 @@ export default function AdminDashboard({
         )}
 
         {/* ══════════════════════════════════════════════════════════
-            TAB 5 — CONFIGURAÇÕES
+            TAB 5 — LOGS
+        ══════════════════════════════════════════════════════════ */}
+        {tab === 'logs' && (
+          <div className="space-y-4">
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-800">
+                <h3 className="font-bold text-white">Logs de Ações</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Últimas 50 ações do painel admin.</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wide">
+                      <th className="text-left px-4 py-3 font-semibold">Timestamp</th>
+                      <th className="text-left px-4 py-3 font-semibold">Ação</th>
+                      <th className="text-left px-4 py-3 font-semibold">Detalhes</th>
+                      <th className="text-left px-4 py-3 font-semibold">Target ID</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {adminLogs.map(log => (
+                      <tr key={log.id} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{fmt(log.created_at)}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-bold text-orange-400 uppercase tracking-wide">{log.action.replace(/_/g, ' ')}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 text-xs max-w-xs truncate">{log.details || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600 text-[10px] font-mono truncate max-w-[120px]">{log.target_id || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {adminLogs.length === 0 && (
+                  <div className="py-12 text-center">
+                    <p className="text-slate-500">Nenhuma ação registrada.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 6 — CONFIGURAÇÕES
         ══════════════════════════════════════════════════════════ */}
         {tab === 'settings' && (
           <div className="space-y-6 max-w-2xl">
@@ -877,6 +1392,55 @@ export default function AdminDashboard({
               </button>
             </div>
 
+            {/* Session timeout */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
+              <h3 className="font-bold text-white">Tempo de Inatividade</h3>
+              <p className="text-xs text-slate-400">Sessão do admin será encerrada após este tempo sem atividade.</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={5}
+                  max={120}
+                  value={sessionTimeoutMin}
+                  onChange={e => setSessionTimeoutMin(Number(e.target.value))}
+                  className="w-24 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <span className="text-sm text-slate-400">minutos (5–120)</span>
+                <button
+                  onClick={saveSessionTimeout}
+                  className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+
+            {/* Albums disponíveis */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
+              <h3 className="font-bold text-white">Álbuns Disponíveis</h3>
+              <div className="space-y-3">
+                {ALBUMS_REGISTRY.map(album => (
+                  <div key={album.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xl">{album.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{album.name}</p>
+                        <p className="text-xs text-slate-400">{album.subtitle}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleAlbumAvail(album.id)}
+                      disabled={settingsLoading}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ml-3 ${albumAvail[album.id] ? 'bg-orange-500' : 'bg-slate-700'}`}
+                    >
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${albumAvail[album.id] ? 'left-7' : 'left-1'}`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 italic">⚠ Requer novo deploy para efeito completo.</p>
+            </div>
+
             {/* Credenciais */}
             <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
               <h3 className="font-bold text-white">Alterar Credenciais de Admin</h3>
@@ -920,31 +1484,6 @@ export default function AdminDashboard({
               </div>
             </div>
 
-            {/* Logs admin */}
-            <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-800">
-                <h3 className="font-bold text-white">Logs de Ações</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Últimas 50 ações do painel admin.</p>
-              </div>
-              <div className="divide-y divide-slate-800 max-h-96 overflow-y-auto">
-                {adminLogs.length === 0 && (
-                  <p className="text-center text-slate-500 py-8 text-sm">Nenhuma ação registrada.</p>
-                )}
-                {adminLogs.map(log => (
-                  <div key={log.id} className="px-5 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-orange-400 uppercase tracking-wide">{log.action.replace(/_/g, ' ')}</p>
-                        {log.details && <p className="text-xs text-slate-300 mt-0.5 truncate">{log.details}</p>}
-                        {log.target_id && <p className="text-[10px] text-slate-600 mt-0.5 font-mono truncate">{log.target_id}</p>}
-                      </div>
-                      <p className="text-[10px] text-slate-500 flex-shrink-0">{fmt(log.created_at)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
           </div>
         )}
       </div>
@@ -984,6 +1523,28 @@ export default function AdminDashboard({
                 </div>
               ))}
             </div>
+
+            {/* Anúncios do usuário */}
+            <div className="px-5 pb-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
+                Anúncios do usuário ({anunciosData.filter(a => a.user_id === selectedUser.id).length} visíveis)
+              </h4>
+              {anunciosData.filter(a => a.user_id === selectedUser.id).length === 0 ? (
+                <p className="text-xs text-slate-600 italic">Sem anúncios na página atual.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {anunciosData.filter(a => a.user_id === selectedUser.id).map(a => (
+                    <div key={a.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2 text-xs">
+                      <span className="font-mono text-orange-400">{a.sid}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${a.tipo === 'tenho' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>{a.tipo}</span>
+                      <span className="text-slate-400">{a.album_id}</span>
+                      {a.preco !== null && <span className="text-slate-300 ml-auto">R$ {Number(a.preco).toFixed(2)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="px-5 pb-5 flex flex-wrap gap-2">
               <button onClick={() => { openEditUser(selectedUser); setSelectedUser(null) }}
                 className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition-colors">
@@ -1188,6 +1749,42 @@ export default function AdminDashboard({
           </div>
         </Modal>
       )}
+
+      {/* Modal — Notificar todos */}
+      {notifyModal && (
+        <Modal onClose={() => setNotifyModal(false)}>
+          <div className="bg-slate-900 border border-blue-500/30 rounded-2xl w-full shadow-2xl p-6">
+            <div className="text-4xl text-center mb-3">📣</div>
+            <h3 className="font-black text-white text-center text-lg mb-2">Notificar Todos</h3>
+            <p className="text-slate-400 text-sm text-center mb-4">
+              A mensagem será exibida como aviso global para todos os usuários.
+            </p>
+            <textarea
+              value={notifyMsg}
+              onChange={e => setNotifyMsg(e.target.value)}
+              rows={4}
+              placeholder="Digite a mensagem para todos os usuários..."
+              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setNotifyModal(false)}
+                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={submitNotify}
+                disabled={notifyLoading || !notifyMsg.trim()}
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                {notifyLoading ? <><Spinner /> Enviando...</> : '📣 Enviar para todos'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Toast container */}
+      <ToastContainer toasts={toasts} />
 
     </div>
   )

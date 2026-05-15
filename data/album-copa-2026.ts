@@ -1,4 +1,4 @@
-export type StickerType = 'normal' | 'escudo' | 'brilhante' | 'especial'
+export type StickerType = 'normal' | 'escudo' | 'brilhante' | 'especial' | 'extra-gold' | 'extra-silver' | 'extra-bronze' | 'extra-purple' | 'coca-cola'
 
 export interface Sticker {
   number: number   // 1-20 dentro do time, ou 1-20 na intro
@@ -1326,14 +1326,146 @@ export const albumCopa2026: Album = {
         { number: 20, name: 'Foto do Time',         type: 'especial'  },
       ],
     },
+
+    // ── COCA-COLA EXCLUSIVAS (12 figurinhas — página dedicada no álbum) ────────
+    {
+      id: 'coca-cola', code: 'COCA', name: 'Coca-Cola × Panini',
+      stickers: [
+        { number: 1,  name: 'Lamine Yamal (Espanha)',       type: 'coca-cola' },
+        { number: 2,  name: 'Joshua Kimmich (Alemanha)',    type: 'coca-cola' },
+        { number: 3,  name: 'Harry Kane (Inglaterra)',      type: 'coca-cola' },
+        { number: 4,  name: 'Santiago Giménez (México)',    type: 'coca-cola' },
+        { number: 5,  name: 'Antonee Robinson (EUA)',       type: 'coca-cola' },
+        { number: 6,  name: 'Jefferson Lerma (Colômbia)',   type: 'coca-cola' },
+        { number: 7,  name: 'Edson Álvarez (México)',       type: 'coca-cola' },
+        { number: 8,  name: 'Virgil van Dijk (Holanda)',    type: 'coca-cola' },
+        { number: 9,  name: 'Alphonso Davies (Canadá)',     type: 'coca-cola' },
+        { number: 10, name: 'Weston McKennie (EUA)',        type: 'coca-cola' },
+        { number: 11, name: 'Lautaro Martínez (Argentina)', type: 'coca-cola' },
+        { number: 12, name: 'Gabriel Magalhães (Brasil)',   type: 'coca-cola' },
+      ],
+    },
+
+    // ── EXTRA STICKERS — DOURADA (Gold · 1:100 pacotes) ──────────────────────
+    {
+      id: 'extra-gold', code: 'XGOLD', name: 'Extra Stickers Dourada',
+      stickers: [
+        { number: 1,  name: 'Achraf Hakimi (Marrocos)',   type: 'extra-gold' },
+        { number: 2,  name: 'Alphonso Davies (Canadá)',   type: 'extra-gold' },
+        { number: 3,  name: 'Christian Pulisic (EUA)',    type: 'extra-gold' },
+        { number: 4,  name: 'Cody Gakpo (Holanda)',       type: 'extra-gold' },
+        { number: 5,  name: 'Cristiano Ronaldo (Portugal)',type: 'extra-gold' },
+        { number: 6,  name: 'Erling Haaland (Noruega)',   type: 'extra-gold' },
+        { number: 7,  name: 'Federico Valverde (Uruguai)', type: 'extra-gold' },
+        { number: 8,  name: 'Florian Wirtz (Alemanha)',   type: 'extra-gold' },
+        { number: 9,  name: 'Heung-min Son (Coreia do Sul)', type: 'extra-gold' },
+        { number: 10, name: 'Jérémy Doku (Bélgica)',      type: 'extra-gold' },
+        { number: 11, name: 'Jude Bellingham (Inglaterra)', type: 'extra-gold' },
+        { number: 12, name: 'Kylian Mbappé (França)',     type: 'extra-gold' },
+        { number: 13, name: 'Lamine Yamal (Espanha)',     type: 'extra-gold' },
+        { number: 14, name: 'Lionel Messi (Argentina)',   type: 'extra-gold' },
+        { number: 15, name: 'Luis Díaz (Colômbia)',       type: 'extra-gold' },
+        { number: 16, name: 'Luka Modrić (Croácia)',      type: 'extra-gold' },
+        { number: 17, name: 'Mohamed Salah (Egito)',      type: 'extra-gold' },
+        { number: 18, name: 'Moisés Caicedo (Equador)',   type: 'extra-gold' },
+        { number: 19, name: 'Raúl Jiménez (México)',      type: 'extra-gold' },
+        { number: 20, name: 'Vinícius Júnior (Brasil)',   type: 'extra-gold' },
+      ],
+    },
+
+    // ── EXTRA STICKERS — PRATEADA (Silver · 1:100 pacotes) ───────────────────
+    {
+      id: 'extra-silver', code: 'XSILVER', name: 'Extra Stickers Prateada',
+      stickers: [
+        { number: 1,  name: 'Achraf Hakimi (Marrocos)',   type: 'extra-silver' },
+        { number: 2,  name: 'Alphonso Davies (Canadá)',   type: 'extra-silver' },
+        { number: 3,  name: 'Christian Pulisic (EUA)',    type: 'extra-silver' },
+        { number: 4,  name: 'Cody Gakpo (Holanda)',       type: 'extra-silver' },
+        { number: 5,  name: 'Cristiano Ronaldo (Portugal)',type: 'extra-silver' },
+        { number: 6,  name: 'Erling Haaland (Noruega)',   type: 'extra-silver' },
+        { number: 7,  name: 'Federico Valverde (Uruguai)', type: 'extra-silver' },
+        { number: 8,  name: 'Florian Wirtz (Alemanha)',   type: 'extra-silver' },
+        { number: 9,  name: 'Heung-min Son (Coreia do Sul)', type: 'extra-silver' },
+        { number: 10, name: 'Jérémy Doku (Bélgica)',      type: 'extra-silver' },
+        { number: 11, name: 'Jude Bellingham (Inglaterra)', type: 'extra-silver' },
+        { number: 12, name: 'Kylian Mbappé (França)',     type: 'extra-silver' },
+        { number: 13, name: 'Lamine Yamal (Espanha)',     type: 'extra-silver' },
+        { number: 14, name: 'Lionel Messi (Argentina)',   type: 'extra-silver' },
+        { number: 15, name: 'Luis Díaz (Colômbia)',       type: 'extra-silver' },
+        { number: 16, name: 'Luka Modrić (Croácia)',      type: 'extra-silver' },
+        { number: 17, name: 'Mohamed Salah (Egito)',      type: 'extra-silver' },
+        { number: 18, name: 'Moisés Caicedo (Equador)',   type: 'extra-silver' },
+        { number: 19, name: 'Raúl Jiménez (México)',      type: 'extra-silver' },
+        { number: 20, name: 'Vinícius Júnior (Brasil)',   type: 'extra-silver' },
+      ],
+    },
+
+    // ── EXTRA STICKERS — BRONZE (Bronze · 1:100 pacotes) ─────────────────────
+    {
+      id: 'extra-bronze', code: 'XBRONZE', name: 'Extra Stickers Bronze',
+      stickers: [
+        { number: 1,  name: 'Achraf Hakimi (Marrocos)',   type: 'extra-bronze' },
+        { number: 2,  name: 'Alphonso Davies (Canadá)',   type: 'extra-bronze' },
+        { number: 3,  name: 'Christian Pulisic (EUA)',    type: 'extra-bronze' },
+        { number: 4,  name: 'Cody Gakpo (Holanda)',       type: 'extra-bronze' },
+        { number: 5,  name: 'Cristiano Ronaldo (Portugal)',type: 'extra-bronze' },
+        { number: 6,  name: 'Erling Haaland (Noruega)',   type: 'extra-bronze' },
+        { number: 7,  name: 'Federico Valverde (Uruguai)', type: 'extra-bronze' },
+        { number: 8,  name: 'Florian Wirtz (Alemanha)',   type: 'extra-bronze' },
+        { number: 9,  name: 'Heung-min Son (Coreia do Sul)', type: 'extra-bronze' },
+        { number: 10, name: 'Jérémy Doku (Bélgica)',      type: 'extra-bronze' },
+        { number: 11, name: 'Jude Bellingham (Inglaterra)', type: 'extra-bronze' },
+        { number: 12, name: 'Kylian Mbappé (França)',     type: 'extra-bronze' },
+        { number: 13, name: 'Lamine Yamal (Espanha)',     type: 'extra-bronze' },
+        { number: 14, name: 'Lionel Messi (Argentina)',   type: 'extra-bronze' },
+        { number: 15, name: 'Luis Díaz (Colômbia)',       type: 'extra-bronze' },
+        { number: 16, name: 'Luka Modrić (Croácia)',      type: 'extra-bronze' },
+        { number: 17, name: 'Mohamed Salah (Egito)',      type: 'extra-bronze' },
+        { number: 18, name: 'Moisés Caicedo (Equador)',   type: 'extra-bronze' },
+        { number: 19, name: 'Raúl Jiménez (México)',      type: 'extra-bronze' },
+        { number: 20, name: 'Vinícius Júnior (Brasil)',   type: 'extra-bronze' },
+      ],
+    },
+
+    // ── EXTRA STICKERS — ROXA (Purple · base especial) ───────────────────────
+    {
+      id: 'extra-purple', code: 'XPURPLE', name: 'Extra Stickers Roxa',
+      stickers: [
+        { number: 1,  name: 'Achraf Hakimi (Marrocos)',   type: 'extra-purple' },
+        { number: 2,  name: 'Alphonso Davies (Canadá)',   type: 'extra-purple' },
+        { number: 3,  name: 'Christian Pulisic (EUA)',    type: 'extra-purple' },
+        { number: 4,  name: 'Cody Gakpo (Holanda)',       type: 'extra-purple' },
+        { number: 5,  name: 'Cristiano Ronaldo (Portugal)',type: 'extra-purple' },
+        { number: 6,  name: 'Erling Haaland (Noruega)',   type: 'extra-purple' },
+        { number: 7,  name: 'Federico Valverde (Uruguai)', type: 'extra-purple' },
+        { number: 8,  name: 'Florian Wirtz (Alemanha)',   type: 'extra-purple' },
+        { number: 9,  name: 'Heung-min Son (Coreia do Sul)', type: 'extra-purple' },
+        { number: 10, name: 'Jérémy Doku (Bélgica)',      type: 'extra-purple' },
+        { number: 11, name: 'Jude Bellingham (Inglaterra)', type: 'extra-purple' },
+        { number: 12, name: 'Kylian Mbappé (França)',     type: 'extra-purple' },
+        { number: 13, name: 'Lamine Yamal (Espanha)',     type: 'extra-purple' },
+        { number: 14, name: 'Lionel Messi (Argentina)',   type: 'extra-purple' },
+        { number: 15, name: 'Luis Díaz (Colômbia)',       type: 'extra-purple' },
+        { number: 16, name: 'Luka Modrić (Croácia)',      type: 'extra-purple' },
+        { number: 17, name: 'Mohamed Salah (Egito)',      type: 'extra-purple' },
+        { number: 18, name: 'Moisés Caicedo (Equador)',   type: 'extra-purple' },
+        { number: 19, name: 'Raúl Jiménez (México)',      type: 'extra-purple' },
+        { number: 20, name: 'Vinícius Júnior (Brasil)',   type: 'extra-purple' },
+      ],
+    },
   ],
 }
 
 export const STICKER_PRICES: Record<StickerType, { min: number; max: number; label: string }> = {
-  normal:    { min: 1,  max: 5,  label: 'Normal' },
-  escudo:    { min: 3,  max: 10, label: 'Escudo' },
-  brilhante: { min: 5,  max: 30, label: 'Brilhante ✨' },
-  especial:  { min: 5,  max: 20, label: 'Especial' },
+  normal:         { min: 1,   max: 5,   label: 'Normal' },
+  escudo:         { min: 3,   max: 10,  label: 'Escudo' },
+  brilhante:      { min: 5,   max: 30,  label: 'Brilhante ✨' },
+  especial:       { min: 5,   max: 20,  label: 'Especial' },
+  'extra-gold':   { min: 50,  max: 300, label: 'Extra Dourada 🥇' },
+  'extra-silver': { min: 20,  max: 100, label: 'Extra Prateada 🥈' },
+  'extra-bronze': { min: 10,  max: 50,  label: 'Extra Bronze 🥉' },
+  'extra-purple': { min: 5,   max: 30,  label: 'Extra Roxa 💜' },
+  'coca-cola':    { min: 15,  max: 80,  label: 'Coca-Cola 🥤' },
 }
 
 // TOTAL_STICKERS já exportado no topo do arquivo

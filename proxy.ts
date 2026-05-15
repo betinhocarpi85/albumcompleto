@@ -27,7 +27,16 @@ export async function proxy(request: NextRequest) {
     if (token !== getAdminToken()) {
       return NextResponse.redirect(new URL('/admin', request.url))
     }
-    return NextResponse.next({ request })
+    // Sliding session: renova o cookie a cada acesso (30 min de inatividade)
+    const res = NextResponse.next({ request })
+    res.cookies.set(ADMIN_COOKIE, getAdminToken(), {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge:   30 * 60, // 30 minutos
+      path:     '/',
+    })
+    return res
   }
 
   // ── Proteção das rotas de usuário (Supabase Auth) ─────────────────────────

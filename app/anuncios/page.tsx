@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { albumCopa2026, buildGlobalNumberMap, stickerId } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap, stickerId, type Album } from '@/data/album-copa-2026'
 import type { StickerType } from '@/data/album-copa-2026'
+import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
+import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
@@ -34,45 +36,66 @@ interface VendaModal {
   isNew: boolean
 }
 
-const globalNumbers = buildGlobalNumberMap(albumCopa2026)
+// ─── Dados de figurinhas por álbum ──────────────────────────────────────────
+
+export interface StickerFlat {
+  sid: string; gNum: number; nome: string; catName: string
+  catId: string; catFlag: string; tipo: StickerType
+}
+
+function buildAlbumData(album: Album) {
+  const gNums = buildGlobalNumberMap(album)
+  const flat: StickerFlat[] = album.categories.flatMap(cat =>
+    cat.stickers.map(s => ({
+      sid:     stickerId(cat.code, s.number),
+      gNum:    gNums.get(stickerId(cat.code, s.number)) ?? 0,
+      nome:    s.name,
+      catName: cat.name,
+      catId:   cat.id,
+      catFlag: cat.flag ?? '📌',
+      tipo:    s.type as StickerType,
+    }))
+  )
+  const porTipo: Record<StickerType, { catId: string; catName: string; catFlag: string; stickers: StickerFlat[] }[]> = {
+    normal: [], escudo: [], brilhante: [], especial: [],
+    'extra-gold': [], 'extra-silver': [], 'extra-bronze': [], 'extra-purple': [], 'coca-cola': [],
+  }
+  for (const cat of album.categories) {
+    for (const tipo of Object.keys(porTipo) as StickerType[]) {
+      const stickers = flat.filter(s => s.catId === cat.id && s.tipo === tipo)
+      if (stickers.length) porTipo[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', stickers })
+    }
+  }
+  return { flat, porTipo, album }
+}
+
+const ALBUM_DATA: Record<string, ReturnType<typeof buildAlbumData>> = {
+  'copa-2026':              buildAlbumData(albumCopa2026),
+  'brasileirao-masc-2026': buildAlbumData(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':  buildAlbumData(albumBrasileiraoFem2026),
+}
 
 const PRECO_SUGERIDO: Record<StickerType, string> = {
   normal: '3.00', escudo: '4.00', brilhante: '8.00', especial: '5.00',
+  'extra-gold': '80.00', 'extra-silver': '30.00', 'extra-bronze': '15.00', 'extra-purple': '8.00',
+  'coca-cola': '20.00',
 }
 
 const TIPO_META: { key: StickerType; label: string; icon: string; desc: string }[] = [
-  { key: 'normal',    label: 'Normais',    icon: '⬜', desc: 'Jogadores comuns'         },
-  { key: 'escudo',    label: 'Escudos',    icon: '🛡️', desc: 'Escudo de cada seleção'  },
-  { key: 'brilhante', label: 'Brilhantes', icon: '✨', desc: 'Figurinhas foil especiais' },
-  { key: 'especial',  label: 'Especiais',  icon: '⭐', desc: 'Fotos de time e intro'    },
+  { key: 'normal',        label: 'Normais',         icon: '⬜', desc: 'Jogadores comuns'              },
+  { key: 'escudo',        label: 'Escudos',         icon: '🛡️', desc: 'Escudo de cada seleção'       },
+  { key: 'brilhante',     label: 'Brilhantes',      icon: '✨', desc: 'Figurinhas foil especiais'      },
+  { key: 'especial',      label: 'Especiais',       icon: '⭐', desc: 'Fotos de time e intro'          },
+  { key: 'coca-cola',     label: 'Coca-Cola',       icon: '🔴', desc: 'Exclusivas Coca-Cola (tampinha)'},
+  { key: 'extra-gold',    label: 'Extra Dourada',   icon: '🟡', desc: '20 estrelas — versão ouro'     },
+  { key: 'extra-silver',  label: 'Extra Prateada',  icon: '⚪', desc: '20 estrelas — versão prata'    },
+  { key: 'extra-bronze',  label: 'Extra Bronze',    icon: '🟠', desc: '20 estrelas — versão bronze'   },
+  { key: 'extra-purple',  label: 'Extra Roxa',      icon: '🟣', desc: '20 estrelas — versão roxa'     },
 ]
 
 const TIPO_ICON: Record<StickerType, string> = {
   normal: '', escudo: '🛡️', brilhante: '✨', especial: '⭐',
-}
-
-// Todos os stickers flat com metadados
-const allStickersFlat = albumCopa2026.categories.flatMap(cat =>
-  cat.stickers.map(s => ({
-    sid:     stickerId(cat.code, s.number),
-    gNum:    globalNumbers.get(stickerId(cat.code, s.number)) ?? 0,
-    nome:    s.name,
-    catName: cat.name,
-    catId:   cat.id,
-    catFlag: cat.flag ?? '📌',
-    tipo:    s.type as StickerType,
-  }))
-)
-
-// Por tipo → por categoria
-const porTipoECat: Record<StickerType, { catId: string; catName: string; catFlag: string; stickers: typeof allStickersFlat }[]> = {
-  normal: [], escudo: [], brilhante: [], especial: [],
-}
-for (const cat of albumCopa2026.categories) {
-  for (const tipo of Object.keys(porTipoECat) as StickerType[]) {
-    const stickers = allStickersFlat.filter(s => s.catId === cat.id && s.tipo === tipo)
-    if (stickers.length) porTipoECat[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', stickers })
-  }
+  'coca-cola': '🔴', 'extra-gold': '🟡', 'extra-silver': '⚪', 'extra-bronze': '🟠', 'extra-purple': '🟣',
 }
 
 function makeKey(sid: string, acao: TipoAnuncio) { return `${sid}__${acao}` }
@@ -97,6 +120,9 @@ export default function AnunciosPage() {
   // anunciadas
   const [openTiposAn, setOpenTiposAn] = useState<Set<StickerType>>(new Set(['normal']))
   const [openCatsAn,  setOpenCatsAn]  = useState<Set<string>>(new Set())
+
+  // Dados do álbum atual (derivados do albumId, sem hook)
+  const { flat: allStickersFlat, porTipo: porTipoECat } = ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']
 
   useEffect(() => {
     getSession().then(session => {
@@ -155,13 +181,14 @@ export default function AnunciosPage() {
     setAnuncios([])
     setColadas(new Set())
     setLoading(true)
+    const flat = ALBUM_DATA[id]?.flat ?? ALBUM_DATA['copa-2026'].flat
     const [col, saved] = await Promise.all([dbGetColadas(id), dbGetAnuncios(id, 'tenho')])
     const coladasSet = new Set(col)
     setColadas(coladasSet)
     setAnuncios(saved.map(a => {
       const rawSid = a.sid.replace(/__(?:troca|venda)$/, '')
       const acao: TipoAnuncio = a.preco != null && a.preco > 0 ? 'venda' : 'troca'
-      const info = allStickersFlat.find(s => s.sid === rawSid)
+      const info = flat.find(s => s.sid === rawSid)
       return {
         key: makeKey(rawSid, acao), sid: rawSid,
         gNum: typeof a.gNum === 'number' ? a.gNum : Number(a.gNum) || 0,
@@ -174,7 +201,7 @@ export default function AnunciosPage() {
   }
 
   // Troca: toggle direto sem modal
-  async function toggleTroca(s: typeof allStickersFlat[0]) {
+  async function toggleTroca(s: StickerFlat) {
     if (!adulto) return
     const key = makeKey(s.sid, 'troca')
     const jaAnunciado = anunciadosKeys.has(key)
@@ -250,17 +277,20 @@ export default function AnunciosPage() {
   const anunciadosPorTipoECat = useMemo(() => {
     const result: Record<StickerType, { catId: string; catName: string; catFlag: string; items: AnuncioLocal[] }[]> = {
       normal: [], escudo: [], brilhante: [], especial: [],
+      'extra-gold': [], 'extra-silver': [], 'extra-bronze': [], 'extra-purple': [], 'coca-cola': [],
     }
-    for (const cat of albumCopa2026.categories) {
+    const currentAlbum = (ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']).album
+    const currentFlat  = (ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']).flat
+    for (const cat of currentAlbum.categories) {
       for (const tipo of Object.keys(result) as StickerType[]) {
         const items = anunciosFiltrados.filter(a =>
-          a.tipo === tipo && allStickersFlat.find(s => s.sid === a.sid)?.catId === cat.id
+          a.tipo === tipo && currentFlat.find(s => s.sid === a.sid)?.catId === cat.id
         )
         if (items.length) result[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', items })
       }
     }
     return result
-  }, [anunciosFiltrados])
+  }, [anunciosFiltrados, albumId])
 
   if (loading) return (
     <div className="max-w-2xl mx-auto px-3 py-10 text-center">
@@ -474,8 +504,7 @@ export default function AnunciosPage() {
                               <div key={g.catId} className="border border-slate-100 rounded-xl overflow-hidden">
                                 <button onClick={() => toggleCat(catKey)}
                                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-                                  <span className="text-base">{g.catFlag}</span>
-                                  <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName}</span>
+                                  <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName.replace(/^[^\p{L}\p{N}]+/u, '')}</span>
                                   <span className={['text-[10px] font-bold px-1.5 py-0.5 rounded-full', subColor.badge].join(' ')}>
                                     {g.stickers.length}✓
                                   </span>
@@ -581,8 +610,7 @@ export default function AnunciosPage() {
                                   <div key={g.catId} className="border border-slate-100 rounded-xl overflow-hidden">
                                     <button onClick={() => toggleCatAn(catKey)}
                                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-                                      <span className="text-base">{g.catFlag}</span>
-                                      <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName}</span>
+                                      <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName.replace(/^[^\p{L}\p{N}]+/u, '')}</span>
                                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                                         {g.items.length}✓
                                       </span>
