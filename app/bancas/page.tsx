@@ -145,7 +145,7 @@ export default function BancasPage() {
           Torne-se um ponto oficial Completando e receba clientes de graça!
         </p>
         <a
-          href="https://wa.me/5511999999999?text=Quero%20ser%20ponto%20parceiro%20Completando"
+          href="https://wa.me/5521996787737?text=Quero%20ser%20ponto%20parceiro%20Completando"
           target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
