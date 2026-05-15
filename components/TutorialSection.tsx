@@ -138,12 +138,12 @@ export default function TutorialSection() {
       {/* PRO */}
       <Topic emoji="🏆" title="Plano PRO — o que muda">
         <div className="pt-3 space-y-3">
-          <Info text="No plano gratuito você cria anúncios e vê os matches, mas não consegue visualizar o contato nem enviar propostas de troca. O PRO libera essas funções." />
+          <Info text="No plano gratuito você cria anúncios e vê seus matches, mas não aparece para usuários PRO, não visualiza contatos e não envia propostas. O PRO libera tudo isso." />
           <div className="space-y-1.5 bg-green-50 rounded-xl px-4 py-3">
             {[
+              '✅ Aparece nos matches de outros usuários PRO',
               '✅ Visualize o telefone/contato dos matches',
               '✅ Envie propostas de troca ilimitadas',
-              '✅ Apareça em mais matches de outros usuários',
               '✅ Histórico completo de trocas confirmadas',
               '✅ Badge PRO no seu perfil',
             ].map(t => (

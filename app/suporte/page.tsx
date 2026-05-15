@@ -50,7 +50,7 @@ const FAQS = [
     itens: [
       {
         q: 'Quais são as vantagens do PRO?',
-        a: 'Com o PRO você pode ver o telefone/contato dos seus matches e enviar propostas de troca. No plano gratuito você cria anúncios e vê os matches, mas não consegue visualizar o contato nem enviar propostas.',
+        a: 'Com o PRO você aparece nos matches de outros usuários PRO, consegue ver o contato deles e enviar propostas de troca. No plano gratuito você cria anúncios e vê seus próprios matches, mas não aparece para usuários PRO, não visualiza contatos e não envia propostas.',
       },
       {
         q: 'Como assino o PRO?',
