@@ -41,7 +41,7 @@ const FAQS = [
       },
       {
         q: 'Quantos anúncios posso criar?',
-        a: 'Usuários gratuitos podem criar até 30 anúncios ativos. Usuários PRO têm anúncios ilimitados e destaque na listagem.',
+        a: 'Todos os usuários podem criar anúncios de troca e venda sem limite. A diferença está nas propostas: apenas usuários PRO podem enviar propostas de troca para outros colecionadores.',
       },
     ],
   },
