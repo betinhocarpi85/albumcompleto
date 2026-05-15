@@ -371,7 +371,13 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="bg-slate-900 text-slate-400 text-center py-6 text-xs">
+      <footer className="bg-slate-900 text-slate-400 text-center py-8 text-xs space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Link href="/suporte"    className="hover:text-white transition-colors">🛟 Suporte</Link>
+          <Link href="/bancas"     className="hover:text-white transition-colors">📍 Pontos de Troca</Link>
+          <Link href="/termos"     className="hover:text-white transition-colors">📄 Termos de Uso</Link>
+          <Link href="/privacidade" className="hover:text-white transition-colors">🔒 Privacidade</Link>
+        </div>
         <p>© 2026 completando.com.br · Todos os direitos reservados</p>
       </footer>
     </div>
