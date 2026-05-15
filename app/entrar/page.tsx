@@ -99,7 +99,12 @@ function EntrarForm() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Senha</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-600">Senha</label>
+                <a href="/senha" className="text-xs text-green-600 hover:text-green-700 font-medium">
+                  Esqueci minha senha
+                </a>
+              </div>
               <div className="relative">
                 <input
                   type={mostrar ? 'text' : 'password'}
