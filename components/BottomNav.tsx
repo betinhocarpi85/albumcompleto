@@ -66,8 +66,8 @@ export default function BottomNav() {
   const ITEMS_LOGADO = [
     { href: '/',              icon: '🏠', label: 'Início'   },
     { href: '/album',         icon: '📋', label: 'Álbum'    },
-    { href: '/anuncios',      icon: '📢', label: 'Anúncios' },
     { href: '/matches',       icon: '🔁', label: 'Matches'  },
+    { href: '/bancas',        icon: '🗺️', label: 'Bancas'   },
     { href: '/notificacoes',  icon: '🔔', label: 'Avisos',  badge: notifCount },
     { href: '/conta',         icon: '👤', label: 'Perfil'   },
   ]
@@ -75,8 +75,8 @@ export default function BottomNav() {
   const ITEMS_NAO_LOGADO = [
     { href: '/',        icon: '🏠', label: 'Início'   },
     { href: '/album',   icon: '📋', label: 'Álbum'    },
-    { href: '/anuncios', icon: '📢', label: 'Anúncios' },
     { href: '/matches', icon: '🔁', label: 'Matches'  },
+    { href: '/bancas',  icon: '🗺️', label: 'Bancas'   },
     { href: '/entrar',  icon: '🔑', label: 'Entrar'   },
   ]
 
