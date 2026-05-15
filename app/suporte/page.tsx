@@ -37,7 +37,7 @@ const FAQS = [
       },
       {
         q: 'Posso vender figurinhas além de trocar?',
-        a: 'Sim! Ao criar um anúncio, escolha o tipo "Venda" e informe o preço. Usuários PRO têm destaque nos anúncios de venda.',
+        a: 'Sim! Ao criar um anúncio, escolha o tipo "Venda" e informe o preço. Qualquer usuário pode anunciar para venda.',
       },
       {
         q: 'Quantos anúncios posso criar?',
@@ -50,7 +50,7 @@ const FAQS = [
     itens: [
       {
         q: 'Quais são as vantagens do PRO?',
-        a: 'Anúncios ilimitados, destaque nos resultados de busca, ver o contato dos matches sem precisar que eles aceitem a proposta primeiro, e suporte prioritário.',
+        a: 'Com o PRO você pode ver o telefone/contato dos seus matches e enviar propostas de troca. No plano gratuito você cria anúncios e vê os matches, mas não consegue visualizar o contato nem enviar propostas.',
       },
       {
         q: 'Como assino o PRO?',

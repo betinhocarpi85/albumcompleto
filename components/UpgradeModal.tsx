@@ -43,14 +43,15 @@ export default function UpgradeModal({ onClose }: Props) {
           <p className="text-4xl mb-2">🏆</p>
           <h2 className="text-xl font-black text-slate-800">Seja PRO</h2>
           <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-            Para enviar propostas de troca você precisa de uma conta <strong>PRO</strong>.
-            Ver matches é sempre gratuito!
+            Para ver o contato dos matches e enviar propostas você precisa de uma conta <strong>PRO</strong>.
+            Criar anúncios e ver matches é sempre gratuito!
           </p>
         </div>
 
         {/* Benefícios */}
         <div className="bg-green-50 rounded-xl px-4 py-3 mb-4 space-y-1.5">
           {[
+            '✅ Veja o contato dos seus matches',
             '✅ Envie propostas de troca ilimitadas',
             '✅ Apareça em mais matches',
             '✅ Histórico completo de trocas',
