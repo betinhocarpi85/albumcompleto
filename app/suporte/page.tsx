@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import TutorialSection from '@/components/TutorialSection'
 
 const WHATSAPP = 'https://wa.me/5521996787737?text=Olá! Preciso de ajuda com o Completando.'
 
@@ -150,6 +151,12 @@ export default function SuportePage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Tutorial */}
+      <div className="mt-10">
+        <h2 className="text-base font-bold text-slate-700 mb-4">📖 Como usar o Completando</h2>
+        <TutorialSection />
       </div>
 
       {/* Links úteis */}

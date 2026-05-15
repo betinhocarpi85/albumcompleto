@@ -9,19 +9,18 @@ import {
 } from '@/lib/store'
 import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano, dbGetHistorico, type HistoricoItem } from '@/lib/db'
 import UpgradeModal from '@/components/UpgradeModal'
-import TutorialSection from '@/components/TutorialSection'
 
 
-type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'tutorial' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
 
-const MENU_ITEMS: { key: Section; icon: string; label: string; badge?: number }[] = [
+const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge?: number; href?: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
   { key: 'albuns',      icon: '📚', label: 'Meus Álbuns' },
   { key: 'propostas',   icon: '🔁', label: 'Propostas' },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
-  { key: 'tutorial',    icon: '📖', label: 'Tutorial'   },
+  { key: 'suporte',     icon: '🛟', label: 'Suporte',    href: '/suporte' },
   { key: 'seguranca',   icon: '🔒', label: 'Segurança' },
 ]
 
@@ -71,7 +70,7 @@ function ContaPageInner() {
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
-    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','tutorial','seguranca']
+    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','seguranca']
     if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
@@ -214,7 +213,7 @@ function ContaPageInner() {
             {MENU.map((item, i) => (
               <button
                 key={item.key}
-                onClick={() => setSection(item.key)}
+                onClick={() => { if (item.href) { router.push(item.href); return; } setSection(item.key as Section) }}
                 className={[
                   'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors text-left',
                   i < MENU.length - 1 ? 'border-b border-slate-50' : '',
@@ -840,9 +839,6 @@ function ContaPageInner() {
               </div>
             </div>
           )}
-
-          {/* TUTORIAL */}
-          {section === 'tutorial' && <TutorialSection />}
 
           {/* SEGURANÇA */}
           {section === 'seguranca' && (
