@@ -67,7 +67,7 @@ export default function BottomNav() {
     { href: '/',              icon: '🏠', label: 'Início'   },
     { href: '/album',         icon: '📋', label: 'Álbum'    },
     { href: '/matches',       icon: '🔁', label: 'Matches'  },
-    { href: '/bancas',        icon: '🗺️', label: 'Bancas'   },
+    { href: '/bancas',        icon: '📍', label: 'Bancas'   },
     { href: '/notificacoes',  icon: '🔔', label: 'Avisos',  badge: notifCount },
     { href: '/conta',         icon: '👤', label: 'Perfil'   },
   ]

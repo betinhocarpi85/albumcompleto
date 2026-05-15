@@ -34,7 +34,6 @@ export default function Navbar() {
     { href: '/album',    label: 'Álbum'       },
     { href: '/anuncios', label: 'Anúncios'    },
     { href: '/matches',  label: 'Matches'     },
-    { href: '/bancas',   label: '🗺️ Bancas'   },
     { href: '/conta',    label: 'Minha Conta' },
   ]
 
