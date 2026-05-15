@@ -190,7 +190,7 @@ export default function TutorialSection() {
             },
             {
               q: 'Como cancelo o plano PRO?',
-              a: 'Acesse o painel do Pagar.me pelo e-mail de confirmação da assinatura ou entre em contato pelo suporte do site.',
+              a: 'Acesse o painel da Pagar.me (grupo Stone) pelo e-mail de confirmação da assinatura ou entre em contato pelo suporte do site.',
             },
           ].map(({ q, a }) => (
             <div key={q}>

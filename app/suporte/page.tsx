@@ -62,7 +62,7 @@ const FAQS = [
       },
       {
         q: 'O pagamento é seguro?',
-        a: 'Sim. Os pagamentos são processados pela Pagar.me, empresa certificada PCI-DSS. Não armazenamos dados do seu cartão.',
+        a: 'Sim. Os pagamentos são processados pela Pagar.me, empresa do grupo Stone, certificada PCI-DSS. Não armazenamos dados do seu cartão.',
       },
     ],
   },

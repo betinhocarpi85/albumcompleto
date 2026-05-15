@@ -62,7 +62,7 @@ function SucessoInner() {
       </div>
       <h1 className="text-xl font-black text-slate-800 mb-2">Confirmando pagamento…</h1>
       <p className="text-slate-500 text-sm">
-        Aguardando confirmação do Pagar.me. Isso leva alguns segundos.
+        Aguardando confirmação da Pagar.me (grupo Stone). Isso leva alguns segundos.
       </p>
       <div className="mt-6 flex justify-center gap-1">
         {Array.from({ length: 12 }).map((_, i) => (
@@ -79,7 +79,7 @@ function SucessoInner() {
       <div className="text-5xl mb-4">⏳</div>
       <h1 className="text-xl font-black text-slate-800 mb-2">Pagamento em processamento</h1>
       <p className="text-slate-500 text-sm mb-6">
-        Seu pagamento foi recebido pelo Pagar.me. A ativação do PRO pode levar até alguns minutos.
+        Seu pagamento foi recebido pela Pagar.me (grupo Stone). A ativação do PRO pode levar até alguns minutos.
         Você receberá o acesso assim que for confirmado.
       </p>
       <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 text-left space-y-1.5">
