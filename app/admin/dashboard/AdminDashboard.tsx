@@ -198,7 +198,16 @@ function HBarChart({ data }: { data: { uf: string; count: number }[] }) {
 
 // ─── Tab button ───────────────────────────────────────────────────────────────
 
-type TabKey = 'overview' | 'users' | 'anuncios' | 'propostas' | 'logs' | 'settings'
+type TabKey = 'overview' | 'users' | 'anuncios' | 'propostas' | 'logs' | 'bancas' | 'settings'
+
+type Banca = {
+  id: string; slug: string; nome: string; responsavel: string | null
+  telefone: string | null; email: string | null; endereco: string
+  bairro: string | null; cidade: string; uf: string; cep: string | null
+  horario: string | null; descricao: string | null; foto_url: string | null
+  destaque: boolean; ativa: boolean; total_trocas: number
+  lat: number | null; lng: number | null
+}
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -337,6 +346,75 @@ export default function AdminDashboard({
   const [banLoading, setBanLoading] = useState<string | null>(null)
   const [banModal, setBanModal] = useState<User | null>(null)
   const [banReason, setBanReason] = useState('')
+
+  // Bancas tab state
+  const [bancas, setBancas]               = useState<Banca[]>([])
+  const [bancasLoading, setBancasLoading] = useState(false)
+  const [bancaForm, setBancaForm]         = useState(false)
+  const [bancaEditId, setBancaEditId]     = useState<string | null>(null)
+  const [bancaSaving, setBancaSaving]     = useState(false)
+  const [bancaData, setBancaData]         = useState({
+    nome: '', responsavel: '', telefone: '', email: '', endereco: '',
+    bairro: '', cidade: '', uf: 'SP', cep: '', horario: '', descricao: '',
+    ativa: true, destaque: false,
+  })
+
+  const fetchBancas = useCallback(async () => {
+    setBancasLoading(true)
+    const r = await fetch('/api/bancas?todas=1')
+    const d = await r.json()
+    setBancas(d.bancas ?? [])
+    setBancasLoading(false)
+  }, [])
+
+  useEffect(() => { if (tab === 'bancas') fetchBancas() }, [tab, fetchBancas])
+
+  function resetBancaForm() {
+    setBancaData({ nome:'', responsavel:'', telefone:'', email:'', endereco:'', bairro:'', cidade:'', uf:'SP', cep:'', horario:'', descricao:'', ativa:true, destaque:false })
+    setBancaEditId(null)
+    setBancaForm(false)
+  }
+
+  async function saveBanca() {
+    if (!bancaData.nome || !bancaData.endereco || !bancaData.cidade) {
+      showToast('Nome, endereço e cidade são obrigatórios', 'err'); return
+    }
+    setBancaSaving(true)
+    const url    = bancaEditId ? `/api/bancas/${bancaEditId}` : '/api/bancas'
+    const method = bancaEditId ? 'PATCH' : 'POST'
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bancaData) })
+    setBancaSaving(false)
+    if (!r.ok) { showToast('Erro ao salvar banca', 'err'); return }
+    showToast(bancaEditId ? 'Banca atualizada!' : 'Banca criada!', 'ok')
+    resetBancaForm()
+    fetchBancas()
+  }
+
+  async function deleteBanca(id: string) {
+    if (!confirm('Remover esta banca?')) return
+    const r = await fetch(`/api/bancas/${id}`, { method: 'DELETE' })
+    if (r.ok) { showToast('Banca removida', 'ok'); fetchBancas() }
+    else showToast('Erro ao remover', 'err')
+  }
+
+  async function toggleBanca(b: Banca, field: 'ativa' | 'destaque') {
+    await fetch(`/api/bancas/${b.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: !b[field] })
+    })
+    fetchBancas()
+  }
+
+  function editBanca(b: Banca) {
+    setBancaData({
+      nome: b.nome, responsavel: b.responsavel ?? '', telefone: b.telefone ?? '',
+      email: b.email ?? '', endereco: b.endereco, bairro: b.bairro ?? '',
+      cidade: b.cidade, uf: b.uf, cep: b.cep ?? '', horario: b.horario ?? '',
+      descricao: b.descricao ?? '', ativa: b.ativa, destaque: b.destaque,
+    })
+    setBancaEditId(b.id)
+    setBancaForm(true)
+  }
 
   // Anuncios tab state
   const [anuncioFilter, setAnuncioFilter] = useState<'todos' | 'tenho' | 'preciso'>('todos')
@@ -829,6 +907,7 @@ export default function AdminDashboard({
           <TabBtn active={tab === 'anuncios'}  onClick={() => setTab('anuncios')}>📢 Anúncios ({stats.totalAnuncios})</TabBtn>
           <TabBtn active={tab === 'propostas'} onClick={() => setTab('propostas')}>🔁 Propostas ({stats.totalPropostas})</TabBtn>
           <TabBtn active={tab === 'logs'}      onClick={() => setTab('logs')}>📋 Logs</TabBtn>
+          <TabBtn active={tab === 'bancas'}    onClick={() => setTab('bancas')}>🗺️ Bancas ({bancas.length})</TabBtn>
           <TabBtn active={tab === 'settings'}  onClick={() => setTab('settings')}>⚙️ Configurações</TabBtn>
         </div>
 
@@ -1335,6 +1414,175 @@ export default function AdminDashboard({
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB BANCAS
+        ══════════════════════════════════════════════════════════ */}
+        {tab === 'bancas' && (
+          <div className="space-y-4">
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">🗺️ Bancas Parceiras</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Pontos de troca cadastrados no app</p>
+              </div>
+              <button
+                onClick={() => { resetBancaForm(); setBancaForm(true) }}
+                className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors"
+              >
+                + Nova Banca
+              </button>
+            </div>
+
+            {/* Formulário */}
+            {bancaForm && (
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
+                <h3 className="font-bold text-white text-sm">{bancaEditId ? '✏️ Editar Banca' : '➕ Nova Banca'}</h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                    { key: 'nome',        label: 'Nome *',        placeholder: 'Banca do João' },
+                    { key: 'responsavel', label: 'Responsável',    placeholder: 'João Silva' },
+                    { key: 'telefone',    label: 'WhatsApp',       placeholder: '(11) 99999-9999' },
+                    { key: 'email',       label: 'E-mail',         placeholder: 'joao@email.com' },
+                    { key: 'endereco',    label: 'Endereço *',     placeholder: 'Rua XV de Novembro, 120' },
+                    { key: 'bairro',      label: 'Bairro',         placeholder: 'Centro' },
+                    { key: 'cidade',      label: 'Cidade *',       placeholder: 'São Paulo' },
+                    { key: 'cep',         label: 'CEP',            placeholder: '01310-100' },
+                    { key: 'horario',     label: 'Horário',        placeholder: 'Seg-Sex 7h-20h, Sab 7h-14h' },
+                  ] as { key: keyof typeof bancaData; label: string; placeholder: string }[]).map(f => (
+                    <div key={f.key}>
+                      <label className="text-xs text-slate-400 mb-1 block">{f.label}</label>
+                      <input
+                        value={bancaData[f.key] as string}
+                        onChange={e => setBancaData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        placeholder={f.placeholder}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                  ))}
+
+                  {/* UF */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Estado *</label>
+                    <select
+                      value={bancaData.uf}
+                      onChange={e => setBancaData(prev => ({ ...prev, uf: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf => (
+                        <option key={uf} value={uf}>{uf}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Descricao */}
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Descrição</label>
+                  <textarea
+                    value={bancaData.descricao}
+                    onChange={e => setBancaData(prev => ({ ...prev, descricao: e.target.value }))}
+                    rows={2}
+                    placeholder="Fala um pouco sobre a banca..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  />
+                </div>
+
+                {/* Toggles */}
+                <div className="flex gap-6">
+                  {(['ativa', 'destaque'] as const).map(f => (
+                    <label key={f} className="flex items-center gap-2 cursor-pointer">
+                      <button
+                        type="button"
+                        onClick={() => setBancaData(prev => ({ ...prev, [f]: !prev[f] }))}
+                        className={`relative w-10 h-5 rounded-full transition-colors ${bancaData[f] ? 'bg-green-500' : 'bg-slate-700'}`}
+                      >
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${bancaData[f] ? 'left-5' : 'left-0.5'}`} />
+                      </button>
+                      <span className="text-sm text-slate-300 capitalize">{f === 'ativa' ? 'Ativa' : '⭐ Destaque'}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <p className="text-xs text-slate-500">📍 Coordenadas geradas automaticamente pelo endereço ao salvar</p>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={saveBanca}
+                    disabled={bancaSaving}
+                    className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white text-sm font-bold transition-colors"
+                  >
+                    {bancaSaving ? 'Salvando...' : bancaEditId ? 'Salvar alterações' : 'Criar banca'}
+                  </button>
+                  <button
+                    onClick={resetBancaForm}
+                    className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Lista */}
+            {bancasLoading ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Carregando bancas...</div>
+            ) : bancas.length === 0 ? (
+              <div className="text-center py-14 text-slate-500 text-sm">
+                Nenhuma banca cadastrada ainda.<br />
+                <span className="text-slate-600">Clique em "+ Nova Banca" para adicionar.</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bancas.map(b => (
+                  <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-bold text-white text-sm">{b.nome}</span>
+                          <span className="text-[10px] font-bold bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{b.uf}</span>
+                          {b.destaque && <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">⭐ Destaque</span>}
+                          {!b.ativa && <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">Inativa</span>}
+                        </div>
+                        <p className="text-xs text-slate-400 truncate">{b.endereco}{b.bairro ? `, ${b.bairro}` : ''} — {b.cidade}</p>
+                        {b.horario && <p className="text-xs text-slate-500 mt-0.5">🕐 {b.horario}</p>}
+                        {b.telefone && <p className="text-xs text-slate-500">📱 {b.telefone}</p>}
+                        {b.total_trocas > 0 && <p className="text-xs text-green-400 mt-0.5">🔁 {b.total_trocas} trocas realizadas</p>}
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button onClick={() => editBanca(b)}
+                          className="px-3 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-xs font-medium transition-colors">
+                          ✏️ Editar
+                        </button>
+                        <button onClick={() => toggleBanca(b, 'ativa')}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${b.ativa ? 'bg-orange-600/20 hover:bg-orange-600/40 text-orange-400' : 'bg-green-600/20 hover:bg-green-600/40 text-green-400'}`}>
+                          {b.ativa ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button onClick={() => toggleBanca(b, 'destaque')}
+                          className="px-3 py-1 rounded-lg bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-xs font-medium transition-colors">
+                          {b.destaque ? '★ Remover' : '★ Destacar'}
+                        </button>
+                        <button onClick={() => deleteBanca(b.id)}
+                          className="px-3 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-medium transition-colors">
+                          🗑 Remover
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Link perfil */}
+                    <a href={`/bancas/${b.slug}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-2 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                      🔗 /bancas/{b.slug} ↗
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
