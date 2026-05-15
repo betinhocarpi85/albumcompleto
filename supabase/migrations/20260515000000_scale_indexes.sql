@@ -16,7 +16,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS email           TEXT,
   ADD COLUMN IF NOT EXISTS last_sign_in_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS provider        TEXT DEFAULT 'email';
+  ADD COLUMN IF NOT EXISTS provider        TEXT DEFAULT 'email',
+  ADD COLUMN IF NOT EXISTS created_at      TIMESTAMPTZ DEFAULT now();
 
 
 -- ── 3. Popula dados existentes a partir de auth.users ───────
@@ -24,7 +25,8 @@ UPDATE public.profiles p
 SET
   email           = u.email,
   last_sign_in_at = u.last_sign_in_at,
-  provider        = COALESCE(u.raw_app_meta_data->>'provider', 'email')
+  provider        = COALESCE(u.raw_app_meta_data->>'provider', 'email'),
+  created_at      = u.created_at
 FROM auth.users u
 WHERE p.id = u.id;
 
@@ -38,7 +40,8 @@ BEGIN
   SET
     email           = NEW.email,
     last_sign_in_at = NEW.last_sign_in_at,
-    provider        = COALESCE(NEW.raw_app_meta_data->>'provider', 'email')
+    provider        = COALESCE(NEW.raw_app_meta_data->>'provider', 'email'),
+    created_at      = COALESCE((SELECT created_at FROM public.profiles WHERE id = NEW.id), NEW.created_at)
   WHERE id = NEW.id;
   RETURN NEW;
 END;

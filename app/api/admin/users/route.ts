@@ -61,15 +61,20 @@ export async function GET(request: NextRequest) {
   // As colunas novas (email, last_sign_in_at, provider) existem em runtime após a
   // migration mas não estão nos tipos gerados ainda — acessamos via cast para Record.
   const users = (profiles ?? []).map(p => {
-    const row = p as typeof p & { email?: string | null; last_sign_in_at?: string | null; provider?: string | null }
+    const row = p as typeof p & {
+      email?:           string | null
+      last_sign_in_at?: string | null
+      provider?:        string | null
+      created_at?:      string | null
+    }
     const plano_expira  = p.plano_expira_em ?? null
     const planoExpirado = p.plano === 'pro' && plano_expira && new Date(plano_expira) < new Date()
     return {
       id:                  p.id,
-      email:               row.email               ?? '',
-      created_at:          p.created_at,
-      last_sign_in:        row.last_sign_in_at      ?? null,
-      provider:            row.provider             ?? 'email',
+      email:               row.email           ?? '',
+      created_at:          row.created_at      ?? p.updated_at,
+      last_sign_in:        row.last_sign_in_at ?? null,
+      provider:            row.provider        ?? 'email',
       nome:                p.nome                 ?? '',
       telefone:            p.telefone             ?? '',
       bairro:              p.bairro               ?? '',
