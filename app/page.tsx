@@ -249,6 +249,9 @@ export default function Home() {
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-black text-slate-800">Escolha seu plano</h2>
           <p className="text-slate-500 mt-2">Comece grátis. Faça upgrade quando quiser.</p>
+          <div className="inline-flex items-center gap-2 mt-3 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-4 py-2 rounded-full">
+            🏆 Promoção Copa do Mundo 2026 — preços especiais por tempo limitado
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 items-start">
@@ -294,7 +297,8 @@ export default function Home() {
               <span className="text-2xl font-black text-white mb-0.5">,99</span>
               <span className="text-slate-400 text-sm mb-1">/mês</span>
             </div>
-            <p className="text-xs text-slate-400 mb-6">Cancele quando quiser</p>
+            <p className="text-xs text-slate-400 mb-1 line-through">de R$ 4,99/mês</p>
+            <p className="text-xs text-green-400 font-semibold mb-6">🏆 Promoção Copa do Mundo</p>
 
             <Link href="/cadastro" className="block text-center bg-green-500 hover:bg-green-400 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6 shadow-lg shadow-green-500/30">
               Começar agora →
@@ -328,8 +332,9 @@ export default function Home() {
               <span className="text-2xl font-black text-slate-800 mb-0.5">,99</span>
               <span className="text-slate-400 text-sm mb-1">/ano</span>
             </div>
+            <p className="text-xs text-slate-400 mb-1 line-through">de R$ 49,99/ano</p>
             <p className="text-xs text-amber-600 font-semibold mb-6">
-              ≈ R$ 1,25/mês · Economize R$ 8,89 vs mensal
+              🏆 Promoção Copa · ≈ R$ 1,25/mês
             </p>
 
             <Link href="/cadastro" className="block text-center bg-amber-400 hover:bg-amber-500 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6">

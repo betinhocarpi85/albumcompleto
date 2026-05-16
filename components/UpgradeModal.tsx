@@ -72,7 +72,8 @@ export default function UpgradeModal({ onClose }: Props) {
           >
             <div>
               <p className="font-bold text-slate-800">Plano Mensal</p>
-              <p className="text-xs text-slate-400 mt-0.5">Cancele quando quiser</p>
+              <p className="text-xs text-slate-400 mt-0.5 line-through">de R$ 4,99/mês</p>
+              <p className="text-xs text-green-600 font-semibold">🏆 Promoção Copa</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-right">
@@ -96,7 +97,8 @@ export default function UpgradeModal({ onClose }: Props) {
             </span>
             <div>
               <p className="font-bold text-slate-800">Plano Anual</p>
-              <p className="text-xs text-slate-500 mt-0.5">≈ R$ 1,25/mês • melhor valor</p>
+              <p className="text-xs text-slate-400 mt-0.5 line-through">de R$ 49,99/ano</p>
+              <p className="text-xs text-green-600 font-semibold">🏆 Promoção Copa · ≈ R$ 1,25/mês</p>
             </div>
             <div className="flex items-center gap-2 mt-3">
               <div className="text-right">
