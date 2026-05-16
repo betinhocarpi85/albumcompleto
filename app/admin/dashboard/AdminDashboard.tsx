@@ -907,7 +907,7 @@ export default function AdminDashboard({
           <TabBtn active={tab === 'anuncios'}  onClick={() => setTab('anuncios')}>📢 Anúncios ({stats.totalAnuncios})</TabBtn>
           <TabBtn active={tab === 'propostas'} onClick={() => setTab('propostas')}>🔁 Propostas ({stats.totalPropostas})</TabBtn>
           <TabBtn active={tab === 'logs'}      onClick={() => setTab('logs')}>📋 Logs</TabBtn>
-          <TabBtn active={tab === 'bancas'}    onClick={() => setTab('bancas')}>🗺️ Bancas ({bancas.length})</TabBtn>
+          <TabBtn active={tab === 'bancas'}    onClick={() => setTab('bancas')}>📍 Bancas ({bancas.length})</TabBtn>
           <TabBtn active={tab === 'settings'}  onClick={() => setTab('settings')}>⚙️ Configurações</TabBtn>
         </div>
 
@@ -1426,7 +1426,7 @@ export default function AdminDashboard({
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white">🗺️ Bancas Parceiras</h2>
+                <h2 className="text-lg font-bold text-white">📍 Bancas Parceiras</h2>
                 <p className="text-xs text-slate-400 mt-0.5">Pontos de troca cadastrados no app</p>
               </div>
               <button
