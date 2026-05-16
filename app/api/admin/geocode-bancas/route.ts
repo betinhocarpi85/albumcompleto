@@ -19,7 +19,7 @@ export async function POST() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!bancas || bancas.length === 0) {
-    return NextResponse.json({ ok: true, atualizadas: 0, mensagem: 'Todas as bancas já têm coordenadas.' })
+    return NextResponse.json({ ok: true, total: 0, atualizadas: 0, erros: [], mensagem: 'Todas as bancas já têm coordenadas.' })
   }
 
   let atualizadas = 0

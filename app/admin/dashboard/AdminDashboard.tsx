@@ -403,15 +403,20 @@ export default function AdminDashboard({
     if (!confirm('Vai geocodificar todas as bancas sem coordenadas. Pode demorar (1 seg por banca). Continuar?')) return
     setGeocoding(true)
     setGeocodeResult(null)
-    const r = await fetch('/api/admin/geocode-bancas', { method: 'POST' })
-    const d = await r.json()
-    setGeocoding(false)
-    if (r.ok) {
-      setGeocodeResult(d)
-      showToast(`✅ ${d.atualizadas} de ${d.total} bancas geocodificadas`, 'ok')
-      fetchBancas()
-    } else {
-      showToast('Erro ao geocodificar', 'err')
+    try {
+      const r = await fetch('/api/admin/geocode-bancas', { method: 'POST' })
+      const d = await r.json()
+      if (r.ok) {
+        setGeocodeResult({ atualizadas: d.atualizadas ?? 0, total: d.total ?? 0, erros: d.erros ?? [] })
+        showToast(d.mensagem ?? `✅ ${d.atualizadas} de ${d.total} bancas geocodificadas`, 'ok')
+        fetchBancas()
+      } else {
+        showToast(d.error ?? 'Erro ao geocodificar', 'err')
+      }
+    } catch {
+      showToast('Erro de conexão ao geocodificar', 'err')
+    } finally {
+      setGeocoding(false)
     }
   }
 
