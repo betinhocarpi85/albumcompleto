@@ -19,15 +19,18 @@ interface Banca {
 }
 
 interface Props {
-  bancas:  Banca[]
-  centro?: [number, number]
-  zoom?:   number
-  onSelect?: (b: Banca) => void
+  bancas:      Banca[]
+  centro?:     [number, number]
+  zoom?:       number
+  onSelect?:   (b: Banca) => void
+  focusBanca?: { lat: number; lng: number; slug: string } | null
 }
 
-export default function BancasMap({ bancas, centro = [-15.77972, -47.92972], zoom = 5, onSelect }: Props) {
+export default function BancasMap({ bancas, centro = [-15.77972, -47.92972], zoom = 5, onSelect, focusBanca }: Props) {
   const mapRef      = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<unknown>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef  = useRef<Record<string, any>>({})
 
   useEffect(() => {
     if (!mapRef.current || instanceRef.current) return
@@ -85,6 +88,7 @@ export default function BancasMap({ bancas, centro = [-15.77972, -47.92972], zoo
         marker.bindPopup(popup)
         if (onSelect) marker.on('click', () => onSelect(b))
         marker.addTo(map)
+        markersRef.current[b.slug] = marker
       })
     })
 
@@ -93,10 +97,21 @@ export default function BancasMap({ bancas, centro = [-15.77972, -47.92972], zoo
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(instanceRef.current as any).remove()
         instanceRef.current = null
+        markersRef.current  = {}
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Voa até a banca selecionada e abre o popup
+  useEffect(() => {
+    if (!focusBanca || !instanceRef.current) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = instanceRef.current as any
+    map.flyTo([focusBanca.lat, focusBanca.lng], 16, { animate: true, duration: 0.7 })
+    const marker = markersRef.current[focusBanca.slug]
+    if (marker) setTimeout(() => marker.openPopup(), 750)
+  }, [focusBanca])
 
   return (
     <>

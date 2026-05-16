@@ -155,9 +155,35 @@ export default function Copa2026Page() {
         </div>
       </section>
 
-      {/* Seleções */}
+      {/* Seleções em destaque com links */}
       <section className="max-w-4xl mx-auto px-4 py-10">
         <h2 className="text-2xl font-black text-slate-800 text-center mb-2">
+          Figurinhas por seleção — Copa 2026
+        </h2>
+        <p className="text-slate-500 text-center mb-8 text-sm">
+          Veja jogadores, figurinhas brilhantes e como trocar de cada seleção
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-6">
+          {[
+            { href: '/copa-2026/brasil',    flag: '🇧🇷', nome: 'Brasil',    grupo: 'B' },
+            { href: '/copa-2026/argentina', flag: '🇦🇷', nome: 'Argentina', grupo: 'B' },
+            { href: '/copa-2026/portugal',  flag: '🇵🇹', nome: 'Portugal',  grupo: 'C' },
+            { href: '/copa-2026/franca',    flag: '🇫🇷', nome: 'França',    grupo: 'C' },
+            { href: '/copa-2026/alemanha',  flag: '🇩🇪', nome: 'Alemanha',  grupo: 'C' },
+            { href: '/copa-2026/espanha',   flag: '🇪🇸', nome: 'Espanha',   grupo: 'D' },
+            { href: '/copa-2026/inglaterra',flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', nome: 'Inglaterra',grupo: 'D' },
+            { href: '/copa-2026/uruguai',   flag: '🇺🇾', nome: 'Uruguai',   grupo: 'G' },
+            { href: '/copa-2026/mexico',    flag: '🇲🇽', nome: 'México',    grupo: 'A' },
+          ].map(s => (
+            <Link key={s.href} href={s.href} className="bg-white rounded-xl border border-slate-100 p-4 hover:border-green-300 hover:shadow-md transition-all group">
+              <div className="text-3xl mb-2">{s.flag}</div>
+              <p className="font-bold text-slate-800 text-sm group-hover:text-green-600 transition-colors">{s.nome}</p>
+              <p className="text-xs text-slate-400">Grupo {s.grupo} · Ver figurinhas →</p>
+            </Link>
+          ))}
+        </div>
+
+        <h2 className="text-2xl font-black text-slate-800 text-center mb-2 mt-10">
           48 seleções no álbum Copa do Mundo 2026
         </h2>
         <p className="text-slate-500 text-center mb-8 text-sm">
@@ -235,8 +261,11 @@ export default function Copa2026Page() {
       <div className="bg-slate-900 text-slate-400 py-6 px-4">
         <div className="max-w-4xl mx-auto flex flex-wrap gap-4 justify-center text-xs">
           <Link href="/" className="hover:text-white transition-colors">Início</Link>
-          <Link href="/bancas" className="hover:text-white transition-colors">📍 Bancas de Figurinhas</Link>
-          <Link href="/suporte" className="hover:text-white transition-colors">🛟 Suporte</Link>
+          <Link href="/copa-2026/como-completar" className="hover:text-white transition-colors">📖 Como Completar</Link>
+          <Link href="/copa-2026/figurinhas-brilhantes" className="hover:text-white transition-colors">✨ Figurinhas Brilhantes</Link>
+          <Link href="/brasileirao-2026" className="hover:text-white transition-colors">⚽ Brasileirão 2026</Link>
+          <Link href="/como-trocar-figurinhas" className="hover:text-white transition-colors">🔁 Como Trocar</Link>
+          <Link href="/bancas" className="hover:text-white transition-colors">📍 Bancas</Link>
           <Link href="/cadastro" className="hover:text-white transition-colors">Criar conta</Link>
         </div>
       </div>

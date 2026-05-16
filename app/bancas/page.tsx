@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -21,11 +21,13 @@ interface Banca {
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 export default function BancasPage() {
-  const [bancas,    setBancas]    = useState<Banca[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [view,      setView]      = useState<'mapa' | 'lista'>('mapa')
-  const [filtroUF,  setFiltroUF]  = useState('')
-  const [busca,     setBusca]     = useState('')
+  const [bancas,     setBancas]     = useState<Banca[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [view,       setView]       = useState<'mapa' | 'lista'>('mapa')
+  const [filtroUF,   setFiltroUF]   = useState('')
+  const [busca,      setBusca]      = useState('')
+  const [focusBanca, setFocusBanca] = useState<{ lat: number; lng: number; slug: string } | null>(null)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/bancas')
@@ -105,8 +107,8 @@ export default function BancasPage() {
         <>
           {/* Mapa */}
           {view === 'mapa' && (
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6" style={{ height: 420 }}>
-              <BancasMap bancas={filtradas} zoom={filtradas.length === 1 ? 14 : 5} />
+            <div ref={mapContainerRef} className="rounded-2xl overflow-hidden border border-slate-200 mb-6" style={{ height: 420 }}>
+              <BancasMap bancas={filtradas} zoom={filtradas.length === 1 ? 14 : 5} focusBanca={focusBanca} />
             </div>
           )}
 
@@ -115,7 +117,13 @@ export default function BancasPage() {
             <div className="mb-6">
               <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">⭐ Em destaque</h2>
               <div className="grid sm:grid-cols-2 gap-3">
-                {destaques.map(b => <BancaCard key={b.id} banca={b} destaque />)}
+                {destaques.map(b => (
+                  <BancaCard key={b.id} banca={b} destaque onVerNoMapa={b.lat && b.lng ? () => {
+                    setView('mapa')
+                    setFocusBanca({ lat: b.lat!, lng: b.lng!, slug: b.slug })
+                    setTimeout(() => mapContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                  } : undefined} />
+                ))}
               </div>
             </div>
           )}
@@ -126,7 +134,13 @@ export default function BancasPage() {
               <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Todas as bancas</h2>
             )}
             <div className="grid sm:grid-cols-2 gap-3">
-              {demais.map(b => <BancaCard key={b.id} banca={b} />)}
+              {demais.map(b => (
+                <BancaCard key={b.id} banca={b} onVerNoMapa={b.lat && b.lng ? () => {
+                  setView('mapa')
+                  setFocusBanca({ lat: b.lat!, lng: b.lng!, slug: b.slug })
+                  setTimeout(() => mapContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                } : undefined} />
+              ))}
             </div>
           </div>
 
@@ -138,50 +152,69 @@ export default function BancasPage() {
         </>
       )}
 
-      {/* CTA parceria */}
-      <div className="mt-10 bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center">
-        <p className="font-bold text-slate-700 mb-1">Tem uma banca de jornal?</p>
-        <p className="text-sm text-slate-500 mb-3">
-          Torne-se um ponto oficial Completando e receba clientes de graça!
+      {/* CTA cadastrar banca */}
+      <div className="mt-10 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-2xl p-5 text-center">
+        <p className="text-2xl mb-2">🏪</p>
+        <p className="font-bold text-slate-700 mb-1">Tem uma banca de figurinhas?</p>
+        <p className="text-sm text-slate-500 mb-4">
+          Cadastre-se gratuitamente, apareça no mapa e receba colecionadores da sua região!
         </p>
-        <a
-          href="https://wa.me/5521996787737?text=Quero%20ser%20ponto%20parceiro%20Completando"
-          target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+        <Link
+          href="/minha-banca"
+          className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow-lg shadow-green-500/20"
         >
-          📱 Falar pelo WhatsApp
-        </a>
+          📍 Cadastrar minha banca grátis
+        </Link>
       </div>
     </div>
   )
 }
 
-function BancaCard({ banca: b, destaque }: { banca: Banca; destaque?: boolean }) {
+function BancaCard({ banca: b, destaque, onVerNoMapa }: { banca: Banca; destaque?: boolean; onVerNoMapa?: () => void }) {
   return (
-    <Link href={`/bancas/${b.slug}`}
-      className={`block rounded-2xl border p-4 hover:shadow-md transition-all ${destaque ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
+    <div className={`rounded-2xl border p-4 transition-all hover:shadow-md ${destaque ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
+      {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
+        <div className="min-w-0">
           {destaque && (
             <span className="inline-block bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
               ⭐ DESTAQUE
             </span>
           )}
-          <p className="font-bold text-slate-800 text-sm leading-tight">{b.nome}</p>
+          <p className="font-bold text-slate-800 text-sm leading-tight truncate">{b.nome}</p>
         </div>
         <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg shrink-0">{b.uf}</span>
       </div>
-      <p className="text-xs text-slate-500 mb-1">📍 {b.endereco}{b.bairro ? `, ${b.bairro}` : ''}</p>
+
+      {/* Endereço e horário */}
+      <p className="text-xs text-slate-500 mb-0.5">📍 {b.endereco}{b.bairro ? `, ${b.bairro}` : ''}</p>
       <p className="text-xs text-slate-500 mb-2">{b.cidade}</p>
       {b.horario && <p className="text-xs text-slate-400 mb-2">🕐 {b.horario}</p>}
-      <div className="flex items-center justify-between">
-        {b.total_trocas > 0 ? (
-          <span className="text-xs text-green-600 font-medium">🔁 {b.total_trocas} trocas realizadas</span>
+
+      {/* Trocas */}
+      {b.total_trocas > 0 ? (
+        <p className="text-xs text-green-600 font-medium mb-3">🔁 {b.total_trocas} trocas realizadas</p>
+      ) : (
+        <p className="text-xs text-slate-300 mb-3">Novo parceiro</p>
+      )}
+
+      {/* Botões */}
+      <div className="flex gap-2">
+        <Link href={`/bancas/${b.slug}`}
+          className="flex-1 text-center text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition-colors">
+          Ver perfil
+        </Link>
+        {onVerNoMapa ? (
+          <button onClick={onVerNoMapa}
+            className="flex-1 text-xs font-bold bg-slate-100 hover:bg-green-100 hover:text-green-700 text-slate-600 py-2 rounded-xl transition-colors">
+            📍 Ver no mapa
+          </button>
         ) : (
-          <span className="text-xs text-slate-300">Novo parceiro</span>
+          <span className="flex-1 text-center text-xs text-slate-300 py-2 rounded-xl bg-slate-50">
+            Sem localização
+          </span>
         )}
-        <span className="text-xs text-blue-500 font-medium">Ver perfil →</span>
       </div>
-    </Link>
+    </div>
   )
 }
