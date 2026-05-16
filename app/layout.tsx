@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { Analytics } from '@vercel/analytics/next'
 import ServiceWorker from '@/components/ServiceWorker'
+import SplashScreen from '@/components/SplashScreen'
 import OneSignalProvider from '@/components/OneSignalProvider'
 import PushPrompt from '@/components/PushPrompt'
 
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full bg-slate-50">
+        <SplashScreen />
         <Navbar />
         <main className="md:pt-16 main-content">
           {children}
