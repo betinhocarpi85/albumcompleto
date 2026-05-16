@@ -353,6 +353,8 @@ export default function AdminDashboard({
   const [bancaForm, setBancaForm]         = useState(false)
   const [bancaEditId, setBancaEditId]     = useState<string | null>(null)
   const [bancaSaving, setBancaSaving]     = useState(false)
+  const [geocoding, setGeocoding]         = useState(false)
+  const [geocodeResult, setGeocodeResult] = useState<{ atualizadas: number; total: number; erros: string[] } | null>(null)
   const [bancaData, setBancaData]         = useState({
     nome: '', responsavel: '', telefone: '', email: '', endereco: '',
     bairro: '', cidade: '', uf: 'SP', cep: '', horario: '', descricao: '',
@@ -395,6 +397,22 @@ export default function AdminDashboard({
     const r = await fetch(`/api/bancas/${id}`, { method: 'DELETE' })
     if (r.ok) { showToast('Banca removida', 'ok'); fetchBancas() }
     else showToast('Erro ao remover', 'err')
+  }
+
+  async function geocodificarBancas() {
+    if (!confirm('Vai geocodificar todas as bancas sem coordenadas. Pode demorar (1 seg por banca). Continuar?')) return
+    setGeocoding(true)
+    setGeocodeResult(null)
+    const r = await fetch('/api/admin/geocode-bancas', { method: 'POST' })
+    const d = await r.json()
+    setGeocoding(false)
+    if (r.ok) {
+      setGeocodeResult(d)
+      showToast(`✅ ${d.atualizadas} de ${d.total} bancas geocodificadas`, 'ok')
+      fetchBancas()
+    } else {
+      showToast('Erro ao geocodificar', 'err')
+    }
   }
 
   async function toggleBanca(b: Banca, field: 'ativa' | 'destaque') {
@@ -1424,18 +1442,46 @@ export default function AdminDashboard({
           <div className="space-y-4">
 
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <h2 className="text-lg font-bold text-white">📍 Bancas Parceiras</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Pontos de troca cadastrados no app</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {bancas.filter(b => !b.lat || !b.lng).length > 0
+                    ? `⚠️ ${bancas.filter(b => !b.lat || !b.lng).length} sem coordenadas`
+                    : 'Todos os pinos no mapa ✅'}
+                </p>
               </div>
-              <button
-                onClick={() => { resetBancaForm(); setBancaForm(true) }}
-                className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors"
-              >
-                + Nova Banca
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={geocodificarBancas}
+                  disabled={geocoding}
+                  className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-bold transition-colors"
+                >
+                  {geocoding ? '⏳ Geocodificando...' : '🗺️ Geocodificar'}
+                </button>
+                <button
+                  onClick={() => { resetBancaForm(); setBancaForm(true) }}
+                  className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors"
+                >
+                  + Nova Banca
+                </button>
+              </div>
             </div>
+
+            {/* Resultado geocoding */}
+            {geocodeResult && (
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm">
+                <p className="text-green-400 font-bold mb-1">✅ {geocodeResult.atualizadas} de {geocodeResult.total} bancas geocodificadas</p>
+                {geocodeResult.erros.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-yellow-400 text-xs font-semibold mb-1">Não encontradas:</p>
+                    {geocodeResult.erros.map((e, i) => (
+                      <p key={i} className="text-slate-400 text-xs">• {e}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Formulário */}
             {bancaForm && (
