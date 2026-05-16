@@ -256,14 +256,24 @@ export default function AnunciosPage() {
 
   async function salvar(lista: AnuncioLocal[]) {
     setSalvando(true)
-    await dbSaveAnuncios(albumId, 'tenho', lista.map(a => ({
-      sid:   a.sid,
-      gNum:  a.gNum,
-      nome:  a.nome,
-      qty:   1,
-      tipo:  a.tipo,
-      preco: a.acao === 'venda' && a.preco ? parseFloat(a.preco) : undefined,
-    })))
+    await fetch('/api/anuncios/save', {
+      method:      'POST',
+      headers:     { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        albumId,
+        tipo:  'tenho',
+        items: lista.map(a => ({
+          sid:   a.sid,
+          gNum:  a.gNum,
+          nome:  a.nome,
+          qty:   1,
+          tipo:  a.tipo,
+          preco: a.acao === 'venda' && a.preco ? parseFloat(a.preco) : undefined,
+          acao:  a.acao,
+        })),
+      }),
+    })
     setSalvando(false)
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2000)
