@@ -1,13 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { loadOneSignal } from './OneSignalProvider'
+
+function urlBase64ToUint8Array(base64: string) {
+  const pad = '='.repeat((4 - (base64.length % 4)) % 4)
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(b64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
 
 export default function PushPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     if (typeof Notification === 'undefined') return
+    if (!('serviceWorker' in navigator)) return
     if (Notification.permission !== 'default') return
     if (localStorage.getItem('push_prompt_dismissed')) return
 
@@ -18,16 +25,31 @@ export default function PushPrompt() {
   async function ativar() {
     setVisible(false)
     try {
-      // Carrega SDK e pede permissão nativa — nesta ordem
-      await loadOneSignal()
       const permission = await Notification.requestPermission()
-      if (permission === 'granted') {
-        const w = window as any
-        if (w.OneSignal?.User?.PushSubscription) {
-          await w.OneSignal.User.PushSubscription.optIn().catch(() => {})
-        }
-      }
-    } catch {}
+      if (permission !== 'granted') return
+
+      // Busca chave pública VAPID
+      const res = await fetch('/api/push/subscribe')
+      const { publicKey } = await res.json()
+      if (!publicKey) return
+
+      // Registra subscription no service worker
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly:      true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      })
+
+      // Salva no servidor
+      await fetch('/api/push/subscribe', {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify(sub.toJSON()),
+      })
+    } catch (e) {
+      console.error('[push] erro ao ativar:', e)
+    }
   }
 
   function dispensar() {
