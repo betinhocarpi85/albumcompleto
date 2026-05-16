@@ -1,30 +1,31 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { loadOneSignal } from './OneSignalProvider'
 
 export default function PushPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // Só mostra se ainda não decidiu
     if (typeof Notification === 'undefined') return
     if (Notification.permission !== 'default') return
     if (localStorage.getItem('push_prompt_dismissed')) return
 
-    // Aparece após 10 segundos
-    const t = setTimeout(() => setVisible(true), 10_000)
+    const t = setTimeout(() => setVisible(true), 15_000)
     return () => clearTimeout(t)
   }, [])
 
   async function ativar() {
     setVisible(false)
     try {
-      // Pede permissão nativa do browser (sem depender do prompt do OneSignal)
-      await Notification.requestPermission()
-      // Após permissão, registra no OneSignal
-      const w = window as any
-      if (w.OneSignal?.User?.PushSubscription) {
-        await w.OneSignal.User.PushSubscription.optIn()
+      // Carrega SDK e pede permissão nativa — nesta ordem
+      await loadOneSignal()
+      const permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        const w = window as any
+        if (w.OneSignal?.User?.PushSubscription) {
+          await w.OneSignal.User.PushSubscription.optIn().catch(() => {})
+        }
       }
     } catch {}
   }
