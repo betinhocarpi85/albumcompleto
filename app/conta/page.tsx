@@ -15,7 +15,7 @@ type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' 
 
 const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge?: number; href?: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
-  { key: 'albuns',      icon: '📖', label: 'Meus Álbuns' },
+  { key: 'albuns',      icon: '📚', label: 'Meus Álbuns' },
   { key: 'propostas',   icon: '🔁', label: 'Propostas' },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
