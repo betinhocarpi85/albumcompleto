@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const { albumId, tipo, items } = await request.json() as {
     albumId: string
     tipo:    'tenho' | 'preciso'
-    items:   AnuncioItem[]
+    items:   (AnuncioItem & { acao?: string })[]
   }
 
   if (!albumId || !tipo || !Array.isArray(items)) {
