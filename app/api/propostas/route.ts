@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPropostaEmail } from '@/lib/email'
+import { pushNovaPropostas } from '@/lib/push'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
       qtdPede:    (eu_recebo  as number[]).length,
     }).catch(e => console.error('[api/propostas] email:', e))
   }
+
+  // Push notification (fire-and-forget)
+  pushNovaPropostas(para_user_id, deProfile?.nome ?? 'Alguém')
+    .catch(e => console.error('[api/propostas] push:', e))
 
   return NextResponse.json({ ok: true })
 }
