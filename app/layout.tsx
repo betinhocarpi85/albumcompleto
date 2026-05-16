@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   creator: 'Completando',
   publisher: 'Completando',
   category: 'lifestyle',
+  verification: {
+    google: 'OLCNt_LnGqu7j1N7EvNU6PmExpj3fMhLuqCzwdHDsq8',
+  },
   icons: {
     icon: [
       { url: '/favicon.ico' },
