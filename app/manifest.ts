@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description:      'A plataforma brasileira para troca e venda de figurinhas. Match automático, combine diretamente.',
     start_url:        '/',
     display:          'standalone',
-    background_color: '#f8fafc',
+    background_color: '#ffffff',
     theme_color:      '#22c55e',
     orientation:      'portrait',
     icons: [
