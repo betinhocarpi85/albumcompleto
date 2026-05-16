@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/favicon.ico', sizes: '48x48',   type: 'image/x-icon' },
       { src: '/icon.png',    sizes: '96x96',   type: 'image/png' },
       { src: '/icon.png',    sizes: '192x192', type: 'image/png' },
-      { src: '/icon.png',    sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/icon.png',    sizes: '512x512', type: 'image/png' },
     ],
     categories: ['lifestyle', 'sports', 'entertainment'],
     lang: 'pt-BR',
