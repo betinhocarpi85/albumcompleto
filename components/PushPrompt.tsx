@@ -19,11 +19,12 @@ export default function PushPrompt() {
   async function ativar() {
     setVisible(false)
     try {
+      // Pede permissão nativa do browser (sem depender do prompt do OneSignal)
+      await Notification.requestPermission()
+      // Após permissão, registra no OneSignal
       const w = window as any
-      if (w.OneSignal) {
-        await w.OneSignal.Notifications.requestPermission()
-      } else {
-        await Notification.requestPermission()
+      if (w.OneSignal?.User?.PushSubscription) {
+        await w.OneSignal.User.PushSubscription.optIn()
       }
     } catch {}
   }

@@ -19,11 +19,7 @@ export default function OneSignalProvider() {
         notifyButton:                 { enable: false },
         allowLocalhostAsSecureOrigin: true,
         autoResubscribe:              true,
-        promptOptions: {
-          slidedown: {
-            prompts: [{ type: 'push', autoPrompt: false }], // desativa prompt do OneSignal
-          },
-        },
+        // Nenhum promptOptions = SDK não mostra nenhum prompt automático
       })
 
       // Vincula o usuário Supabase ao OneSignal (external_id)
