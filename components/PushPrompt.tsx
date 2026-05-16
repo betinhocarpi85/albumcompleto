@@ -60,7 +60,7 @@ export default function PushPrompt() {
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm animate-fadein">
+    <div className="fixed top-20 md:top-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm animate-fadein">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
           <span className="text-xl">🔔</span>
