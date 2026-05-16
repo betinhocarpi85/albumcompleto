@@ -277,6 +277,35 @@ function ContaPageInner() {
             </div>
           </div>
 
+          {/* Notificações */}
+          {pushStatus !== 'unsupported' && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 mb-3 flex items-center gap-3">
+              <span className="text-lg">{pushStatus === 'active' ? '🔔' : '🔕'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-700">Notificações</p>
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  {pushStatus === 'active'   && 'Ativas'}
+                  {pushStatus === 'inactive' && 'Desativadas'}
+                  {pushStatus === 'denied'   && 'Bloqueadas pelo navegador'}
+                  {pushStatus === 'loading'  && 'Verificando...'}
+                </p>
+              </div>
+              {pushStatus !== 'denied' && pushStatus !== 'loading' && (
+                <button
+                  onClick={pushStatus === 'active' ? desativarPush : ativarPush}
+                  disabled={pushLoading}
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 ${
+                    pushStatus === 'active'
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      : 'bg-green-500 hover:bg-green-600 text-white'
+                  }`}
+                >
+                  {pushLoading ? '...' : pushStatus === 'active' ? 'Desativar' : 'Ativar'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Menu */}
           <nav className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             {MENU.map((item, i) => (
@@ -340,39 +369,6 @@ function ContaPageInner() {
                   >
                     Upgrade →
                   </button>
-                </div>
-              )}
-
-              {/* Card de notificações */}
-              {pushStatus !== 'unsupported' && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-xl">
-                    {pushStatus === 'active' ? '🔔' : '🔕'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-800 text-sm">Notificações</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {pushStatus === 'active'  && 'Ativas — você recebe alertas de propostas e matches'}
-                      {pushStatus === 'inactive' && 'Desativadas — ative para não perder nenhum match'}
-                      {pushStatus === 'denied'   && 'Bloqueadas no navegador — libere nas configurações do site'}
-                      {pushStatus === 'loading'  && 'Verificando...'}
-                    </p>
-                  </div>
-                  {pushStatus === 'denied' ? (
-                    <span className="text-xs text-slate-400 flex-shrink-0">Bloqueado</span>
-                  ) : (
-                    <button
-                      onClick={pushStatus === 'active' ? desativarPush : ativarPush}
-                      disabled={pushLoading || pushStatus === 'loading'}
-                      className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-50 ${
-                        pushStatus === 'active'
-                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
-                      }`}
-                    >
-                      {pushLoading ? '...' : pushStatus === 'active' ? 'Desativar' : 'Ativar 🔔'}
-                    </button>
-                  )}
                 </div>
               )}
 
