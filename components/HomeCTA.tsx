@@ -63,18 +63,12 @@ export default function HomeCTA() {
       </div>
 
       {!standalone && (
-        deferredPrompt ? (
-          <button
-            onClick={instalar}
-            className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
-          >
-            <span>📲</span> Instalar o app
-          </button>
-        ) : (
-          <p className="text-xs text-white/50 text-center">
-            📲 Para instalar, use o menu do seu navegador
-          </p>
-        )
+        <button
+          onClick={instalar}
+          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
+        >
+          <span>📲</span> Instalar o app
+        </button>
       )}
     </div>
   )
