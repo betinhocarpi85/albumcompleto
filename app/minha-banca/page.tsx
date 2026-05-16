@@ -364,7 +364,7 @@ export default function MinhaBancaPage() {
                 <p className="text-xs text-green-700 font-semibold mb-2">✅ Localização encontrada!</p>
                 <div className="rounded-xl overflow-hidden border border-green-200" style={{ height: 200 }}>
                   <BancasMap
-                    bancas={[{ id: 'preview', slug: '', nome: form.nome || 'Minha banca', responsavel: null, telefone: null, endereco: form.logradouro, bairro: form.bairro || null, cidade: form.cidade, uf: form.uf, cep: form.cep || null, horario: null, descricao: null, foto_url: null, destaque: false, total_trocas: 0, lat: coords.lat, lng: coords.lng }]}
+                    bancas={[{ id: 'preview', slug: '', nome: form.nome || 'Minha banca', telefone: null, endereco: form.logradouro, bairro: form.bairro || null, cidade: form.cidade, uf: form.uf, horario: null, destaque: false, total_trocas: 0, lat: coords.lat, lng: coords.lng }]}
                     centro={[coords.lat, coords.lng]}
                     zoom={16}
                   />
