@@ -279,28 +279,28 @@ function ContaPageInner() {
 
           {/* Notificações */}
           {pushStatus !== 'unsupported' && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 mb-3 flex items-center gap-3">
-              <span className="text-lg">{pushStatus === 'active' ? '🔔' : '🔕'}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-700">Notificações</p>
-                <p className="text-[10px] text-slate-400 leading-tight">
-                  {pushStatus === 'active'   && 'Ativas'}
-                  {pushStatus === 'inactive' && 'Desativadas'}
-                  {pushStatus === 'denied'   && 'Bloqueadas pelo navegador'}
-                  {pushStatus === 'loading'  && 'Verificando...'}
-                </p>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">{pushStatus === 'active' ? '🔔' : '🔕'}</span>
+                <p className="text-sm font-bold text-slate-700">Notificações</p>
               </div>
+              <p className="text-xs text-slate-500 leading-relaxed mb-3">
+                {pushStatus === 'active'   && 'Ativas — você recebe alertas na hora quando alguém enviar uma proposta ou surgir um novo match.'}
+                {pushStatus === 'inactive' && 'Desativadas — ative para não perder propostas e matches em tempo real.'}
+                {pushStatus === 'denied'   && 'Bloqueadas pelo navegador — para ativar, libere as notificações nas configurações do site no seu navegador.'}
+                {pushStatus === 'loading'  && 'Verificando status...'}
+              </p>
               {pushStatus !== 'denied' && pushStatus !== 'loading' && (
                 <button
                   onClick={pushStatus === 'active' ? desativarPush : ativarPush}
                   disabled={pushLoading}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50 ${
+                  className={`w-full text-xs font-bold py-2 rounded-xl transition-colors disabled:opacity-50 ${
                     pushStatus === 'active'
-                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       : 'bg-green-500 hover:bg-green-600 text-white'
                   }`}
                 >
-                  {pushLoading ? '...' : pushStatus === 'active' ? 'Desativar' : 'Ativar'}
+                  {pushLoading ? '...' : pushStatus === 'active' ? 'Desativar notificações' : 'Ativar notificações 🔔'}
                 </button>
               )}
             </div>
