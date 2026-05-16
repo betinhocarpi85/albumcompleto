@@ -3,6 +3,7 @@ import './globals.css'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { Analytics } from '@vercel/analytics/next'
+import ServiceWorker from '@/components/ServiceWorker'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 
@@ -34,6 +35,11 @@ export const metadata: Metadata = {
     images:      ['/logo-bg.png'],
   },
   manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Completando',
+  },
 }
 
 export const viewport: Viewport = {
@@ -53,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <BottomNav />
         <Analytics />
+        <ServiceWorker />
       </body>
     </html>
   )
