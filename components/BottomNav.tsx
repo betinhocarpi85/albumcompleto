@@ -65,7 +65,7 @@ export default function BottomNav() {
 
   const ITEMS_LOGADO = [
     { href: '/',              icon: '🏠', label: 'Início'   },
-    { href: '/album',         icon: '📋', label: 'Álbum'    },
+    { href: '/album',         icon: '📖', label: 'Álbum'    },
     { href: '/matches',       icon: '🔁', label: 'Matches'  },
     { href: '/bancas',        icon: '📍', label: 'Bancas'   },
     { href: '/notificacoes',  icon: '🔔', label: 'Avisos',  badge: notifCount },
