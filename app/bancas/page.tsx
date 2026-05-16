@@ -107,7 +107,7 @@ export default function BancasPage() {
         <>
           {/* Mapa */}
           {view === 'mapa' && (
-            <div ref={mapContainerRef} className="rounded-2xl overflow-hidden border border-slate-200 mb-6 h-52 md:h-[420px]">
+            <div ref={mapContainerRef} className="rounded-2xl overflow-hidden border border-slate-200 mb-6 h-64 md:h-[420px]">
               <BancasMap bancas={filtradas} zoom={filtradas.length === 1 ? 14 : 5} focusBanca={focusBanca} />
             </div>
           )}
