@@ -172,10 +172,15 @@ export default function PropostasPage() {
       setEnviadas(prev => prev.map(patch))
     }
 
-    // Persiste no banco em background
+    // Persiste no banco + dispara push via API
     setLoading(true)
     try {
-      await dbUpdateProposta(id, { status: novoStatus })
+      await fetch(`/api/propostas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: novoStatus }),
+      })
       if (acao === 'aceitar') {
         const phone = await dbGetPhoneForProposta(id)
         if (phone) {
