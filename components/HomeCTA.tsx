@@ -6,16 +6,20 @@ import { getSession } from '@/lib/db'
 
 export default function HomeCTA() {
   const [logado,         setLogado]         = useState(false)
+  const [standalone,     setStandalone]     = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
 
   useEffect(() => {
     getSession().catch(() => null).then(s => { if (s) setLogado(true) })
 
-    // Não mostra o botão se já está instalado
+    // Esconde o botão se já está instalado
     if (
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true
-    ) return
+    ) {
+      setStandalone(true)
+      return
+    }
 
     // Captura o prompt nativo quando o Chrome disponibilizar
     const handler = (e: Event) => {
@@ -27,10 +31,11 @@ export default function HomeCTA() {
   }, [])
 
   async function instalar() {
-    if (!deferredPrompt) return
+    if (!deferredPrompt) return   // Chrome em cooldown: aguarda silenciosamente
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') setDeferredPrompt(null)
+    if (outcome === 'accepted') setStandalone(true)
+    setDeferredPrompt(null)
   }
 
   if (logado) {
@@ -57,7 +62,7 @@ export default function HomeCTA() {
         </Link>
       </div>
 
-      {deferredPrompt && (
+      {!standalone && (
         <button
           onClick={instalar}
           className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors"
