@@ -26,3 +26,15 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+// DELETE — cancela todas as subscriptions do usuário
+export async function DELETE() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const sb = createAdminClient()
+  await sb.from('push_subscriptions').delete().eq('user_id', user.id)
+
+  return NextResponse.json({ ok: true })
+}

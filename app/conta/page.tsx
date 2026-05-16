@@ -60,6 +60,8 @@ function ContaPageInner() {
   const [isPro, setIsPro] = useState(false)
   const [planoExpira, setPlanoExpira] = useState<Date | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [pushStatus, setPushStatus]   = useState<'loading' | 'unsupported' | 'denied' | 'active' | 'inactive'>('loading')
+  const [pushLoading, setPushLoading] = useState(false)
 
   async function sair() {
     await signOut()
@@ -109,6 +111,21 @@ function ContaPageInner() {
       setIsPro(plano === 'pro')
       setPlanoExpira(expira_em ? new Date(expira_em) : null)
     })
+    // Verifica status das notificações push
+    if (typeof Notification !== 'undefined' && 'serviceWorker' in navigator) {
+      if (Notification.permission === 'denied') {
+        setPushStatus('denied')
+      } else {
+        navigator.serviceWorker.ready.then(reg =>
+          reg.pushManager.getSubscription()
+        ).then(sub => {
+          setPushStatus(sub ? 'active' : 'inactive')
+        }).catch(() => setPushStatus('inactive'))
+      }
+    } else {
+      setPushStatus('unsupported')
+    }
+
     dbGetActiveAlbums().then(ids => {
       setActiveAlbums(new Set(ids))
       if (ids.length > 0) setActiveAlbumView(ids[0])
@@ -139,6 +156,58 @@ function ContaPageInner() {
     { icon: '🔥', label: '100 Trocas',           desc: 'Realize 100 trocas',     earned: tradeCount >= 100 },
     { icon: '🏆', label: 'Álbum Completo',       desc: 'Complete 100% do álbum', earned: false             },
   ]
+
+  function urlBase64ToUint8Array(base64: string) {
+    const pad = '='.repeat((4 - (base64.length % 4)) % 4)
+    const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/')
+    const raw = atob(b64)
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+  }
+
+  async function ativarPush() {
+    setPushLoading(true)
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setPushStatus(permission === 'denied' ? 'denied' : 'inactive')
+        return
+      }
+      const res = await fetch('/api/push/subscribe')
+      const { publicKey } = await res.json()
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly:      true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      })
+      await fetch('/api/push/subscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(sub.toJSON()),
+      })
+      localStorage.removeItem('push_prompt_dismissed')
+      setPushStatus('active')
+    } catch (e) {
+      console.error('[push] erro ao ativar:', e)
+    } finally {
+      setPushLoading(false)
+    }
+  }
+
+  async function desativarPush() {
+    setPushLoading(true)
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      if (sub) await sub.unsubscribe()
+      await fetch('/api/push/subscribe', { method: 'DELETE' })
+      localStorage.setItem('push_prompt_dismissed', '1')
+      setPushStatus('inactive')
+    } catch (e) {
+      console.error('[push] erro ao desativar:', e)
+    } finally {
+      setPushLoading(false)
+    }
+  }
 
   function toggleAlbum(id: AlbumId) {
     setActiveAlbums(prev => {
@@ -271,6 +340,39 @@ function ContaPageInner() {
                   >
                     Upgrade →
                   </button>
+                </div>
+              )}
+
+              {/* Card de notificações */}
+              {pushStatus !== 'unsupported' && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-xl">
+                    {pushStatus === 'active' ? '🔔' : '🔕'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-800 text-sm">Notificações</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {pushStatus === 'active'  && 'Ativas — você recebe alertas de propostas e matches'}
+                      {pushStatus === 'inactive' && 'Desativadas — ative para não perder nenhum match'}
+                      {pushStatus === 'denied'   && 'Bloqueadas no navegador — libere nas configurações do site'}
+                      {pushStatus === 'loading'  && 'Verificando...'}
+                    </p>
+                  </div>
+                  {pushStatus === 'denied' ? (
+                    <span className="text-xs text-slate-400 flex-shrink-0">Bloqueado</span>
+                  ) : (
+                    <button
+                      onClick={pushStatus === 'active' ? desativarPush : ativarPush}
+                      disabled={pushLoading || pushStatus === 'loading'}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-50 ${
+                        pushStatus === 'active'
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {pushLoading ? '...' : pushStatus === 'active' ? 'Desativar' : 'Ativar 🔔'}
+                    </button>
+                  )}
                 </div>
               )}
 
