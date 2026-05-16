@@ -18,21 +18,10 @@ export default function OneSignalProvider() {
         appId:                        'dadf445f-31b6-464b-b829-818baaf9f850',
         notifyButton:                 { enable: false },
         allowLocalhostAsSecureOrigin: true,
+        autoResubscribe:              true,
         promptOptions: {
           slidedown: {
-            prompts: [{
-              type:       'push',
-              autoPrompt: true,
-              text: {
-                actionMessage: 'Ative as notificações para saber sobre novos matches e propostas de troca! 🔔',
-                acceptButton:  'Ativar',
-                cancelButton:  'Agora não',
-              },
-              delay: {
-                pageViews: 1,
-                timeDelay: 10,
-              },
-            }],
+            prompts: [{ type: 'push', autoPrompt: false }], // desativa prompt do OneSignal
           },
         },
       })

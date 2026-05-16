@@ -5,6 +5,7 @@ import BottomNav from '@/components/BottomNav'
 import { Analytics } from '@vercel/analytics/next'
 import ServiceWorker from '@/components/ServiceWorker'
 import OneSignalProvider from '@/components/OneSignalProvider'
+import PushPrompt from '@/components/PushPrompt'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <ServiceWorker />
         <OneSignalProvider />
+        <PushPrompt />
       </body>
     </html>
   )
