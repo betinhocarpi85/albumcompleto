@@ -11,10 +11,22 @@ import PushPrompt from '@/components/PushPrompt'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 
 export const metadata: Metadata = {
-  title:       'Completando — Troque e Venda Figurinhas',
-  description: 'A plataforma brasileira para troca e venda de figurinhas de álbuns colecionáveis. Match automático, combine diretamente. Copa do Mundo 2026 e mais.',
-  keywords:    ['figurinhas', 'álbum', 'copa do mundo', 'troca', 'venda', 'colecionáveis'],
+  title: {
+    default:  'Completando — Troque e Venda Figurinhas',
+    template: '%s | Completando',
+  },
+  description: 'A plataforma brasileira para trocar e vender figurinhas de álbuns colecionáveis. Match automático, combine diretamente. Copa do Mundo FIFA 2026, Brasileirão e mais.',
+  keywords: [
+    'trocar figurinhas', 'vender figurinhas', 'figurinhas repetidas',
+    'álbum copa do mundo 2026', 'figurinhas copa 2026', 'completar álbum figurinhas',
+    'match figurinhas automático', 'banca de figurinhas', 'figurinhas brasileirao 2026',
+  ],
   metadataBase: new URL(APP_URL),
+  alternates: { canonical: APP_URL },
+  authors: [{ name: 'Completando', url: APP_URL }],
+  creator: 'Completando',
+  publisher: 'Completando',
+  category: 'lifestyle',
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -28,14 +40,19 @@ export const metadata: Metadata = {
     siteName:    'Completando',
     title:       'Completando — Troque e Venda Figurinhas',
     description: 'Match automático para troca e venda de figurinhas. Copa do Mundo 2026 e mais.',
-    images: [{ url: '/logo-bg.png', width: 1200, height: 630, alt: 'Completando' }],
+    images: [{ url: '/logo-bg.png', width: 1200, height: 630, alt: 'Completando — Troque e Venda Figurinhas' }],
     locale: 'pt_BR',
   },
   twitter: {
     card:        'summary_large_image',
     title:       'Completando — Troque e Venda Figurinhas',
-    description: 'Match automático para troca e venda de figurinhas.',
+    description: 'Match automático para troca e venda de figurinhas. Copa do Mundo 2026 e mais.',
     images:      ['/logo-bg.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
   },
   manifest: '/manifest.webmanifest',
   appleWebApp: {

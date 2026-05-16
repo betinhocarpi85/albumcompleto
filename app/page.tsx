@@ -1,6 +1,31 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import StickerSquare from '@/components/StickerSquare'
 import HomeCTA from '@/components/HomeCTA'
+import JsonLd from '@/components/JsonLd'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
+
+export const metadata: Metadata = {
+  title: 'Completando — Troque e Venda Figurinhas | Copa do Mundo 2026',
+  description: 'Plataforma brasileira para trocar e vender figurinhas de álbuns colecionáveis. Match automático, combine diretamente. Copa do Mundo FIFA 2026, Brasileirão e mais.',
+  keywords: [
+    'trocar figurinhas', 'vender figurinhas', 'figurinhas repetidas', 'álbum figurinhas',
+    'copa do mundo 2026 figurinhas', 'figurinhas copa 2026', 'completar álbum copa do mundo',
+    'troca figurinhas brasil', 'match figurinhas', 'figurinhas brasileirao 2026',
+    'banca figurinhas', 'figurinhas online', 'comprar figurinhas repetidas',
+  ],
+  alternates: { canonical: APP_URL },
+  openGraph: {
+    type: 'website',
+    url: APP_URL,
+    siteName: 'Completando',
+    title: 'Completando — Troque e Venda Figurinhas | Copa do Mundo 2026',
+    description: 'Match automático para troca e venda de figurinhas. Copa do Mundo FIFA 2026 e mais.',
+    images: [{ url: `${APP_URL}/logo-bg.png`, width: 1200, height: 630, alt: 'Completando — Troque e Venda Figurinhas' }],
+    locale: 'pt_BR',
+  },
+}
 
 const DEMO_STICKERS = [
   { number: 17,  status: 'venda'  as const, type: 'brilhante' as const },
@@ -30,8 +55,83 @@ const FEATURES = [
 ]
 
 export default function Home() {
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Completando',
+      url: APP_URL,
+      description: 'Plataforma brasileira para trocar e vender figurinhas de álbuns colecionáveis.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: `${APP_URL}/bancas?busca={search_term_string}` },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Completando',
+      url: APP_URL,
+      logo: `${APP_URL}/icon-512.png`,
+      sameAs: [],
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        availableLanguage: 'Portuguese',
+        url: 'https://wa.me/5521996787737',
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Completando',
+      applicationCategory: 'LifestyleApplication',
+      operatingSystem: 'Web, Android, iOS',
+      url: APP_URL,
+      description: 'App para trocar e vender figurinhas de álbuns colecionáveis com match automático.',
+      offers: [
+        { '@type': 'Offer', price: '0', priceCurrency: 'BRL', name: 'Plano Grátis' },
+        { '@type': 'Offer', price: '1.99', priceCurrency: 'BRL', name: 'Plano Mensal PRO', billingIncrement: 'P1M' },
+        { '@type': 'Offer', price: '14.99', priceCurrency: 'BRL', name: 'Plano Anual PRO', billingIncrement: 'P1Y' },
+      ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'Como funciona a troca de figurinhas no Completando?',
+          acceptedAnswer: { '@type': 'Answer', text: 'O sistema compara automaticamente as figurinhas que você tem com as que outros usuários precisam. Quando há compatibilidade dos dois lados, aparece como um match e você pode enviar uma proposta de troca diretamente.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'Posso vender figurinhas pelo Completando?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Sim! Ao criar um anúncio, escolha o tipo "Venda" e informe o preço. Qualquer usuário pode anunciar figurinhas para venda, sem limite de anúncios.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'O Completando tem figurinhas da Copa do Mundo 2026?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Sim! O Completando já tem suporte ao álbum oficial da Copa do Mundo FIFA 2026, além do Brasileirão Masculino e Feminino 2026.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'É gratuito usar o Completando?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Sim, o plano gratuito permite criar anúncios e ver matches. O plano PRO (R$ 1,99/mês na promoção Copa do Mundo) libera o envio de propostas, visualização de contatos e aparece nos matches de outros usuários PRO.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'Como encontro bancas de figurinhas perto de mim?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Acesse a aba "Bancas" no app. Você pode ver no mapa ou lista todas as bancas parceiras cadastradas, filtrar por estado e buscar pelo nome ou cidade.' },
+        },
+      ],
+    },
+  ]
+
   return (
     <div className="animate-fadein">
+      <JsonLd data={jsonLd as Record<string, unknown>[]} />
 
       {/* ── HERO ── */}
       <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-green-900 text-white overflow-hidden">

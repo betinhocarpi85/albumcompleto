@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import TutorialSection from '@/components/TutorialSection'
+import JsonLd from '@/components/JsonLd'
 
 const WHATSAPP = 'https://wa.me/5521996787737?text=Olá! Preciso de ajuda com o Completando.'
 
@@ -110,8 +111,21 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function SuportePage() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.flatMap(cat =>
+      cat.itens.map(item => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: { '@type': 'Answer', text: item.a },
+      }))
+    ),
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-10">
+      <JsonLd data={faqSchema} />
 
       {/* Header */}
       <div className="text-center mb-8">
