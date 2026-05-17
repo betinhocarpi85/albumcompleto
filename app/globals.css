@@ -36,6 +36,14 @@ body {
 
 /* Animações */
 @keyframes fadeIn {
+  /* Começa visível (opacity 1) para não prejudicar Speed Index no Lighthouse.
+     Só anima a posição vertical — o conteúdo é imediatamente contado como visível. */
+  from { opacity: 1; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFull {
+  /* Versão com fade real — usada apenas em pages autenticadas onde SEO não importa */
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
@@ -45,8 +53,9 @@ body {
   50%       { box-shadow: 0 0 12px 4px rgba(245,158,11,0.9); }
 }
 
-.animate-fadein { animation: fadeIn 0.25s ease-out; }
-.sticker-brilhante { animation: shimmer 2s ease-in-out infinite; }
+.animate-fadein      { animation: fadeIn 0.25s ease-out; }
+.animate-fadein-full { animation: fadeInFull 0.25s ease-out; }
+.sticker-brilhante   { animation: shimmer 2s ease-in-out infinite; }
 
 /* Espaço para nav mobile */
 @media (max-width: 768px) {
