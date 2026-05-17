@@ -157,6 +157,11 @@ export default function PropostasPage() {
     setAvalModal(null)
   }
 
+  async function apagar(id: string) {
+    setOcultarIds(prev => new Set([...prev, id]))
+    await fetch(`/api/propostas/${id}`, { method: 'DELETE', credentials: 'include' })
+  }
+
   async function confirmar() {
     if (!confirmando || loading) return
     const { id, acao } = confirmando
@@ -395,10 +400,14 @@ export default function PropostasPage() {
 
                 {/* Recusada */}
                 {p.status === 'recusada' && (
-                  <div className="px-3 pb-3">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
+                  <div className="px-3 pb-3 flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
                       <p className="text-xs text-slate-500">Proposta recusada.</p>
                     </div>
+                    <button onClick={() => apagar(p.id)}
+                      className="shrink-0 px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors">
+                      🗑️ Apagar
+                    </button>
                   </div>
                 )}
               </div>
@@ -517,12 +526,14 @@ export default function PropostasPage() {
 
                 {/* Recusada */}
                 {p.status === 'recusada' && (
-                  <div className="px-3 pb-3">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
-                      <p className="text-xs text-slate-500">
-                        {p.contraparte_nome} recusou esta proposta.
-                      </p>
+                  <div className="px-3 pb-3 flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
+                      <p className="text-xs text-slate-500">{p.contraparte_nome} recusou esta proposta.</p>
                     </div>
+                    <button onClick={() => apagar(p.id)}
+                      className="shrink-0 px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors">
+                      🗑️ Apagar
+                    </button>
                   </div>
                 )}
               </div>

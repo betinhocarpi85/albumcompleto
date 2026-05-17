@@ -60,3 +60,25 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true })
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const sb = createAdminClient()
+
+  // Só pode apagar se for o remetente ou destinatário
+  const { error } = await sb
+    .from('propostas')
+    .delete()
+    .eq('id', id)
+    .or(`de_user_id.eq.${user.id},para_user_id.eq.${user.id}`)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
