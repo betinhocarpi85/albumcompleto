@@ -193,7 +193,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-black">2 formas de completar seu álbum</h2>
-            <p className="text-slate-400 mt-2">Você escolhe como quer participar</p>
+            <p className="text-slate-300 mt-2">Você escolhe como quer participar</p>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
             {FEATURES.map((f) => (
@@ -202,7 +202,7 @@ export default function Home() {
                   <span className="w-3 h-3 rounded-full bg-white/50" />
                 </div>
                 <h3 className="font-bold text-base mb-1">{f.title}</h3>
-                <p className="text-slate-400 text-xs leading-relaxed">{f.desc}</p>
+                <p className="text-slate-300 text-xs leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -251,7 +251,7 @@ export default function Home() {
               <p className="text-sm text-slate-600 italic leading-relaxed flex-1">{item.quote}</p>
               <div className="mt-4 pt-3 border-t border-slate-100">
                 <p className="text-xs font-bold text-slate-800">{item.author}</p>
-                <p className="text-xs text-slate-400">{item.role}</p>
+                <p className="text-xs text-slate-500">{item.role}</p>
                 <a href={item.source} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-green-600 hover:text-green-700 font-medium mt-1 inline-block">
                   Ver matéria — {item.outlet} ↗
@@ -270,8 +270,8 @@ export default function Home() {
               <span className="font-black text-red-700 text-lg">Só comprando pacotes</span>
             </div>
             <div className="text-5xl font-black text-red-600 mb-1">R$ 7.098</div>
-            <p className="text-red-500 text-sm font-medium mb-1">mediana calculada pelo Prof. Osvaldo Assunção (FGV)</p>
-            <p className="text-red-400 text-xs mb-4">Pode chegar a <strong>R$ 18.000</strong> no pior cenário</p>
+            <p className="text-red-700 text-sm font-medium mb-1">mediana calculada pelo Prof. Osvaldo Assunção (FGV)</p>
+            <p className="text-red-700 text-xs mb-4">Pode chegar a <strong>R$ 18.000</strong> no pior cenário</p>
             <div className="space-y-2 text-sm text-red-700">
               <div className="flex items-start gap-2"><span>❌</span><span>~1.043 pacotes comprados no total</span></div>
               <div className="flex items-start gap-2"><span>❌</span><span>Pacote de 7 figurinhas a R$ 7 — R$ 1 por figurinha</span></div>
@@ -303,12 +303,12 @@ export default function Home() {
 
         {/* Barra de economia */}
         <div className="bg-slate-800 rounded-2xl p-6 md:p-8 text-white text-center">
-          <p className="text-slate-400 text-sm mb-1">Economia média usando o completando.com.br</p>
+          <p className="text-slate-300 text-sm mb-1">Economia média usando o completando.com.br</p>
           <div className="text-4xl md:text-5xl font-black text-green-400 mb-4">até 85% mais barato</div>
 
           {/* Barra visual */}
           <div className="max-w-lg mx-auto mb-2">
-            <div className="flex justify-between text-xs text-slate-400 mb-1">
+            <div className="flex justify-between text-xs text-slate-300 mb-1">
               <span>completando.com.br ≈ R$ 1.040</span>
               <span>Só pacotes ≈ R$ 7.098</span>
             </div>
@@ -319,7 +319,7 @@ export default function Home() {
             </div>
           </div>
 
-          <p className="text-slate-500 text-xs mb-5">Baseado em estudos dos Profs. Osvaldo Assunção (FGV) e Gilcione Costa (UFMG)</p>
+          <p className="text-slate-300 text-xs mb-5">Baseado em estudos dos Profs. Osvaldo Assunção (FGV) e Gilcione Costa (UFMG)</p>
 
           <Link
             href="/cadastro"
@@ -337,7 +337,7 @@ export default function Home() {
             { label: 'InfoMoney', url: 'https://www.infomoney.com.br/consumo/quanto-custa-completar-album-figurinhas-copa-mundo-2026/' },
           ].map(s => (
             <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
+              className="text-xs text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">
               Fonte: {s.label} ↗
             </a>
           ))}
@@ -358,11 +358,11 @@ export default function Home() {
 
           {/* GRÁTIS */}
           <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 flex flex-col">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Grátis</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Grátis</p>
             <div className="flex items-end gap-1 mb-1">
               <span className="text-4xl font-black text-slate-800">R$ 0</span>
             </div>
-            <p className="text-xs text-slate-400 mb-6">Para sempre gratuito</p>
+            <p className="text-xs text-slate-500 mb-6">Para sempre gratuito</p>
 
             <Link href="/cadastro" className="block text-center border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors mb-6">
               Criar conta grátis
@@ -380,7 +380,7 @@ export default function Home() {
                   <span className={`flex-shrink-0 mt-0.5 ${f.ok ? 'text-green-500' : 'text-slate-300'}`}>
                     {f.ok ? '✓' : '✕'}
                   </span>
-                  <span className={f.ok ? 'text-slate-700' : 'text-slate-400'}>{f.text}</span>
+                  <span className={f.ok ? 'text-slate-700' : 'text-slate-500'}>{f.text}</span>
                 </div>
               ))}
             </div>
@@ -391,14 +391,14 @@ export default function Home() {
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
               Mais popular
             </div>
-            <p className="text-xs font-bold text-green-400 uppercase tracking-wide mb-1">Mensal</p>
+            <p className="text-xs font-bold text-green-300 uppercase tracking-wide mb-1">Mensal</p>
             <div className="flex items-end gap-1 mb-1">
               <span className="text-4xl font-black text-white">R$ 1</span>
               <span className="text-2xl font-black text-white mb-0.5">,99</span>
-              <span className="text-slate-400 text-sm mb-1">/mês</span>
+              <span className="text-slate-300 text-sm mb-1">/mês</span>
             </div>
-            <p className="text-xs text-slate-400 mb-1 line-through">de R$ 4,99/mês</p>
-            <p className="text-xs text-green-400 font-semibold mb-6">🏆 Promoção Copa do Mundo</p>
+            <p className="text-xs text-slate-300 mb-1 line-through">de R$ 4,99/mês</p>
+            <p className="text-xs text-green-300 font-semibold mb-6">🏆 Promoção Copa do Mundo</p>
 
             <Link href="/cadastro" className="block text-center bg-green-500 hover:bg-green-400 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6 shadow-lg shadow-green-500/30">
               Começar agora →
@@ -423,21 +423,21 @@ export default function Home() {
 
           {/* ANUAL */}
           <div className="bg-white rounded-2xl border-2 border-amber-300 p-6 flex flex-col relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide whitespace-nowrap">
               Melhor preço
             </div>
-            <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-1">Anual</p>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">Anual</p>
             <div className="flex items-end gap-1 mb-1">
               <span className="text-4xl font-black text-slate-800">R$ 14</span>
               <span className="text-2xl font-black text-slate-800 mb-0.5">,99</span>
-              <span className="text-slate-400 text-sm mb-1">/ano</span>
+              <span className="text-slate-500 text-sm mb-1">/ano</span>
             </div>
-            <p className="text-xs text-slate-400 mb-1 line-through">de R$ 49,99/ano</p>
-            <p className="text-xs text-amber-600 font-semibold mb-6">
+            <p className="text-xs text-slate-500 mb-1 line-through">de R$ 49,99/ano</p>
+            <p className="text-xs text-amber-700 font-semibold mb-6">
               🏆 Promoção Copa · ≈ R$ 1,25/mês
             </p>
 
-            <Link href="/cadastro" className="block text-center bg-amber-400 hover:bg-amber-500 text-white font-black py-3 rounded-xl text-sm transition-colors mb-6">
+            <Link href="/cadastro" className="block text-center bg-amber-400 hover:bg-amber-500 text-amber-900 font-black py-3 rounded-xl text-sm transition-colors mb-6">
               Assinar anual →
             </Link>
 
@@ -457,7 +457,7 @@ export default function Home() {
 
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-slate-500 mt-6">
           Cancele a qualquer momento · Sem multa · Suporte via WhatsApp
         </p>
       </section>

@@ -123,13 +123,13 @@ export default function BottomNav() {
                 }}
                 className={[
                   'relative flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all min-w-[44px]',
-                  active ? 'text-green-600' : 'text-slate-400',
+                  active ? 'text-green-600' : 'text-slate-500',
                 ].join(' ')}
               >
                 <span className={['text-lg transition-transform', active ? 'scale-110' : ''].join(' ')}>
                   {item.icon}
                 </span>
-                <span className={['text-[9px] font-medium', active ? 'text-green-600' : 'text-slate-400'].join(' ')}>
+                <span className={['text-[9px] font-medium', active ? 'text-green-600' : 'text-slate-500'].join(' ')}>
                   {item.label}
                 </span>
                 {(item as { badge?: number }).badge != null && (item as { badge?: number }).badge! > 0 && (

@@ -43,7 +43,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto w-full px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/">
-          <Image src="/logo.png" alt="Completando" height={28} width={126} className="h-7 w-auto" priority />
+          <Image src="/logo.png" alt="Completando" height={28} width={155} className="h-7 w-auto" priority />
         </Link>
 
         {/* Links */}
