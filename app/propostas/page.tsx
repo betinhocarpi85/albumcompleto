@@ -327,11 +327,11 @@ export default function PropostasPage() {
                     'mx-3 mb-3 px-3 py-2 rounded-xl text-xs text-center font-semibold',
                     p.eu_ofereco.length === p.eu_recebo.length
                       ? 'bg-green-50 text-green-700'
-                      : 'bg-amber-50 text-amber-700',
+                      : 'bg-blue-50 text-blue-700',
                   ].join(' ')}>
                     {p.eu_ofereco.length === p.eu_recebo.length
-                      ? '✓ Troca exata — mesma quantidade dos dois lados'
-                      : `Desequilíbrio: ${p.eu_ofereco.length} × ${p.eu_recebo.length}`}
+                      ? `✓ Troca ${p.eu_ofereco.length}×${p.eu_recebo.length} — mesma quantidade`
+                      : `✨ Troca ${p.eu_ofereco.length}×${p.eu_recebo.length} — proporção personalizada`}
                   </div>
                 )}
 

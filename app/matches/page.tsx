@@ -447,9 +447,7 @@ export default function MatchesPage() {
 
                   {isOpen && (
                     <div className="px-4 pb-4 border-t border-slate-50 pt-3 animate-fadein">
-                      {!equilibrado && (
-                        <p className="text-[11px] text-slate-400 text-center mb-3">Toque em qualquer figurinha dos dois lados para removê-la da proposta</p>
-                      )}
+                      <p className="text-[11px] text-slate-400 text-center mb-3">Toque em qualquer figurinha para removê-la da proposta</p>
                       <div className="grid grid-cols-2 gap-4 mb-3">
                         <div>
                           <p className="text-xs font-semibold text-blue-600 mb-2">🔵 Para você</p>
@@ -487,28 +485,37 @@ export default function MatchesPage() {
                         </div>
                       </div>
 
-                      {!equilibrado && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-amber-700">
-                          {dynBalance > 0
-                            ? `⚠️ Você tem ${dynBalance} fig. a mais — remova ${dynBalance} do seu lado para equilibrar.`
-                            : `⚠️ ${p.ele} tem ${Math.abs(dynBalance)} fig. a mais — remova ${Math.abs(dynBalance)} do lado ${p.dele} para equilibrar.`}
+                      {/* Info da proporção */}
+                      {oferta.length > 0 && deles.length > 0 && (
+                        <div className={['rounded-xl px-3 py-2.5 mb-3 text-xs font-semibold text-center',
+                          equilibrado
+                            ? 'bg-green-50 border border-green-200 text-green-700'
+                            : 'bg-blue-50 border border-blue-200 text-blue-700',
+                        ].join(' ')}>
+                          {equilibrado
+                            ? `✅ Troca ${oferta.length}×${deles.length} — mesma quantidade dos dois lados`
+                            : `✨ Troca ${oferta.length}×${deles.length} — proporção personalizada`}
                         </div>
                       )}
-                      {equilibrado && (rem.size > 0 || remDele.size > 0) && (
-                        <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-green-700">
-                          ✅ Troca equilibrada! Você pode enviar a proposta agora.
+                      {(oferta.length === 0 || deles.length === 0) && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-red-600 text-center">
+                          ⚠️ Adicione ao menos 1 figurinha de cada lado
                         </div>
                       )}
 
                       {adulto ? (
                         <button
-                          disabled={!equilibrado}
+                          disabled={oferta.length === 0 || deles.length === 0}
                           onClick={() => {
-                            if (!equilibrado) return
+                            if (oferta.length === 0 || deles.length === 0) return
                             isPro ? enviarProposta(match, oferta, deles) : setShowUpgrade(true)
                           }}
-                          className={['w-full font-bold py-3 rounded-xl text-sm transition-colors', equilibrado ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'].join(' ')}>
-                          🔁 {equilibrado ? 'Enviar proposta de troca' : 'Ajuste a proposta para enviar'}
+                          className={['w-full font-bold py-3 rounded-xl text-sm transition-colors',
+                            oferta.length > 0 && deles.length > 0
+                              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed',
+                          ].join(' ')}>
+                          🔁 Enviar proposta {oferta.length}×{deles.length}
                         </button>
                       ) : (
                         <div className="w-full py-3 rounded-xl text-sm text-center bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
