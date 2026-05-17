@@ -355,6 +355,8 @@ export default function AdminDashboard({
   const [bancaSaving, setBancaSaving]     = useState(false)
   const [geocoding, setGeocoding]         = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ atualizadas: number; total: number; erros: string[] } | null>(null)
+  const [limpando, setLimpando]           = useState(false)
+  const [limparResult, setLimparResult]   = useState<{ totalRemovidos: number; detalhes: string[] } | null>(null)
   const [bancaData, setBancaData]         = useState({
     nome: '', responsavel: '', telefone: '', email: '', endereco: '',
     bairro: '', cidade: '', uf: 'SP', cep: '', horario: '', descricao: '',
@@ -417,6 +419,26 @@ export default function AdminDashboard({
       showToast('Erro de conexão ao geocodificar', 'err')
     } finally {
       setGeocoding(false)
+    }
+  }
+
+  async function limparAnunciosInvalidos() {
+    if (!confirm('Remove anúncios com números de figurinha acima do total do álbum (ex: > 980 na Copa 2026). Continuar?')) return
+    setLimpando(true)
+    setLimparResult(null)
+    try {
+      const r = await fetch('/api/admin/limpar-anuncios-invalidos', { method: 'POST' })
+      const d = await r.json()
+      if (r.ok) {
+        setLimparResult({ totalRemovidos: d.totalRemovidos ?? 0, detalhes: d.detalhes ?? [] })
+        showToast(d.mensagem ?? `✅ ${d.totalRemovidos} anúncios removidos`, 'ok')
+      } else {
+        showToast(d.error ?? 'Erro ao limpar', 'err')
+      }
+    } catch {
+      showToast('Erro de conexão', 'err')
+    } finally {
+      setLimpando(false)
     }
   }
 
@@ -1456,7 +1478,7 @@ export default function AdminDashboard({
                     : 'Todos os pinos no mapa ✅'}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={geocodificarBancas}
                   disabled={geocoding}
@@ -1485,6 +1507,30 @@ export default function AdminDashboard({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Limpeza de anúncios inválidos */}
+            <div className="flex items-center justify-between bg-slate-800 rounded-xl px-4 py-3 mt-2">
+              <div>
+                <p className="text-sm font-bold text-slate-200">🧹 Anúncios inválidos</p>
+                <p className="text-xs text-slate-400 mt-0.5">Remove figurinhas com número maior que o total do álbum</p>
+              </div>
+              <button
+                onClick={limparAnunciosInvalidos}
+                disabled={limpando}
+                className="px-4 py-2 rounded-xl bg-red-900 hover:bg-red-800 disabled:opacity-50 text-white text-sm font-bold transition-colors"
+              >
+                {limpando ? '⏳ Limpando...' : '🧹 Limpar'}
+              </button>
+            </div>
+
+            {limparResult && (
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm mt-1">
+                <p className="text-green-400 font-bold mb-2">✅ {limparResult.totalRemovidos} anúncios removidos</p>
+                {limparResult.detalhes.map((d, i) => (
+                  <p key={i} className="text-slate-400 text-xs">• {d}</p>
+                ))}
               </div>
             )}
 

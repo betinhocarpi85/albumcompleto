@@ -92,11 +92,16 @@ export async function GET(request: NextRequest) {
     coladasGnumsByUser.get(c.user_id)!.add(gnum)
   }
 
+  // Filtra gnums inválidos (ex: números > totalStickers do álbum que ficaram no DB)
+  type AdsRow = { user_id: string; g_num: number | null; preco: number | null; sticker_tipo: string | null }
+  const filterValid = (rows: AdsRow[]): AdsRow[] =>
+    rows.filter(a => typeof a.g_num === 'number' && _allGnums.has(a.g_num))
+
   const result = buildMatchResultFromAnuncios({
     myUserId:      user.id,
-    myTenho:       myAdsRes.data    ?? [],
+    myTenho:       filterValid(myAdsRes.data    ?? []),
     myPreciso:     precisoFor(user.id, coladasGnumsByUser),
-    othersTenho:   othersAdsRes.data ?? [],
+    othersTenho:   filterValid(othersAdsRes.data ?? []),
     othersPreciso: otherUserIds.flatMap(id => precisoFor(id, coladasGnumsByUser)),
     profiles,
   })
