@@ -356,7 +356,10 @@ export default function AdminDashboard({
   const [geocoding, setGeocoding]         = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ atualizadas: number; total: number; erros: string[] } | null>(null)
   const [limpando, setLimpando]           = useState(false)
-  const [limparResult, setLimparResult]   = useState<{ totalRemovidos: number; detalhes: string[] } | null>(null)
+  const [limparResult, setLimparResult]   = useState<{
+    totalRemovidos: number; totalCorrigidos: number
+    resultados: { step: string; removidos: number; corrigidos?: number; erro?: string }[]
+  } | null>(null)
   const [bancaData, setBancaData]         = useState({
     nome: '', responsavel: '', telefone: '', email: '', endereco: '',
     bairro: '', cidade: '', uf: 'SP', cep: '', horario: '', descricao: '',
@@ -430,8 +433,12 @@ export default function AdminDashboard({
       const r = await fetch('/api/admin/limpar-anuncios-invalidos', { method: 'POST' })
       const d = await r.json()
       if (r.ok) {
-        setLimparResult({ totalRemovidos: d.totalRemovidos ?? 0, detalhes: d.detalhes ?? [] })
-        showToast(d.mensagem ?? `✅ ${d.totalRemovidos} anúncios removidos`, 'ok')
+        setLimparResult({
+          totalRemovidos:  d.totalRemovidos  ?? 0,
+          totalCorrigidos: d.totalCorrigidos ?? 0,
+          resultados:      d.resultados      ?? [],
+        })
+        showToast(d.mensagem ?? `✅ ${d.totalRemovidos} removidos`, 'ok')
       } else {
         showToast(d.error ?? 'Erro ao limpar', 'err')
       }
@@ -1510,26 +1517,39 @@ export default function AdminDashboard({
               </div>
             )}
 
-            {/* Limpeza de anúncios inválidos */}
+            {/* Varredura completa de dados obsoletos */}
             <div className="flex items-center justify-between bg-slate-800 rounded-xl px-4 py-3 mt-2">
               <div>
-                <p className="text-sm font-bold text-slate-200">🧹 Anúncios inválidos</p>
-                <p className="text-xs text-slate-400 mt-0.5">Remove figurinhas com número maior que o total do álbum</p>
+                <p className="text-sm font-bold text-slate-200">🧹 Varredura de dados obsoletos</p>
+                <p className="text-xs text-slate-400 mt-0.5">Remove anúncios, coladas e propostas inválidos ou de álbuns antigos</p>
               </div>
               <button
                 onClick={limparAnunciosInvalidos}
                 disabled={limpando}
                 className="px-4 py-2 rounded-xl bg-red-900 hover:bg-red-800 disabled:opacity-50 text-white text-sm font-bold transition-colors"
               >
-                {limpando ? '⏳ Limpando...' : '🧹 Limpar'}
+                {limpando ? '⏳ Varrendo...' : '🧹 Varrer'}
               </button>
             </div>
 
             {limparResult && (
               <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm mt-1">
-                <p className="text-green-400 font-bold mb-2">✅ {limparResult.totalRemovidos} anúncios removidos</p>
-                {limparResult.detalhes.map((d, i) => (
-                  <p key={i} className="text-slate-400 text-xs">• {d}</p>
+                <div className="flex gap-4 mb-3">
+                  <p className="text-green-400 font-bold">🗑️ {limparResult.totalRemovidos} removidos</p>
+                  {limparResult.totalCorrigidos > 0 && (
+                    <p className="text-blue-400 font-bold">✏️ {limparResult.totalCorrigidos} corrigidos</p>
+                  )}
+                </div>
+                {limparResult.resultados.map((r, i) => (
+                  <div key={i} className="flex items-start justify-between gap-2 py-1 border-b border-slate-800 last:border-0">
+                    <p className="text-slate-400 text-xs">{r.step}</p>
+                    <div className="flex gap-2 shrink-0">
+                      {r.removidos > 0 && <span className="text-red-400 text-xs font-bold">-{r.removidos}</span>}
+                      {(r.corrigidos ?? 0) > 0 && <span className="text-blue-400 text-xs font-bold">~{r.corrigidos}</span>}
+                      {r.removidos === 0 && !r.corrigidos && !r.erro && <span className="text-slate-600 text-xs">✓</span>}
+                      {r.erro && <span className="text-red-500 text-xs" title={r.erro}>⚠️</span>}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
