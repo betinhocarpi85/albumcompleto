@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminAuth } from '@/lib/admin-auth'
 import { processMapsUrl } from '@/lib/maps-utils'
+import crypto from 'crypto'
+
+function gerarSlug(nome: string) {
+  const base = nome
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  const hash = crypto.randomBytes(3).toString('hex')
+  return `${base}-${hash}`
+}
 
 // GET — lista pública de bancas ativas
 export async function GET(request: NextRequest) {
@@ -34,12 +45,7 @@ export async function POST(request: NextRequest) {
   const geo = await processMapsUrl(body.maps_url.trim())
   if (!geo) return NextResponse.json({ error: 'Não foi possível extrair coordenadas deste link.' }, { status: 422 })
 
-  // Gera slug a partir do nome
-  const slug = body.nome
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+  const slug = gerarSlug(body.nome.trim())
 
   const { data, error } = await sb.from('bancas').insert({
     slug,
