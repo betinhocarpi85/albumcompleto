@@ -547,13 +547,13 @@ export default function AnunciosPage() {
                                                 : 'bg-green-500 border-green-600 text-white'
                                               : `border-dashed ${subColor.sticker}`,
                                           ].join(' ')}>
-                                          {jaAnunciado
-                                            ? <span className="text-base leading-none">✓</span>
-                                            : <>
-                                                <span className="text-[11px] font-black leading-none">{s.gNum}</span>
-                                                {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
-                                              </>
-                                          }
+                                          <>
+                                            <span className="text-[11px] font-black leading-none">{s.gNum}</span>
+                                            {jaAnunciado
+                                              ? <span className="text-[9px] leading-none">✓</span>
+                                              : TIPO_ICON[s.tipo] ? <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span> : null
+                                            }
+                                          </>
                                         </button>
                                       )
                                     })}
