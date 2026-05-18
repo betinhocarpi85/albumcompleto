@@ -539,9 +539,12 @@ export default function AnunciosPage() {
                                 <button onClick={() => toggleCat(catKey)}
                                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
                                   <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName.replace(/^[^\p{L}\p{N}]+/u, '')}</span>
-                                  <span className={['text-[10px] font-bold px-1.5 py-0.5 rounded-full', subColor.badge].join(' ')}>
-                                    {g.stickers.length}✓
-                                  </span>
+                                  {(() => {
+                                    const anuncCat = g.stickers.filter(s => anunciadosKeys.has(makeKey(s.sid, subTab))).length
+                                    return anuncCat > 0
+                                      ? <span className={['text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white', subTab === 'troca' ? 'bg-blue-500' : 'bg-green-500'].join(' ')}>{anuncCat}✓</span>
+                                      : <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400">{g.stickers.length}</span>
+                                  })()}
                                   <span className="text-xs text-slate-400">{catOpen ? '▲' : '▼'}</span>
                                 </button>
 
