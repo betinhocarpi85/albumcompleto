@@ -82,6 +82,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
   return (
     <html lang="pt-BR" className="h-full antialiased">
+      <head>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y7NBYH69MP" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-Y7NBYH69MP');
+        `}} />
+      </head>
       <body className="min-h-full bg-slate-50">
         <SplashScreen />
         <Navbar />
