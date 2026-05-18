@@ -283,7 +283,7 @@ export const albumCopa2026: Album = {
         { number: 17, name: 'Jacob Shaffelburg',   type: 'normal'    },
         { number: 18, name: 'Alistair Johnston',   type: 'normal'    },
         { number: 19, name: 'Theo Corbeanu',       type: 'normal'    },
-        { number: 20, name: 'Jonathan David',      type: 'brilhante' },
+        { number: 20, name: 'Foto do Time',         type: 'especial'  },
       ],
     },
 
@@ -361,7 +361,7 @@ export const albumCopa2026: Album = {
         { number: 17, name: 'Yerson Mosquera',    type: 'normal'    },
         { number: 18, name: 'Lerma García',       type: 'normal'    },
         { number: 19, name: 'Cucho Hernández',    type: 'normal'    },
-        { number: 20, name: 'Luis Díaz',          type: 'brilhante' },
+        { number: 20, name: 'Foto do Time',        type: 'especial'  },
       ],
     },
 
@@ -595,7 +595,7 @@ export const albumCopa2026: Album = {
         { number: 17, name: 'Mattéo Guendouzi',     type: 'normal'    },
         { number: 18, name: 'N\'Golo Kanté',        type: 'normal'    },
         { number: 19, name: 'Kingsley Coman',        type: 'normal'    },
-        { number: 20, name: 'Kylian Mbappé',        type: 'brilhante' },
+        { number: 20, name: 'Foto do Time',          type: 'especial'  },
       ],
     },
 
@@ -881,7 +881,7 @@ export const albumCopa2026: Album = {
         { number: 17, name: 'Roberto Alvarado',     type: 'normal'    },
         { number: 18, name: 'Uriel Antuna',         type: 'normal'    },
         { number: 19, name: 'Julián Quiñones',      type: 'normal'    },
-        { number: 20, name: 'Santiago Giménez',     type: 'brilhante' },
+        { number: 20, name: 'Foto do Time',          type: 'especial'  },
       ],
     },
 
