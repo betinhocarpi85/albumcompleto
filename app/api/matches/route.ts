@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { buildMatchResultFromAnuncios } from '@/lib/match-engine'
-import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap, TOTAL_STICKERS } from '@/data/album-copa-2026'
 import type { AlbumId } from '@/data/albums-registry'
 
 const _sidToGnum = buildGlobalNumberMap(albumCopa2026)
-const _allGnums  = new Set(_sidToGnum.values())
+// Limita aos 980 stickers oficiais — exclui categorias extra (XGOLD/XSILVER/etc.)
+const _allGnums  = new Set([..._sidToGnum.values()].filter(g => g <= TOTAL_STICKERS))
 
 type PrecisoRow = { user_id: string; g_num: number; preco: null; sticker_tipo: null }
 
@@ -30,9 +31,9 @@ export async function GET(request: NextRequest) {
   const sb = createAdminClient()
 
   const [myAdsRes, othersAdsRes, allColadasRes, profilesRes] = await Promise.all([
-    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo')
+    sb.from('anuncios').select('user_id,g_num,sid,preco,sticker_tipo')
       .eq('user_id', user.id).eq('album_id', albumId).eq('tipo', 'tenho'),
-    sb.from('anuncios').select('user_id,g_num,preco,sticker_tipo')
+    sb.from('anuncios').select('user_id,g_num,sid,preco,sticker_tipo')
       .neq('user_id', user.id).eq('album_id', albumId).eq('tipo', 'tenho'),
     sb.from('coladas').select('user_id,sticker_id')
       .eq('album_id', albumId),
@@ -92,10 +93,20 @@ export async function GET(request: NextRequest) {
     coladasGnumsByUser.get(c.user_id)!.add(gnum)
   }
 
-  // Filtra gnums inválidos (ex: números > totalStickers do álbum que ficaram no DB)
-  type AdsRow = { user_id: string; g_num: number | null; preco: number | null; sticker_tipo: string | null }
+  // Filtra anuncios inválidos:
+  // 1. g_num deve ser número e existir no mapa do álbum atual
+  // 2. Se tiver sid, o sid deve mapear para o mesmo g_num — descarta registros
+  //    salvos com numeração antiga onde gnum e sid não mais coincidem
+  type AdsRow = { user_id: string; g_num: number | null; sid: string | null; preco: number | null; sticker_tipo: string | null }
   const filterValid = (rows: AdsRow[]): AdsRow[] =>
-    rows.filter(a => typeof a.g_num === 'number' && _allGnums.has(a.g_num))
+    rows.filter(a => {
+      if (typeof a.g_num !== 'number' || !_allGnums.has(a.g_num)) return false
+      if (a.sid) {
+        const expectedGnum = _sidToGnum.get(a.sid)
+        if (expectedGnum !== undefined && expectedGnum !== a.g_num) return false
+      }
+      return true
+    })
 
   const result = buildMatchResultFromAnuncios({
     myUserId:      user.id,

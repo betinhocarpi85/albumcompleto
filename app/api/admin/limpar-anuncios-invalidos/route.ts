@@ -14,28 +14,25 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isAdminAuth } from '@/lib/admin-auth'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
 import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
 import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 
-const ADMIN_TOKEN = process.env.ADMIN_SECRET_TOKEN ?? ''
-
-async function isAdmin(): Promise<boolean> {
-  const jar = await cookies()
-  const token = jar.get('admin_token')?.value
-  return !!token && token === ADMIN_TOKEN
-}
-
-// Mapa de album_id → Set de sids válidos
+// Mapa de album_id → Set de sids OFICIAIS (gnums ≤ totalStickers do registry)
+// Exclui categorias extra como XGOLD/XSILVER/XBRONZE/XPURPLE/COCA-COLA
 function buildValidSidsMap(): Map<string, Set<string>> {
   const albums = [albumCopa2026, albumBrasileiraoMasc2026, albumBrasileiraoFem2026]
   const result = new Map<string, Set<string>>()
   for (const album of albums) {
-    const gnumMap = buildGlobalNumberMap(album)
-    result.set(album.id, new Set(gnumMap.keys()))
+    const gnumMap  = buildGlobalNumberMap(album)
+    const maxGnum  = ALBUMS_REGISTRY.find(a => a.id === album.id)?.totalStickers ?? Infinity
+    const validSids = new Set(
+      [...gnumMap.entries()].filter(([, g]) => g <= maxGnum).map(([sid]) => sid)
+    )
+    result.set(album.id, validSids)
   }
   return result
 }
@@ -51,7 +48,7 @@ interface CleanupStep {
 }
 
 export async function POST(_request: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!(await isAdminAuth())) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
   }
 
@@ -202,7 +199,40 @@ export async function POST(_request: NextRequest) {
     totalRemovidos += removidos
   }
 
-  // ─── 9. Propostas com tipo NULL → corrige para 'troca' ─────────────────────
+  // ─── 9. Anúncios com sid ≠ g_num do mapa atual (estrutura antiga) ─────────
+  // Detecta registros onde o sid aponta para um gnum diferente do armazenado —
+  // ou seja, foram salvos quando o álbum tinha outra numeração.
+  {
+    let removidos = 0
+    for (const album of [albumCopa2026]) {
+      const gnumMap = buildGlobalNumberMap(album)
+      const { data: rows } = await sb
+        .from('anuncios')
+        .select('id, sid, g_num')
+        .eq('album_id', album.id)
+        .not('sid', 'is', null)
+        .not('g_num', 'is', null)
+
+      if (!rows || rows.length === 0) continue
+
+      const invalidos = rows
+        .filter((r: { sid: string; g_num: number }) => {
+          const expectedGnum = gnumMap.get(r.sid)
+          return expectedGnum !== undefined && expectedGnum !== r.g_num
+        })
+        .map((r: { id: string }) => r.id)
+
+      for (let i = 0; i < invalidos.length; i += 500) {
+        const batch = invalidos.slice(i, i + 500)
+        const { data } = await sb.from('anuncios').delete().in('id', batch).select('id')
+        removidos += data?.length ?? 0
+      }
+    }
+    resultados.push({ step: '9. Anúncios com sid/g_num dessincronizados (numeração antiga)', removidos })
+    totalRemovidos += removidos
+  }
+
+  // ─── 10. Propostas com tipo NULL → corrige para 'troca' ────────────────────
   {
     const { data, error } = await sb
       .from('propostas')
@@ -210,7 +240,7 @@ export async function POST(_request: NextRequest) {
       .is('tipo', null)
       .select('id')
     const corrigidos = data?.length ?? 0
-    resultados.push({ step: '9. Propostas com tipo NULL → corrigido para "troca"', removidos: 0, corrigidos, ...(error ? { erro: error.message } : {}) })
+    resultados.push({ step: '10. Propostas com tipo NULL → corrigido para "troca"', removidos: 0, corrigidos, ...(error ? { erro: error.message } : {}) })
     totalCorrigidos += corrigidos
   }
 

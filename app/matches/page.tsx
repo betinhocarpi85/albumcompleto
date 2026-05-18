@@ -7,6 +7,11 @@ import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
 import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import type { AlbumId } from '@/data/albums-registry'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
+
+// totalStickers por álbum para filtrar categorias extras do mapa de info
+const ALBUM_MAX_GNUMS: Record<string, number> = Object.fromEntries(
+  ALBUMS_REGISTRY.map(a => [a.id, a.totalStickers])
+)
 import StickerSquare from '@/components/StickerSquare'
 import { getSession, dbGetActiveAlbums, dbGetProfile, dbGetColadas, dbGetMatches, dbEnviarProposta, dbGetPlano } from '@/lib/db'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
@@ -16,12 +21,17 @@ import UpgradeModal from '@/components/UpgradeModal'
 interface StickerInfo { name: string; code: string; tipo: string }
 
 function buildAlbumMaps(album: Album) {
-  const globalInfo = new Map<number, StickerInfo>()
   const sidToGlobal = buildGlobalNumberMap(album)
+  const maxGnum     = ALBUM_MAX_GNUMS[album.id] ?? Infinity
+  // Inclui apenas gnums dentro do total oficial — exclui XGOLD/XSILVER/etc.
+  const globalInfo  = new Map<number, StickerInfo>()
   let counter = 1
   for (const cat of album.categories) {
     for (const s of cat.stickers) {
-      globalInfo.set(counter++, { name: s.name, code: cat.code, tipo: s.type })
+      if (counter <= maxGnum) {
+        globalInfo.set(counter, { name: s.name, code: cat.code, tipo: s.type })
+      }
+      counter++
     }
   }
   return { globalInfo, sidToGlobal }

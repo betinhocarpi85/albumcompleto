@@ -27,7 +27,9 @@ export default function BancasPage() {
   const [filtroUF,   setFiltroUF]   = useState('')
   const [busca,      setBusca]      = useState('')
   const [focusBanca, setFocusBanca] = useState<{ lat: number; lng: number; slug: string } | null>(null)
+  const [pagina, setPagina] = useState(0)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const POR_PAGINA = 10
 
   useEffect(() => {
     fetch('/api/bancas')
@@ -36,17 +38,22 @@ export default function BancasPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  const filtradas = useMemo(() => bancas.filter(b => {
-    if (filtroUF && b.uf !== filtroUF) return false
-    if (busca) {
-      const q = busca.toLowerCase()
-      return b.nome.toLowerCase().includes(q) || b.cidade.toLowerCase().includes(q) || (b.bairro ?? '').toLowerCase().includes(q)
-    }
-    return true
-  }), [bancas, filtroUF, busca])
+  const filtradas = useMemo(() => {
+    setPagina(0)
+    return bancas.filter(b => {
+      if (filtroUF && b.uf !== filtroUF) return false
+      if (busca) {
+        const q = busca.toLowerCase()
+        return b.nome.toLowerCase().includes(q) || b.cidade.toLowerCase().includes(q) || (b.bairro ?? '').toLowerCase().includes(q)
+      }
+      return true
+    })
+  }, [bancas, filtroUF, busca])
 
-  const destaques = filtradas.filter(b => b.destaque)
-  const demais    = filtradas.filter(b => !b.destaque)
+  const destaques   = filtradas.filter(b => b.destaque)
+  const demais      = filtradas.filter(b => !b.destaque)
+  const totalPag    = Math.ceil(demais.length / POR_PAGINA)
+  const demaisPag   = demais.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA)
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 pb-24 md:pb-8">
@@ -55,19 +62,21 @@ export default function BancasPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">🗺️</span>
-          <h1 className="text-2xl font-bold text-slate-800">Pontos de Troca</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Bancas de Jornal</h1>
         </div>
         <p className="text-sm text-slate-500">
-          Bancas parceiras onde você pode comprar, vender e trocar figurinhas com segurança.
+          Bancas de jornal perto de você — ótimos pontos para se encontrar e trocar figurinhas com segurança.
         </p>
       </div>
 
-      {/* Banner parceria */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-500 rounded-2xl p-4 mb-6 text-white flex items-center gap-3">
-        <span className="text-3xl">🏆</span>
+      {/* Banner informativo */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-6 flex items-start gap-3">
+        <span className="text-2xl shrink-0">📰</span>
         <div>
-          <p className="font-bold text-sm">Pontos Oficiais Completando</p>
-          <p className="text-xs text-green-100">Locais verificados e seguros para realizar suas trocas presencialmente</p>
+          <p className="font-bold text-sm text-slate-700">Onde se encontrar para trocar</p>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+            Indicamos bancas de jornal como ponto de encontro seguro e público para suas trocas presenciais. Muitas também vendem figurinhas e pacotinhos.
+          </p>
         </div>
       </div>
 
@@ -101,7 +110,7 @@ export default function BancasPage() {
         <div className="text-center py-20">
           <p className="text-4xl mb-3">🔍</p>
           <p className="text-slate-500 font-medium">Nenhuma banca cadastrada ainda</p>
-          <p className="text-slate-400 text-sm mt-1">Em breve teremos parceiros na sua cidade!</p>
+          <p className="text-slate-400 text-sm mt-1">Conhece uma banca de jornal que vende figurinhas? Cadastre ela!</p>
         </div>
       ) : (
         <>
@@ -115,7 +124,7 @@ export default function BancasPage() {
           {/* Destaques */}
           {destaques.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">⭐ Em destaque</h2>
+              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">⭐ Parceiros oficiais</h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {destaques.map(b => (
                   <BancaCard key={b.id} banca={b} destaque onVerNoMapa={b.lat && b.lng ? () => {
@@ -131,10 +140,10 @@ export default function BancasPage() {
           {/* Lista */}
           <div>
             {destaques.length > 0 && demais.length > 0 && (
-              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Todas as bancas</h2>
+              <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Todas as bancas de jornal</h2>
             )}
             <div className="grid sm:grid-cols-2 gap-3">
-              {demais.map(b => (
+              {demaisPag.map(b => (
                 <BancaCard key={b.id} banca={b} onVerNoMapa={b.lat && b.lng ? () => {
                   setView('mapa')
                   setFocusBanca({ lat: b.lat!, lng: b.lng!, slug: b.slug })
@@ -142,6 +151,28 @@ export default function BancasPage() {
                 } : undefined} />
               ))}
             </div>
+
+            {/* Paginação */}
+            {totalPag > 1 && (
+              <div className="flex items-center justify-center gap-1.5 mt-5">
+                <button
+                  onClick={() => setPagina(p => Math.max(0, p - 1))}
+                  disabled={pagina === 0}
+                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-30 hover:bg-slate-50 transition-colors"
+                >‹</button>
+                {Array.from({ length: totalPag }, (_, i) => (
+                  <button key={i} onClick={() => setPagina(i)}
+                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${pagina === i ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPagina(p => Math.min(totalPag - 1, p + 1))}
+                  disabled={pagina === totalPag - 1}
+                  className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-30 hover:bg-slate-50 transition-colors"
+                >›</button>
+              </div>
+            )}
           </div>
 
           {filtradas.length === 0 && (
@@ -152,18 +183,18 @@ export default function BancasPage() {
         </>
       )}
 
-      {/* CTA cadastrar banca */}
-      <div className="mt-10 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-2xl p-5 text-center">
-        <p className="text-2xl mb-2">🏪</p>
-        <p className="font-bold text-slate-700 mb-1">Tem uma banca de figurinhas?</p>
+      {/* CTA sugerir */}
+      <div className="mt-10 bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-100 rounded-2xl p-5 text-center">
+        <p className="text-2xl mb-2">📰</p>
+        <p className="font-bold text-slate-700 mb-1">Conhece uma banca de jornal que vende figurinhas?</p>
         <p className="text-sm text-slate-500 mb-4">
-          Cadastre-se gratuitamente, apareça no mapa e receba colecionadores da sua região!
+          Indique pelo app — nossa equipe analisa e coloca no mapa em até 24h.
         </p>
         <Link
-          href="/minha-banca"
+          href="/sugerir-banca"
           className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow-lg shadow-green-500/20"
         >
-          📍 Cadastrar minha banca grátis
+          📍 Sugerir uma banca
         </Link>
       </div>
     </div>
@@ -178,7 +209,7 @@ function BancaCard({ banca: b, destaque, onVerNoMapa }: { banca: Banca; destaque
         <div className="min-w-0">
           {destaque && (
             <span className="inline-block bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
-              ⭐ DESTAQUE
+              ⭐ PARCEIRO OFICIAL
             </span>
           )}
           <p className="font-bold text-slate-800 text-sm leading-tight truncate">{b.nome}</p>
@@ -192,10 +223,8 @@ function BancaCard({ banca: b, destaque, onVerNoMapa }: { banca: Banca; destaque
       {b.horario && <p className="text-xs text-slate-400 mb-2">🕐 {b.horario}</p>}
 
       {/* Trocas */}
-      {b.total_trocas > 0 ? (
+      {b.total_trocas > 0 && (
         <p className="text-xs text-green-600 font-medium mb-3">🔁 {b.total_trocas} trocas realizadas</p>
-      ) : (
-        <p className="text-xs text-slate-300 mb-3">Novo parceiro</p>
       )}
 
       {/* Botões */}

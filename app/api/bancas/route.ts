@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminAuth } from '@/lib/admin-auth'
+import { processMapsUrl } from '@/lib/maps-utils'
 
 // GET — lista pública de bancas ativas
 export async function GET(request: NextRequest) {
@@ -27,41 +28,37 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
   const sb   = createAdminClient()
 
-  // Auto-geocode via Nominatim se lat/lng não fornecidos
-  let { lat, lng } = body
-  if ((!lat || !lng) && body.endereco && body.cidade) {
-    try {
-      const q   = encodeURIComponent(`${body.endereco}, ${body.cidade}, ${body.uf}, Brasil`)
-      const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-        headers: { 'User-Agent': 'completando.com.br/1.0' }
-      }).then(r => r.json())
-      if (geo?.[0]) { lat = parseFloat(geo[0].lat); lng = parseFloat(geo[0].lon) }
-    } catch { /* usa sem coords */ }
-  }
+  if (!body.nome?.trim())     return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
+  if (!body.maps_url?.trim()) return NextResponse.json({ error: 'Link do Google Maps é obrigatório.' }, { status: 400 })
+
+  const geo = await processMapsUrl(body.maps_url.trim())
+  if (!geo) return NextResponse.json({ error: 'Não foi possível extrair coordenadas deste link.' }, { status: 422 })
 
   // Gera slug a partir do nome
-  const slug = body.slug || body.nome
+  const slug = body.nome
     .toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
   const { data, error } = await sb.from('bancas').insert({
-    slug, lat, lng,
-    nome:        body.nome,
+    slug,
+    nome:        body.nome.trim(),
     responsavel: body.responsavel ?? null,
     telefone:    body.telefone    ?? null,
     email:       body.email       ?? null,
-    endereco:    body.endereco,
-    bairro:      body.bairro      ?? null,
-    cidade:      body.cidade,
-    uf:          body.uf,
-    cep:         body.cep         ?? null,
+    endereco:    geo.endereco,
+    bairro:      geo.bairro,
+    cidade:      geo.cidade,
+    uf:          geo.uf,
+    cep:         geo.cep,
+    lat:         geo.lat,
+    lng:         geo.lng,
     horario:     body.horario     ?? null,
-    foto_url:    body.foto_url    ?? null,
     descricao:   body.descricao   ?? null,
     ativa:       body.ativa       ?? true,
     destaque:    body.destaque    ?? false,
+    total_trocas: 0,
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

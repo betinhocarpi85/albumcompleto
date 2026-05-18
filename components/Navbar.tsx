@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { getSession, dbGetProfile, dbGetPlano } from '@/lib/db'
 
 function iniciais(nome?: string) {
   if (!nome) return '?'
@@ -20,7 +19,9 @@ export default function Navbar() {
   const [isPro, setIsPro]             = useState(false)
 
   useEffect(() => {
-    getSession().then(session => {
+    // Importação lazy — mantém Supabase fora do bundle inicial (reduz TBT)
+    import('@/lib/db').then(async ({ getSession, dbGetProfile, dbGetPlano }) => {
+      const session = await getSession()
       setLogado(!!session)
       if (session) {
         dbGetProfile().then(p => setNomeUsuario(p.nome ?? ''))

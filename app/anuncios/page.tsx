@@ -8,6 +8,11 @@ import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
+
+// totalStickers por álbum para excluir categorias extras da tela de anúncios
+const ALBUM_MAX_GNUMS: Record<string, number> = Object.fromEntries(
+  ALBUMS_REGISTRY.map(a => [a.id, a.totalStickers])
+)
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
@@ -44,17 +49,21 @@ export interface StickerFlat {
 }
 
 function buildAlbumData(album: Album) {
-  const gNums = buildGlobalNumberMap(album)
+  const gNums  = buildGlobalNumberMap(album)
+  const maxGnum = ALBUM_MAX_GNUMS[album.id] ?? Infinity
+  // Filtra apenas stickers oficiais (gnums ≤ totalStickers) — exclui XGOLD/XSILVER/etc.
   const flat: StickerFlat[] = album.categories.flatMap(cat =>
-    cat.stickers.map(s => ({
-      sid:     stickerId(cat.code, s.number),
-      gNum:    gNums.get(stickerId(cat.code, s.number)) ?? 0,
-      nome:    s.name,
-      catName: cat.name,
-      catId:   cat.id,
-      catFlag: cat.flag ?? '📌',
-      tipo:    s.type as StickerType,
-    }))
+    cat.stickers
+      .map(s => ({
+        sid:     stickerId(cat.code, s.number),
+        gNum:    gNums.get(stickerId(cat.code, s.number)) ?? 0,
+        nome:    s.name,
+        catName: cat.name,
+        catId:   cat.id,
+        catFlag: cat.flag ?? '📌',
+        tipo:    s.type as StickerType,
+      }))
+      .filter(s => s.gNum > 0 && s.gNum <= maxGnum)
   )
   const porTipo: Record<StickerType, { catId: string; catName: string; catFlag: string; stickers: StickerFlat[] }[]> = {
     normal: [], escudo: [], brilhante: [], especial: [],

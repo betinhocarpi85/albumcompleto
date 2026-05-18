@@ -13,7 +13,13 @@ import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type Aba    = 'recebidas' | 'enviadas'
 type Filtro = 'todos' | 'troca' | 'compra'
-type Proposta = PropostaComPerfil & { telefone?: string; avaliado?: boolean }
+
+interface BancaProxima {
+  slug: string; nome: string; endereco: string; cidade: string; uf: string
+  cep: string | null; distanciaKm: number
+}
+
+type Proposta = PropostaComPerfil & { telefone?: string; avaliado?: boolean; bancaProxima?: BancaProxima | null }
 
 const STATUS_CONFIG = {
   pendente: { label: 'Aguardando', bg: 'bg-amber-100',  text: 'text-amber-700'  },
@@ -46,6 +52,43 @@ function StickerPill({ num }: { num: number }) {
     <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg border-2 border-slate-200 bg-slate-50 text-[11px] font-black text-slate-600 flex-shrink-0">
       {num}
     </span>
+  )
+}
+
+function BancaCard({ banca }: { banca: BancaProxima }) {
+  const mapsUrl = banca.cep?.startsWith('http')
+    ? banca.cep
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${banca.endereco}, ${banca.cidade}, ${banca.uf}`)}`
+  return (
+    <div className="border border-blue-200 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50">
+        <span className="text-base">🗺️</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-blue-800">Banca sugerida para o encontro</p>
+          <p className="text-xs text-blue-600 font-medium truncate">{banca.nome}</p>
+        </div>
+        <span className="text-xs font-bold text-blue-500 shrink-0">{banca.distanciaKm} km</span>
+      </div>
+      <div className="px-4 py-2.5 bg-blue-50 border-t border-blue-100 space-y-2">
+        <p className="text-xs text-blue-700">📍 {banca.endereco} — {banca.cidade}/{banca.uf}</p>
+        <div className="flex gap-2">
+          <a
+            href={`/bancas/${banca.slug}`}
+            className="flex-1 text-center text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white py-1.5 rounded-lg transition-colors"
+          >
+            Ver banca
+          </a>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center text-xs font-bold bg-white border border-blue-300 hover:bg-blue-50 text-blue-600 py-1.5 rounded-lg transition-colors"
+          >
+            📍 Abrir no Maps
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -96,6 +139,17 @@ function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
 
 type AvaliacaoModal = { proposta: PropostaComPerfil; nota: number; comentario: string }
 
+async function fetchBancaProxima(): Promise<BancaProxima | null> {
+  try {
+    const res = await fetch('/api/bancas/nearest', { credentials: 'include' })
+    if (!res.ok) return null
+    const { banca } = await res.json()
+    return banca ?? null
+  } catch {
+    return null
+  }
+}
+
 export default function PropostasPage() {
   const [aba, setAba]             = useState<Aba>('recebidas')
   const [filtro, setFiltro]       = useState<Filtro>('todos')
@@ -118,22 +172,27 @@ export default function PropostasPage() {
       ])
       setAdulto(!!prof.maior18)
 
-      // Para propostas aceitas, carrega telefone e status de avaliação
+      // Para propostas aceitas, carrega telefone, avaliação e banca mais próxima
       const aceitas = [...rec, ...env].filter(p => p.status === 'aceita')
-      const extras = aceitas.length > 0
-        ? await Promise.all(aceitas.map(async p => {
-            const [phone, avaliado] = await Promise.all([
-              dbGetPhoneForProposta(p.id),
-              dbJaAvaliou(p.id),
-            ])
-            return { id: p.id, telefone: phone ?? undefined, avaliado }
-          }))
-        : []
+      const [extras, bancaProxima] = await Promise.all([
+        aceitas.length > 0
+          ? Promise.all(aceitas.map(async p => {
+              const [phone, avaliado] = await Promise.all([
+                dbGetPhoneForProposta(p.id),
+                dbJaAvaliou(p.id),
+              ])
+              return { id: p.id, telefone: phone ?? undefined, avaliado }
+            }))
+          : Promise.resolve([]),
+        aceitas.length > 0 ? fetchBancaProxima() : Promise.resolve(null),
+      ])
 
       const extrasMap = new Map(extras.map(e => [e.id, e]))
       const enrich = (p: PropostaComPerfil): Proposta => {
         const ex = extrasMap.get(p.id)
-        return ex ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado } : p
+        return ex
+          ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado, bancaProxima }
+          : p
       }
 
       setRecebidas(rec.map(enrich))
@@ -187,12 +246,14 @@ export default function PropostasPage() {
         body: JSON.stringify({ status: novoStatus }),
       })
       if (acao === 'aceitar') {
-        const phone = await dbGetPhoneForProposta(id)
-        if (phone) {
-          const addPhone = (p: Proposta) => p.id === id ? { ...p, telefone: phone } : p
-          setRecebidas(prev => prev.map(addPhone))
-          setEnviadas(prev => prev.map(addPhone))
-        }
+        const [phone, bancaProxima] = await Promise.all([
+          dbGetPhoneForProposta(id),
+          fetchBancaProxima(),
+        ])
+        const addExtras = (p: Proposta) =>
+          p.id === id ? { ...p, telefone: phone ?? p.telefone, bancaProxima } : p
+        setRecebidas(prev => prev.map(addExtras))
+        setEnviadas(prev => prev.map(addExtras))
       }
     } finally {
       setLoading(false)
@@ -364,7 +425,7 @@ export default function PropostasPage() {
                   </div>
                 )}
 
-                {/* Aceita — revelar telefone + avaliar */}
+                {/* Aceita — revelar telefone + banca + avaliar */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
@@ -385,6 +446,9 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
+                    {p.bancaProxima && (
+                      <BancaCard banca={p.bancaProxima} />
+                    )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
@@ -481,7 +545,7 @@ export default function PropostasPage() {
                   </div>
                 </div>
 
-                {/* Aceita — revelar telefone + avaliar */}
+                {/* Aceita — revelar telefone + banca + avaliar */}
                 {p.status === 'aceita' && (
                   <div className="px-3 pb-3 space-y-2">
                     <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
@@ -500,6 +564,9 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
+                    {p.bancaProxima && (
+                      <BancaCard banca={p.bancaProxima} />
+                    )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (

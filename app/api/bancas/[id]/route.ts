@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminAuth } from '@/lib/admin-auth'
+import { processMapsUrl } from '@/lib/maps-utils'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await isAdminAuth()) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -9,10 +10,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body   = await request.json()
   const sb     = createAdminClient()
 
-  const { error } = await sb.from('bancas').update({
-    ...body,
-    updated_at: new Date().toISOString(),
-  }).eq('id', id)
+  // Se vier maps_url, processa e troca pelos campos corretos
+  const { maps_url, ...rest } = body
+  const update: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() }
+
+  if (maps_url?.trim()) {
+    const geo = await processMapsUrl(maps_url.trim())
+    if (!geo) return NextResponse.json({ error: 'Não foi possível extrair coordenadas deste link.' }, { status: 422 })
+    Object.assign(update, geo)
+  }
+
+  const { error } = await sb.from('bancas').update(update).eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

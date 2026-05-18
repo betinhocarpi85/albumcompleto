@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { preconnect, prefetchDNS } from 'react-dom'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -73,6 +74,12 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Preconnect para Supabase — inicia TCP/TLS antes do JS carregar (React 19 resource API)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (supabaseUrl) {
+    preconnect(supabaseUrl)
+    prefetchDNS(supabaseUrl)
+  }
   return (
     <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full bg-slate-50">

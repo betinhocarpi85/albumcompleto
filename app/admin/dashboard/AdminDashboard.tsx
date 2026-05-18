@@ -362,7 +362,7 @@ export default function AdminDashboard({
   } | null>(null)
   const [bancaData, setBancaData]         = useState({
     nome: '', responsavel: '', telefone: '', email: '', endereco: '',
-    bairro: '', cidade: '', uf: 'SP', cep: '', horario: '', descricao: '',
+    bairro: '', cidade: '', uf: 'SP', maps_url: '', horario: '', descricao: '',
     ativa: true, destaque: false,
   })
 
@@ -377,21 +377,32 @@ export default function AdminDashboard({
   useEffect(() => { if (tab === 'bancas') fetchBancas() }, [tab, fetchBancas])
 
   function resetBancaForm() {
-    setBancaData({ nome:'', responsavel:'', telefone:'', email:'', endereco:'', bairro:'', cidade:'', uf:'SP', cep:'', horario:'', descricao:'', ativa:true, destaque:false })
+    setBancaData({ nome:'', responsavel:'', telefone:'', email:'', endereco:'', bairro:'', cidade:'', uf:'SP', maps_url:'', horario:'', descricao:'', ativa:true, destaque:false })
     setBancaEditId(null)
     setBancaForm(false)
   }
 
   async function saveBanca() {
-    if (!bancaData.nome || !bancaData.endereco || !bancaData.cidade) {
-      showToast('Nome, endereço e cidade são obrigatórios', 'err'); return
-    }
+    if (!bancaData.nome?.trim()) { showToast('Nome é obrigatório', 'err'); return }
+    if (!bancaData.maps_url?.trim()) { showToast('Link do Google Maps é obrigatório', 'err'); return }
     setBancaSaving(true)
     const url    = bancaEditId ? `/api/bancas/${bancaEditId}` : '/api/bancas'
     const method = bancaEditId ? 'PATCH' : 'POST'
-    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bancaData) })
+    const payload = {
+      nome:        bancaData.nome.trim(),
+      maps_url:    bancaData.maps_url.trim(),
+      responsavel: bancaData.responsavel || undefined,
+      telefone:    bancaData.telefone    || undefined,
+      email:       bancaData.email       || undefined,
+      horario:     bancaData.horario     || undefined,
+      descricao:   bancaData.descricao   || undefined,
+      ativa:       bancaData.ativa,
+      destaque:    bancaData.destaque,
+    }
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    const d = await r.json()
     setBancaSaving(false)
-    if (!r.ok) { showToast('Erro ao salvar banca', 'err'); return }
+    if (!r.ok) { showToast(d.error ?? 'Erro ao salvar banca', 'err'); return }
     showToast(bancaEditId ? 'Banca atualizada!' : 'Banca criada!', 'ok')
     resetBancaForm()
     fetchBancas()
@@ -461,7 +472,7 @@ export default function AdminDashboard({
     setBancaData({
       nome: b.nome, responsavel: b.responsavel ?? '', telefone: b.telefone ?? '',
       email: b.email ?? '', endereco: b.endereco, bairro: b.bairro ?? '',
-      cidade: b.cidade, uf: b.uf, cep: b.cep ?? '', horario: b.horario ?? '',
+      cidade: b.cidade, uf: b.uf, maps_url: b.cep ?? '', horario: b.horario ?? '',
       descricao: b.descricao ?? '', ativa: b.ativa, destaque: b.destaque,
     })
     setBancaEditId(b.id)
@@ -1478,10 +1489,10 @@ export default function AdminDashboard({
             {/* Header */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <h2 className="text-lg font-bold text-white">📍 Bancas Parceiras</h2>
+                <h2 className="text-lg font-bold text-white">📍 Bancas de Jornal</h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {bancas.filter(b => !b.lat || !b.lng).length > 0
-                    ? `⚠️ ${bancas.filter(b => !b.lat || !b.lng).length} sem coordenadas`
+                  {bancas.filter(b => !b.lat || !b.lng && b.ativa).length > 0
+                    ? `⚠️ ${bancas.filter(b => !b.lat || !b.lng && b.ativa).length} sem coordenadas`
                     : 'Todos os pinos no mapa ✅'}
                 </p>
               </div>
@@ -1554,6 +1565,49 @@ export default function AdminDashboard({
               </div>
             )}
 
+            {/* ── Sugestões pendentes ────────────────────────────────────── */}
+            {(() => {
+              const pendentes = bancas.filter(b => !b.ativa)
+              if (pendentes.length === 0) return null
+              return (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 space-y-3">
+                  <p className="text-sm font-bold text-yellow-400">
+                    ⏳ {pendentes.length} sugestão{pendentes.length !== 1 ? 'ões' : ''} pendente{pendentes.length !== 1 ? 's' : ''}
+                  </p>
+                  {pendentes.map(b => (
+                    <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-white text-sm">{b.nome}</p>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{b.endereco}{b.bairro ? `, ${b.bairro}` : ''} — {b.cidade}/{b.uf}</p>
+                        {b.horario  && <p className="text-xs text-slate-500 mt-0.5">🕐 {b.horario}</p>}
+                        {b.telefone && <p className="text-xs text-slate-500">📱 {b.telefone}</p>}
+                        {b.cep && (
+                          <a href={b.cep} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block">
+                            📍 Ver no Google Maps ↗
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button
+                          onClick={async () => { await fetch(`/api/bancas/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativa: true }) }); showToast('Banca aprovada!', 'ok'); fetchBancas() }}
+                          className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-bold transition-colors"
+                        >
+                          ✅ Aprovar
+                        </button>
+                        <button
+                          onClick={() => deleteBanca(b.id)}
+                          className="px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-bold transition-colors"
+                        >
+                          ❌ Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
             {/* Formulário */}
             {bancaForm && (
               <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
@@ -1561,15 +1615,12 @@ export default function AdminDashboard({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {([
-                    { key: 'nome',        label: 'Nome *',        placeholder: 'Banca do João' },
-                    { key: 'responsavel', label: 'Responsável',    placeholder: 'João Silva' },
-                    { key: 'telefone',    label: 'WhatsApp',       placeholder: '(11) 99999-9999' },
-                    { key: 'email',       label: 'E-mail',         placeholder: 'joao@email.com' },
-                    { key: 'endereco',    label: 'Endereço *',     placeholder: 'Rua XV de Novembro, 120' },
-                    { key: 'bairro',      label: 'Bairro',         placeholder: 'Centro' },
-                    { key: 'cidade',      label: 'Cidade *',       placeholder: 'São Paulo' },
-                    { key: 'cep',         label: 'CEP',            placeholder: '01310-100' },
-                    { key: 'horario',     label: 'Horário',        placeholder: 'Seg-Sex 7h-20h, Sab 7h-14h' },
+                    { key: 'nome',        label: 'Nome *',              placeholder: 'Banca do João' },
+                    { key: 'maps_url',    label: 'Link Google Maps *',  placeholder: 'https://maps.app.goo.gl/...' },
+                    { key: 'responsavel', label: 'Responsável',          placeholder: 'João Silva' },
+                    { key: 'telefone',    label: 'WhatsApp',             placeholder: '(11) 99999-9999' },
+                    { key: 'email',       label: 'E-mail',               placeholder: 'joao@email.com' },
+                    { key: 'horario',     label: 'Horário',              placeholder: 'Seg-Sex 7h-20h, Sab 7h-14h' },
                   ] as { key: keyof typeof bancaData; label: string; placeholder: string }[]).map(f => (
                     <div key={f.key}>
                       <label className="text-xs text-slate-400 mb-1 block">{f.label}</label>
@@ -1620,12 +1671,12 @@ export default function AdminDashboard({
                       >
                         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${bancaData[f] ? 'left-5' : 'left-0.5'}`} />
                       </button>
-                      <span className="text-sm text-slate-300 capitalize">{f === 'ativa' ? 'Ativa' : '⭐ Destaque'}</span>
+                      <span className="text-sm text-slate-300 capitalize">{f === 'ativa' ? 'Ativa' : '⭐ Parceiro Oficial'}</span>
                     </label>
                   ))}
                 </div>
 
-                <p className="text-xs text-slate-500">📍 Coordenadas geradas automaticamente pelo endereço ao salvar</p>
+                <p className="text-xs text-slate-500">📍 Endereço e coordenadas extraídos automaticamente do link do Google Maps</p>
 
                 <div className="flex gap-2 pt-1">
                   <button
@@ -1645,24 +1696,24 @@ export default function AdminDashboard({
               </div>
             )}
 
-            {/* Lista */}
+            {/* Lista (apenas ativas) */}
             {bancasLoading ? (
               <div className="text-center py-10 text-slate-400 text-sm">Carregando bancas...</div>
-            ) : bancas.length === 0 ? (
+            ) : bancas.filter(b => b.ativa).length === 0 ? (
               <div className="text-center py-14 text-slate-500 text-sm">
-                Nenhuma banca cadastrada ainda.<br />
-                <span className="text-slate-600">Clique em "+ Nova Banca" para adicionar.</span>
+                Nenhuma banca ativa ainda.<br />
+                <span className="text-slate-600">Aprove sugestões acima ou clique em "+ Nova Banca".</span>
               </div>
             ) : (
               <div className="space-y-3">
-                {bancas.map(b => (
+                {bancas.filter(b => b.ativa).map(b => (
                   <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="font-bold text-white text-sm">{b.nome}</span>
                           <span className="text-[10px] font-bold bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{b.uf}</span>
-                          {b.destaque && <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">⭐ Destaque</span>}
+                          {b.destaque && <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">⭐ Parceiro Oficial</span>}
                           {!b.ativa && <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">Inativa</span>}
                         </div>
                         <p className="text-xs text-slate-400 truncate">{b.endereco}{b.bairro ? `, ${b.bairro}` : ''} — {b.cidade}</p>
@@ -1682,7 +1733,7 @@ export default function AdminDashboard({
                         </button>
                         <button onClick={() => toggleBanca(b, 'destaque')}
                           className="px-3 py-1 rounded-lg bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 text-xs font-medium transition-colors">
-                          {b.destaque ? '★ Remover' : '★ Destacar'}
+                          {b.destaque ? '⭐ Remover parceiro' : '⭐ Parceiro oficial'}
                         </button>
                         <button onClick={() => deleteBanca(b.id)}
                           className="px-3 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-medium transition-colors">

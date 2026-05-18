@@ -52,7 +52,7 @@ export default function BancaPerfilPage() {
             '@context': 'https://schema.org',
             '@type':    'LocalBusiness',
             name:        encontrada.nome,
-            description: encontrada.descricao ?? `Banca de figurinhas parceira Completando em ${encontrada.cidade}`,
+            description: encontrada.descricao ?? `Banca de jornal em ${encontrada.cidade} — ponto de encontro para troca de figurinhas`,
             url:         `${appUrl}/bancas/${encontrada.slug}`,
             telephone:   encontrada.telefone ?? undefined,
             email:       encontrada.email    ?? undefined,
@@ -108,12 +108,15 @@ export default function BancaPerfilPage() {
   )
 
   const whatsapp = banca.telefone
-    ? `https://wa.me/55${banca.telefone.replace(/\D/g, '')}?text=Olá! Vi o perfil da ${encodeURIComponent(banca.nome)} no Completando e gostaria de saber mais sobre figurinhas.`
+    ? `https://wa.me/55${banca.telefone.replace(/\D/g, '')}?text=Olá! Vi a ${encodeURIComponent(banca.nome)} no Completando e gostaria de saber mais sobre figurinhas.`
     : null
 
+  // Prioridade: lat/lng exatos > link original guardado no cep > busca por endereço
   const mapsUrl = banca.lat && banca.lng
     ? `https://www.google.com/maps/search/?api=1&query=${banca.lat},${banca.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${banca.endereco}, ${banca.cidade}, ${banca.uf}`)}`
+    : banca.cep?.startsWith('http')
+      ? banca.cep
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${banca.endereco}, ${banca.cidade}, ${banca.uf}`)}`
 
   const servicos = (banca.servicos ?? []).filter(s => SERVICOS_LABELS[s])
 
@@ -133,7 +136,7 @@ export default function BancaPerfilPage() {
           <div className="flex-1 min-w-0">
             {banca.destaque && (
               <span className="inline-block bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-2">
-                ⭐ PONTO OFICIAL COMPLETANDO
+                ⭐ PARCEIRO OFICIAL
               </span>
             )}
             <h1 className={`text-xl font-bold leading-tight ${banca.destaque ? 'text-white' : 'text-slate-800'}`}>{banca.nome}</h1>
@@ -204,7 +207,7 @@ export default function BancaPerfilPage() {
           <span className="text-lg mt-0.5 shrink-0">📍</span>
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-700">{banca.endereco}{banca.bairro ? `, ${banca.bairro}` : ''}</p>
-            <p className="text-xs text-slate-400">{banca.cidade} — {banca.uf}{banca.cep ? ` · CEP ${banca.cep}` : ''}</p>
+            <p className="text-xs text-slate-400">{banca.cidade} — {banca.uf}</p>
             <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
               className="text-xs text-blue-500 hover:text-blue-600 font-medium mt-1 inline-block">
               Abrir no Google Maps →
@@ -271,22 +274,22 @@ export default function BancaPerfilPage() {
 
       {/* Informações legais / segurança */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4">
-        <p className="text-xs font-bold text-slate-600 mb-2">🛡️ Segurança e transparência</p>
+        <p className="text-xs font-bold text-slate-600 mb-2">🛡️ Dicas para suas trocas</p>
         <ul className="text-xs text-slate-500 space-y-1.5 leading-relaxed">
-          <li>• Esta banca é um ponto parceiro cadastrado e verificado pelo Completando.</li>
-          <li>• Sempre realize trocas pessoalmente em local público e seguro.</li>
-          <li>• Verifique as figurinhas antes de concluir qualquer troca ou venda.</li>
-          <li>• Problemas com esta banca? <a href="mailto:suporte@completando.com.br" className="text-blue-500 hover:underline">Fale com nosso suporte.</a></li>
+          <li>• Esta banca de jornal é indicada como ponto de encontro público e seguro para trocas.</li>
+          <li>• O Completando não representa nem é responsável por esta banca — é apenas uma indicação de local.</li>
+          <li>• Sempre confira as figurinhas antes de concluir qualquer troca ou venda.</li>
+          <li>• Quer reportar um problema com esta banca? <a href="mailto:suporte@completando.com.br" className="text-blue-500 hover:underline">Fale com a gente.</a></li>
         </ul>
       </div>
 
-      {/* Cadastre sua banca */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-2xl p-4 text-center">
-        <p className="text-sm font-bold text-slate-700 mb-1">🏪 Tem uma banca de figurinhas?</p>
-        <p className="text-xs text-slate-500 mb-3">Cadastre-se gratuitamente e apareça no mapa para milhares de colecionadores.</p>
-        <Link href="/minha-banca"
+      {/* CTA sugerir */}
+      <div className="bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-100 rounded-2xl p-4 text-center">
+        <p className="text-sm font-bold text-slate-700 mb-1">📰 Conhece outra banca de jornal?</p>
+        <p className="text-xs text-slate-500 mb-3">Indique pelo app e nossa equipe coloca no mapa.</p>
+        <Link href="/sugerir-banca"
           className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors">
-          Cadastrar minha banca grátis
+          Sugerir uma banca
         </Link>
       </div>
 

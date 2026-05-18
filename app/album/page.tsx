@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { albumCopa2026, stickerId, type Album } from '@/data/album-copa-2026'
+import { albumCopa2026, buildGlobalNumberMap, stickerId, type Album } from '@/data/album-copa-2026'
 import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
 import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import { type AlbumId } from '@/lib/store'
@@ -16,6 +16,19 @@ const ALBUM_DATA: Record<string, Album> = {
   'copa-2026':              albumCopa2026,
   'brasileirao-masc-2026': albumBrasileiraoMasc2026,
   'brasileirao-fem-2026':  albumBrasileiraoFem2026,
+}
+
+// Sids oficiais por álbum (gnums ≤ totalStickers do registry)
+// Exclui categorias extra (XGOLD, XSILVER, etc.) que vão além do álbum oficial
+function buildOfficialSids(album: Album, maxGnum: number): Set<string> {
+  const gnumMap = buildGlobalNumberMap(album)
+  return new Set([...gnumMap.entries()].filter(([, g]) => g <= maxGnum).map(([sid]) => sid))
+}
+
+const OFFICIAL_SIDS: Record<string, Set<string>> = {
+  'copa-2026':              buildOfficialSids(albumCopa2026,              980),
+  'brasileirao-masc-2026':  buildOfficialSids(albumBrasileiraoMasc2026,   685),
+  'brasileirao-fem-2026':   buildOfficialSids(albumBrasileiraoFem2026,    480),
 }
 
 // ── Tela de escolha inicial ───────────────────────────────────────────────────
@@ -203,9 +216,11 @@ function AlbumPageInner() {
 
   const albumMeta     = ALBUMS_REGISTRY.find(a => a.id === albumId)!
   const currentAlbum  = ALBUM_DATA[albumId] ?? albumCopa2026
-  // Usa o total real de stickers nos dados (mais preciso que o declarado)
-  const total         = currentAlbum.categories.reduce((sum, cat) => sum + cat.stickers.length, 0)
-  const nColadas      = coladas.size
+  // Total oficial do álbum (ignora categorias extra como XGOLD/XSILVER/etc.)
+  const total         = albumMeta.totalStickers
+  // Conta apenas coladas de stickers oficiais para o progresso
+  const officialSids  = OFFICIAL_SIDS[albumId] ?? new Set<string>()
+  const nColadas      = [...coladas].filter(sid => officialSids.has(sid)).length
   const nFaltando = total - nColadas
   const progress  = Math.round((nColadas / total) * 100)
 

@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { getSession } from '@/lib/db'
 
 export default function HomeCTA() {
   const [logado,         setLogado]         = useState(false)
@@ -10,7 +9,10 @@ export default function HomeCTA() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
 
   useEffect(() => {
-    getSession().catch(() => null).then(s => { if (s) setLogado(true) })
+    // Importação lazy — mantém Supabase fora do bundle inicial
+    import('@/lib/db').then(({ getSession }) => {
+      getSession().catch(() => null).then(s => { if (s) setLogado(true) })
+    })
 
     // Esconde o botão se já está instalado
     if (

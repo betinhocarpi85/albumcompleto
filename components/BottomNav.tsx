@@ -3,8 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
-import { getSession, getUserId } from '@/lib/db'
-import { createClient } from '@/lib/supabase/client'
 
 export default function BottomNav() {
   const path = usePathname()
@@ -20,28 +18,42 @@ export default function BottomNav() {
   }
 
   useEffect(() => {
-    getSession().then(s => setLogado(!!s))
+    // Importação lazy — mantém Supabase fora do bundle inicial (reduz TBT)
+    import('@/lib/db').then(({ getSession }) => {
+      getSession().then(s => setLogado(!!s))
+    })
   }, [])
 
   // Realtime: escuta novas propostas recebidas
   useEffect(() => {
     if (!logado) return
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let channel: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let sbClient: any
+    let mounted = true
 
-    getUserId().then(uid => {
-      if (!uid) return
-      const sb = createClient()
+    Promise.all([
+      import('@/lib/db'),
+      import('@/lib/supabase/client'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ]).then(async ([{ getUserId }, { createClient }]: [any, any]) => {
+      if (!mounted) return
+      const uid = await getUserId()
+      if (!uid || !mounted) return
+
+      sbClient = createClient()
 
       // Conta propostas pendentes iniciais
-      sb.from('propostas')
+      sbClient.from('propostas')
         .select('id', { count: 'exact', head: true })
         .eq('para_user_id', uid)
         .eq('status', 'pendente')
-        .then(({ count }) => setNotifCount(count ?? 0))
+        .then(({ count }: { count: number | null }) => setNotifCount(count ?? 0))
 
       // Realtime: nova proposta recebida
-      channel = sb
+      channel = sbClient
         .channel(`notif-propostas-${uid}`)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .on('postgres_changes' as any, {
@@ -59,7 +71,8 @@ export default function BottomNav() {
     })
 
     return () => {
-      if (channel) createClient().removeChannel(channel)
+      mounted = false
+      if (channel && sbClient) sbClient.removeChannel(channel)
     }
   }, [logado])
 

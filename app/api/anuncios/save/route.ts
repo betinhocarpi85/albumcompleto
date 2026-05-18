@@ -3,6 +3,28 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pushNovoMatch } from '@/lib/push'
 import type { AnuncioItem } from '@/lib/store'
+import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
+import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
+import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
+
+// Mapas sid→gnum por álbum, pré-computados no boot
+const GNUM_MAPS: Record<string, Map<string, number>> = {
+  'copa-2026':              buildGlobalNumberMap(albumCopa2026),
+  'brasileirao-masc-2026':  buildGlobalNumberMap(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':   buildGlobalNumberMap(albumBrasileiraoFem2026),
+}
+
+function isValidItem(albumId: string, sid: string, gNum: number): boolean {
+  const gnumMap = GNUM_MAPS[albumId]
+  if (!gnumMap) return false
+  const expected = gnumMap.get(sid)
+  if (expected === undefined) return false              // sid desconhecido
+  if (expected !== gNum) return false                  // gnum diverge do mapa atual
+  const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)
+  if (albumMeta && gNum > albumMeta.totalStickers) return false  // acima do total oficial
+  return true
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -27,9 +49,15 @@ export async function POST(request: NextRequest) {
     .eq('album_id', albumId)
     .eq('tipo', tipo)
 
-  if (items.length > 0) {
+  // Descarta itens com sid/gnum inválidos ou de fora do álbum oficial
+  const validItems = items.filter(a => {
+    const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum
+    return isValidItem(albumId, a.sid, gNum)
+  })
+
+  if (validItems.length > 0) {
     await sb.from('anuncios').insert(
-      items.map(a => ({
+      validItems.map(a => ({
         user_id:  user.id,
         album_id: albumId,
         tipo,
@@ -44,9 +72,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 2. Notifica matches — só quando salva "tenho" e tem itens
-  if (tipo === 'tenho' && items.length > 0) {
-    const gNums = items.map(a => typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum).filter(Boolean)
+  // 2. Notifica matches — só quando salva "tenho" e tem itens válidos
+  if (tipo === 'tenho' && validItems.length > 0) {
+    const gNums = validItems.map(a => typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum).filter(Boolean)
 
     if (gNums.length > 0) {
       // Quem tem "preciso" com qualquer dessas figurinhas no mesmo álbum (exceto o próprio usuário)

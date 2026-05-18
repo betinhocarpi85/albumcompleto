@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBoasVindasEmail } from '@/lib/email'
+import { geocodeCep } from '@/lib/maps-utils'
 
 export async function POST(request: NextRequest) {
   const admin = createAdminClient()
@@ -62,6 +63,15 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[save-profile] erro:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Geocodifica CEP → lat/lng (fire-and-forget, não bloqueia a resposta)
+  if (cep) {
+    geocodeCep(cep).then(coords => {
+      if (!coords) return
+      admin.from('profiles').update({ lat: coords.lat, lng: coords.lng }).eq('id', user!.id)
+        .then(({ error }) => { if (error) console.error('[save-profile] geocode update:', error.message) })
+    }).catch(e => console.error('[save-profile] geocodeCep:', e))
   }
 
   // Email de boas-vindas (fire-and-forget, não bloqueia a resposta)
