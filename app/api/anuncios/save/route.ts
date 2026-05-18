@@ -60,16 +60,15 @@ export async function POST(request: NextRequest) {
   if (validItems.length > 0) {
     await sb.from('anuncios').insert(
       validItems.map(a => ({
-        user_id:  user.id,
-        album_id: albumId,
+        user_id:     user.id,
+        album_id:    albumId,
         tipo,
-        sid:      a.sid,
-        g_num:    a.gNum,
-        nome:     a.nome,
-        qty:      a.qty ?? 1,
-        sticker_type: a.tipo,
-        preco:    a.preco ?? null,
-        acao:     a.acao  ?? 'troca',
+        sid:         a.sid,
+        g_num:       a.gNum,
+        nome:        a.nome,
+        qty:         a.qty ?? 1,
+        sticker_tipo: a.tipo,
+        preco:       a.preco ?? null,
       }))
     )
   }
