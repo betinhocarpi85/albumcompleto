@@ -38,24 +38,26 @@ export async function POST(request: NextRequest) {
   if (!nome?.trim())     return NextResponse.json({ error: 'Nome é obrigatório.' }, { status: 400 })
   if (!maps_url?.trim()) return NextResponse.json({ error: 'Link do Google Maps é obrigatório.' }, { status: 400 })
 
-  // Verifica se já existe banca com o mesmo nome (ativa ou pendente)
-  const { data: existente } = await sb
-    .from('bancas')
-    .select('id')
-    .ilike('nome', nome.trim())
-    .maybeSingle()
-
-  if (existente) {
-    return NextResponse.json({
-      error: 'Já existe uma banca com esse nome. Adicione o bairro para diferenciar — ex: "Banca do João - Centro".',
-    }, { status: 409 })
-  }
-
+  // Geocodifica primeiro para ter a cidade antes de checar duplicata
   const geo = await processMapsUrl(maps_url.trim())
   if (!geo) {
     return NextResponse.json({
       error: 'Não foi possível extrair as coordenadas deste link. Use "Compartilhar" → "Copiar link" no Google Maps.',
     }, { status: 422 })
+  }
+
+  // Verifica duplicata por nome + cidade (permite mesma banca em cidades diferentes)
+  const { data: existente } = await sb
+    .from('bancas')
+    .select('id, cidade')
+    .ilike('nome', nome.trim())
+    .ilike('cidade', geo.cidade.trim())
+    .maybeSingle()
+
+  if (existente) {
+    return NextResponse.json({
+      error: `Já existe uma banca com esse nome em ${geo.cidade}. Adicione o bairro para diferenciar — ex: "Banca da Resenha - Centro".`,
+    }, { status: 409 })
   }
 
   const tempId = crypto.randomUUID()
