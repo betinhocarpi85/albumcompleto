@@ -480,13 +480,14 @@ export default function AnunciosPage() {
               <div className="space-y-3">
                 {TIPO_META.map(({ key: tipoKey, label, icon, desc }) => {
                   const grupos = porTipoECat[tipoKey]
-                  // filtra só stickers colados e ainda não anunciados para o subTab atual
+                  // mostra todos os colados — anunciados aparecem destacados e clicáveis para desanunciar
                   const gruposFiltrados = grupos.map(g => ({
                     ...g,
-                    stickers: g.stickers.filter(s => coladas.has(s.sid) && !anunciadosKeys.has(makeKey(s.sid, subTab))),
+                    stickers: g.stickers.filter(s => coladas.has(s.sid)),
                   })).filter(g => g.stickers.length > 0)
 
-                  const totalTipo = gruposFiltrados.reduce((a, g) => a + g.stickers.length, 0)
+                  const totalTipo      = gruposFiltrados.reduce((a, g) => a + g.stickers.length, 0)
+                  const totalAnunciado = gruposFiltrados.reduce((a, g) => a + g.stickers.filter(s => anunciadosKeys.has(makeKey(s.sid, subTab))).length, 0)
                   const isOpen    = openTipos.has(tipoKey)
 
                   return (
@@ -504,7 +505,7 @@ export default function AnunciosPage() {
                         </div>
                         {totalTipo > 0 && (
                           <span className={['text-xs font-bold px-2 py-0.5 rounded-full', subColor.badge].join(' ')}>
-                            {totalTipo} fig.
+                            {totalAnunciado}/{totalTipo}
                           </span>
                         )}
                         {totalTipo === 0 && (
@@ -532,22 +533,37 @@ export default function AnunciosPage() {
 
                                 {catOpen && (
                                   <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
-                                    {g.stickers.map(s => (
-                                      <button key={s.sid}
-                                        onClick={() => subTab === 'troca' ? toggleTroca(s) : abrirModalVenda(s)}
-                                        title={`#${s.gNum} · ${s.nome}`}
-                                        className={['w-12 h-12 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all', subColor.sticker].join(' ')}>
-                                        <span className="text-[11px] font-black leading-none">{s.gNum}</span>
-                                        {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
-                                      </button>
-                                    ))}
+                                    {g.stickers.map(s => {
+                                      const jaAnunciado = anunciadosKeys.has(makeKey(s.sid, subTab))
+                                      return (
+                                        <button key={s.sid}
+                                          onClick={() => subTab === 'troca' ? toggleTroca(s) : (jaAnunciado ? remover(makeKey(s.sid, 'venda')) : abrirModalVenda(s))}
+                                          title={`#${s.gNum} · ${s.nome}${jaAnunciado ? ' — clique para desanunciar' : ' — clique para anunciar'}`}
+                                          className={[
+                                            'w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all',
+                                            jaAnunciado
+                                              ? subTab === 'troca'
+                                                ? 'bg-blue-500 border-blue-600 text-white'
+                                                : 'bg-green-500 border-green-600 text-white'
+                                              : `border-dashed ${subColor.sticker}`,
+                                          ].join(' ')}>
+                                          {jaAnunciado
+                                            ? <span className="text-base leading-none">✓</span>
+                                            : <>
+                                                <span className="text-[11px] font-black leading-none">{s.gNum}</span>
+                                                {TIPO_ICON[s.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span>}
+                                              </>
+                                          }
+                                        </button>
+                                      )
+                                    })}
                                   </div>
                                 )}
                               </div>
                             )
                           })}
                           <p className="text-[10px] text-slate-400 text-center pt-1">
-                            Toque para anunciar como {subTab === 'troca' ? 'troca' : 'venda'}
+                            ✓ anunciada · toque para anunciar ou desanunciar
                           </p>
                         </div>
                       )}
