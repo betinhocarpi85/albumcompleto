@@ -265,7 +265,8 @@ export default function PropostasPage() {
 
   const recebidasFiltradas = (filtro === 'todos' ? recebidas : recebidas.filter(p => p.tipo === filtro))
     .filter(p => !ocultarIds.has(p.id))
-  const enviadasFiltradas  = filtro === 'todos' ? enviadas  : enviadas.filter(p => p.tipo === filtro)
+  const enviadasFiltradas  = (filtro === 'todos' ? enviadas  : enviadas.filter(p => p.tipo === filtro))
+    .filter(p => !ocultarIds.has(p.id))
 
   return (
     <div className="max-w-2xl mx-auto px-3 py-4 animate-fadein">
