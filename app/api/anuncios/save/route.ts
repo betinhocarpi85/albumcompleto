@@ -15,15 +15,15 @@ const GNUM_MAPS: Record<string, Map<string, number>> = {
   'brasileirao-fem-2026':   buildGlobalNumberMap(albumBrasileiraoFem2026),
 }
 
-function isValidItem(albumId: string, sid: string, gNum: number): boolean {
+function resolveGnum(albumId: string, sid: string, gNumHint: number): number | null {
   const gnumMap = GNUM_MAPS[albumId]
-  if (!gnumMap) return false
+  if (!gnumMap) return null
   const expected = gnumMap.get(sid)
-  if (expected === undefined) return false              // sid desconhecido
-  if (expected !== gNum) return false                  // gnum diverge do mapa atual
+  if (expected === undefined) return null              // sid desconhecido
   const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)
-  if (albumMeta && gNum > albumMeta.totalStickers) return false  // acima do total oficial
-  return true
+  if (albumMeta && expected > albumMeta.totalStickers) return null  // acima do total oficial
+  // Usa o gNum do mapa atual (ignora o hint do cliente, que pode estar desatualizado)
+  return expected
 }
 
 export async function POST(request: NextRequest) {
@@ -49,10 +49,12 @@ export async function POST(request: NextRequest) {
     .eq('album_id', albumId)
     .eq('tipo', tipo)
 
-  // Descarta itens com sid/gnum inválidos ou de fora do álbum oficial
-  const validItems = items.filter(a => {
-    const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum
-    return isValidItem(albumId, a.sid, gNum)
+  // Resolve gNum pelo sid (ignora valor do cliente que pode estar desatualizado)
+  const validItems = items.flatMap(a => {
+    const gNumHint = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
+    const gNum = resolveGnum(albumId, a.sid, gNumHint)
+    if (gNum === null) return []
+    return [{ ...a, gNum }]
   })
 
   if (validItems.length > 0) {
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
         album_id: albumId,
         tipo,
         sid:      a.sid,
-        g_num:    typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum,
+        g_num:    a.gNum,
         nome:     a.nome,
         qty:      a.qty ?? 1,
         sticker_type: a.tipo,
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
 
   // 2. Notifica matches — só quando salva "tenho" e tem itens válidos
   if (tipo === 'tenho' && validItems.length > 0) {
-    const gNums = validItems.map(a => typeof a.gNum === 'string' ? parseInt(a.gNum) : a.gNum).filter(Boolean)
+    const gNums = validItems.map(a => a.gNum).filter(Boolean)
 
     if (gNums.length > 0) {
       // Quem tem "preciso" com qualquer dessas figurinhas no mesmo álbum (exceto o próprio usuário)
