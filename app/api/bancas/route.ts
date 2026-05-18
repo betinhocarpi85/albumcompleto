@@ -45,6 +45,10 @@ export async function POST(request: NextRequest) {
   const geo = await processMapsUrl(body.maps_url.trim())
   if (!geo) return NextResponse.json({ error: 'Não foi possível extrair coordenadas deste link.' }, { status: 422 })
 
+  // Verifica duplicata pelas coordenadas (mesmo link = mesmo local)
+  const { data: existente } = await sb.from('bancas').select('id, nome').eq('lat', geo.lat).eq('lng', geo.lng).maybeSingle()
+  if (existente) return NextResponse.json({ error: `Essa banca já está cadastrada (${existente.nome}).` }, { status: 409 })
+
   const slug = gerarSlug(body.nome.trim())
 
   const { data, error } = await sb.from('bancas').insert({

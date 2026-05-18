@@ -46,17 +46,17 @@ export async function POST(request: NextRequest) {
     }, { status: 422 })
   }
 
-  // Verifica duplicata por nome + cidade (permite mesma banca em cidades diferentes)
+  // Verifica duplicata pelas coordenadas (mesmo link = mesmo local)
   const { data: existente } = await sb
     .from('bancas')
-    .select('id, cidade')
-    .ilike('nome', nome.trim())
-    .ilike('cidade', geo.cidade.trim())
+    .select('id, nome')
+    .eq('lat', geo.lat)
+    .eq('lng', geo.lng)
     .maybeSingle()
 
   if (existente) {
     return NextResponse.json({
-      error: `Já existe uma banca com esse nome em ${geo.cidade}. Adicione o bairro para diferenciar — ex: "Banca da Resenha - Centro".`,
+      error: `Essa banca já está cadastrada (${existente.nome}). Use um link diferente se for outro local.`,
     }, { status: 409 })
   }
 
