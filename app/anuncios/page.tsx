@@ -44,7 +44,7 @@ interface VendaModal {
 // ─── Dados de figurinhas por álbum ──────────────────────────────────────────
 
 export interface StickerFlat {
-  sid: string; gNum: number; nome: string; catName: string
+  sid: string; gNum: number; localNum: number; catCode: string; nome: string; catName: string
   catId: string; catFlag: string; tipo: StickerType
 }
 
@@ -55,13 +55,15 @@ function buildAlbumData(album: Album) {
   const flat: StickerFlat[] = album.categories.flatMap(cat =>
     cat.stickers
       .map(s => ({
-        sid:     stickerId(cat.code, s.number),
-        gNum:    gNums.get(stickerId(cat.code, s.number)) ?? 0,
-        nome:    s.name,
-        catName: cat.name,
-        catId:   cat.id,
-        catFlag: cat.flag ?? '📌',
-        tipo:    s.type as StickerType,
+        sid:      stickerId(cat.code, s.number),
+        gNum:     gNums.get(stickerId(cat.code, s.number)) ?? 0,
+        localNum: s.number,
+        catCode:  cat.code,
+        nome:     s.name,
+        catName:  cat.name,
+        catId:    cat.id,
+        catFlag:  cat.flag ?? '📌',
+        tipo:     s.type as StickerType,
       }))
       .filter(s => s.gNum > 0 && s.gNum <= maxGnum)
   )
@@ -548,7 +550,10 @@ export default function AnunciosPage() {
                                               : `border-dashed ${subColor.sticker}`,
                                           ].join(' ')}>
                                           <>
-                                            <span className="text-[11px] font-black leading-none">{s.gNum}</span>
+                                            {s.catCode.length <= 4 && (
+                                              <span className="text-[7px] font-bold leading-none opacity-60">{s.catCode}</span>
+                                            )}
+                                            <span className="text-[10px] font-black leading-none">{s.localNum}</span>
                                             {jaAnunciado
                                               ? <span className="text-[9px] leading-none">✓</span>
                                               : TIPO_ICON[s.tipo] ? <span className="text-[8px] leading-none">{TIPO_ICON[s.tipo]}</span> : null
