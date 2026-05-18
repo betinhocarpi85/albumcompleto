@@ -1700,7 +1700,7 @@ export default function AdminDashboard({
             )}
 
             {/* Busca */}
-            <div className="mb-3">
+            <div id="bancas-lista" className="mb-3">
               <input
                 value={bancaBusca}
                 onChange={e => { setBancaBusca(e.target.value); setBancaPagina(0) }}
@@ -1780,15 +1780,15 @@ export default function AdminDashboard({
               {/* Paginação */}
               {totalPag > 1 && (
                 <div className="flex items-center justify-center gap-1.5 mt-4">
-                  <button onClick={() => setBancaPagina(p => Math.max(0, p - 1))} disabled={bancaPagina === 0}
+                  <button onClick={() => { setBancaPagina(p => Math.max(0, p - 1)); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} disabled={bancaPagina === 0}
                     className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">‹</button>
                   {Array.from({ length: totalPag }, (_, i) => (
-                    <button key={i} onClick={() => setBancaPagina(i)}
+                    <button key={i} onClick={() => { setBancaPagina(i); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                       className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${bancaPagina === i ? 'bg-green-600 text-white' : 'border border-slate-700 text-slate-400 hover:bg-slate-800'}`}>
                       {i + 1}
                     </button>
                   ))}
-                  <button onClick={() => setBancaPagina(p => Math.min(totalPag - 1, p + 1))} disabled={bancaPagina === totalPag - 1}
+                  <button onClick={() => { setBancaPagina(p => Math.min(totalPag - 1, p + 1)); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} disabled={bancaPagina === totalPag - 1}
                     className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">›</button>
                 </div>
               )}

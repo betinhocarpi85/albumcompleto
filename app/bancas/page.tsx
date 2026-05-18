@@ -29,6 +29,7 @@ export default function BancasPage() {
   const [focusBanca, setFocusBanca] = useState<{ lat: number; lng: number; slug: string } | null>(null)
   const [pagina, setPagina] = useState(0)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const listaRef = useRef<HTMLDivElement>(null)
   const POR_PAGINA = 10
 
   useEffect(() => {
@@ -138,7 +139,7 @@ export default function BancasPage() {
           )}
 
           {/* Lista */}
-          <div>
+          <div ref={listaRef}>
             {destaques.length > 0 && demais.length > 0 && (
               <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Todas as bancas de jornal</h2>
             )}
@@ -156,18 +157,18 @@ export default function BancasPage() {
             {totalPag > 1 && (
               <div className="flex items-center justify-center gap-1.5 mt-5">
                 <button
-                  onClick={() => setPagina(p => Math.max(0, p - 1))}
+                  onClick={() => { setPagina(p => Math.max(0, p - 1)); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                   disabled={pagina === 0}
                   className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-30 hover:bg-slate-50 transition-colors"
                 >‹</button>
                 {Array.from({ length: totalPag }, (_, i) => (
-                  <button key={i} onClick={() => setPagina(i)}
+                  <button key={i} onClick={() => { setPagina(i); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                     className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${pagina === i ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                     {i + 1}
                   </button>
                 ))}
                 <button
-                  onClick={() => setPagina(p => Math.min(totalPag - 1, p + 1))}
+                  onClick={() => { setPagina(p => Math.min(totalPag - 1, p + 1)); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                   disabled={pagina === totalPag - 1}
                   className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-30 hover:bg-slate-50 transition-colors"
                 >›</button>
