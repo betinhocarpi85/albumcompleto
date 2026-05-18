@@ -51,6 +51,13 @@ export default function BancasMap({ bancas, centro = [-22.9068, -43.1729], zoom 
       const map = L.map(mapRef.current!).setView(centro, zoom)
       instanceRef.current = map
 
+      // Enquadra automaticamente todas as bancas com coordenadas
+      const comCoords = bancas.filter(b => b.lat && b.lng)
+      if (comCoords.length > 0) {
+        const bounds = L.latLngBounds(comCoords.map(b => [b.lat!, b.lng!] as [number, number]))
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+      }
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
         maxZoom: 19,
