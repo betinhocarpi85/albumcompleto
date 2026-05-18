@@ -77,20 +77,22 @@ export default function BottomNav() {
   }, [logado])
 
   const ITEMS_LOGADO = [
-    { href: '/',              icon: '🏠', label: 'Início'   },
-    { href: '/album',         icon: '📖', label: 'Álbum'    },
-    { href: '/matches',       icon: '🔁', label: 'Matches'  },
-    { href: '/bancas',        icon: '📍', label: 'Bancas'   },
-    { href: '/notificacoes',  icon: '🔔', label: 'Avisos',  badge: notifCount },
-    { href: '/conta',         icon: '👤', label: 'Perfil'   },
+    { href: '/',              icon: '🏠', label: 'Início'    },
+    { href: '/album',         icon: '📖', label: 'Álbum'     },
+    { href: '/anuncios',      icon: '🏷️', label: 'Anúncios'  },
+    { href: '/matches',       icon: '🔁', label: 'Matches'   },
+    { href: '/bancas',        icon: '📍', label: 'Bancas'    },
+    { href: '/notificacoes',  icon: '🔔', label: 'Avisos',   badge: notifCount },
+    { href: '/conta',         icon: '👤', label: 'Perfil'    },
   ]
 
   const ITEMS_NAO_LOGADO = [
-    { href: '/',        icon: '🏠', label: 'Início'   },
-    { href: '/album',   icon: '📋', label: 'Álbum'    },
-    { href: '/matches', icon: '🔁', label: 'Matches'  },
-    { href: '/bancas',  icon: '📍', label: 'Bancas'   },
-    { href: '/entrar',  icon: '🔑', label: 'Entrar'   },
+    { href: '/',          icon: '🏠', label: 'Início'    },
+    { href: '/album',     icon: '📋', label: 'Álbum'     },
+    { href: '/anuncios',  icon: '🏷️', label: 'Anúncios'  },
+    { href: '/matches',   icon: '🔁', label: 'Matches'   },
+    { href: '/bancas',    icon: '📍', label: 'Bancas'    },
+    { href: '/entrar',    icon: '🔑', label: 'Entrar'    },
   ]
 
   const ITEMS = logado === false ? ITEMS_NAO_LOGADO : ITEMS_LOGADO
@@ -135,7 +137,7 @@ export default function BottomNav() {
                   if (item.href === '/notificacoes') setNotifCount(0)
                 }}
                 className={[
-                  'relative flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all min-w-[44px]',
+                  'relative flex flex-col items-center gap-0.5 px-1 py-2 rounded-xl transition-all min-w-[40px]',
                   active ? 'text-green-600' : 'text-slate-500',
                 ].join(' ')}
               >
