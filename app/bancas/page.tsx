@@ -18,13 +18,10 @@ interface Banca {
   destaque: boolean; total_trocas: number; lat?: number | null; lng?: number | null
 }
 
-const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
-
 export default function BancasPage() {
   const [bancas,     setBancas]     = useState<Banca[]>([])
   const [loading,    setLoading]    = useState(true)
   const [view,       setView]       = useState<'mapa' | 'lista'>('mapa')
-  const [filtroUF,   setFiltroUF]   = useState('')
   const [busca,      setBusca]      = useState('')
   const [focusBanca, setFocusBanca] = useState<{ lat: number; lng: number; slug: string } | null>(null)
   const [pagina, setPagina] = useState(0)
@@ -42,14 +39,13 @@ export default function BancasPage() {
   const filtradas = useMemo(() => {
     setPagina(0)
     return bancas.filter(b => {
-      if (filtroUF && b.uf !== filtroUF) return false
       if (busca) {
         const q = busca.toLowerCase()
-        return b.nome.toLowerCase().includes(q) || b.cidade.toLowerCase().includes(q) || (b.bairro ?? '').toLowerCase().includes(q)
+        return b.nome.toLowerCase().includes(q) || b.cidade.toLowerCase().includes(q)
       }
       return true
     })
-  }, [bancas, filtroUF, busca])
+  }, [bancas, busca])
 
   const destaques   = filtradas.filter(b => b.destaque)
   const demais      = filtradas.filter(b => !b.destaque)
@@ -88,12 +84,7 @@ export default function BancasPage() {
           placeholder="Buscar por nome ou cidade..."
           className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
         />
-        <select value={filtroUF} onChange={e => setFiltroUF(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white">
-          <option value="">Todos os estados</option>
-          {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-        </select>
-        <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+<div className="flex bg-slate-100 rounded-xl p-1 gap-1">
           <button onClick={() => setView('mapa')}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === 'mapa' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>
             🗺️ Mapa
