@@ -376,23 +376,27 @@ export default function AnunciosPage() {
         )}
       </div>
 
-      {/* ── SELETOR DE ÁLBUM (só com 2+ álbuns ativos) ── */}
-      {activeAlbums.length > 1 && (() => {
-        const meta = ALBUMS_REGISTRY.find(a => a.id === albumId)!
+      {/* ── ÁLBUM ATIVO (sempre visível; clicável se tiver 2+ álbuns) ── */}
+      {(() => {
+        const meta = ALBUMS_REGISTRY.find(a => a.id === albumId)
+        if (!meta) return null
         return (
           <div className="mb-4">
             <button
-              onClick={() => setMostrarSeletor(s => !s)}
-              className="w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
+              onClick={() => activeAlbums.length > 1 && setMostrarSeletor(s => !s)}
+              className={[
+                'w-full flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm transition-colors',
+                activeAlbums.length > 1 ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default',
+              ].join(' ')}
             >
               <span className="text-2xl">{meta.emoji}</span>
               <div className="flex-1 text-left min-w-0">
                 <p className="font-black text-sm text-slate-800 truncate">{meta.name}</p>
                 <p className="text-xs text-slate-400">{meta.description}</p>
               </div>
-              <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>
+              {activeAlbums.length > 1 && <span className="text-slate-400 text-xs flex-shrink-0">Trocar ▼</span>}
             </button>
-            {mostrarSeletor && (
+            {mostrarSeletor && activeAlbums.length > 1 && (
               <div className="mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden animate-fadein">
                 {ALBUMS_REGISTRY.filter(a => activeAlbums.includes(a.id)).map(a => (
                   <button
