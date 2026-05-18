@@ -353,6 +353,9 @@ export default function AdminDashboard({
   const [bancaForm, setBancaForm]         = useState(false)
   const [bancaEditId, setBancaEditId]     = useState<string | null>(null)
   const [bancaSaving, setBancaSaving]     = useState(false)
+  const [bancaBusca, setBancaBusca]       = useState('')
+  const [bancaPagina, setBancaPagina]     = useState(0)
+  const BANCAS_POR_PAG = 10
   const [geocoding, setGeocoding]         = useState(false)
   const [geocodeResult, setGeocodeResult] = useState<{ atualizadas: number; total: number; erros: string[] } | null>(null)
   const [limpando, setLimpando]           = useState(false)
@@ -1696,6 +1699,16 @@ export default function AdminDashboard({
               </div>
             )}
 
+            {/* Busca */}
+            <div className="mb-3">
+              <input
+                value={bancaBusca}
+                onChange={e => { setBancaBusca(e.target.value); setBancaPagina(0) }}
+                placeholder="Buscar por nome, cidade ou UF..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
             {/* Lista (apenas ativas) */}
             {bancasLoading ? (
               <div className="text-center py-10 text-slate-400 text-sm">Carregando bancas...</div>
@@ -1704,9 +1717,23 @@ export default function AdminDashboard({
                 Nenhuma banca ativa ainda.<br />
                 <span className="text-slate-600">Aprove sugestões acima ou clique em "+ Nova Banca".</span>
               </div>
-            ) : (
+            ) : (() => {
+              const ativas     = bancas.filter(b => b.ativa)
+              const filtradas  = bancaBusca
+                ? ativas.filter(b => {
+                    const q = bancaBusca.toLowerCase()
+                    return b.nome.toLowerCase().includes(q)
+                      || b.cidade?.toLowerCase().includes(q)
+                      || b.uf?.toLowerCase().includes(q)
+                  })
+                : ativas
+              const totalPag   = Math.ceil(filtradas.length / BANCAS_POR_PAG)
+              const paginadas  = filtradas.slice(bancaPagina * BANCAS_POR_PAG, (bancaPagina + 1) * BANCAS_POR_PAG)
+              return (
+              <>
+                <p className="text-xs text-slate-500 mb-2">{filtradas.length} banca{filtradas.length !== 1 ? 's' : ''}{bancaBusca ? ' encontrada' + (filtradas.length !== 1 ? 's' : '') : ' ativa' + (filtradas.length !== 1 ? 's' : '')}</p>
               <div className="space-y-3">
-                {bancas.filter(b => b.ativa).map(b => (
+                {paginadas.map(b => (
                   <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -1750,7 +1777,24 @@ export default function AdminDashboard({
                   </div>
                 ))}
               </div>
-            )}
+              {/* Paginação */}
+              {totalPag > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  <button onClick={() => setBancaPagina(p => Math.max(0, p - 1))} disabled={bancaPagina === 0}
+                    className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">‹</button>
+                  {Array.from({ length: totalPag }, (_, i) => (
+                    <button key={i} onClick={() => setBancaPagina(i)}
+                      className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${bancaPagina === i ? 'bg-green-600 text-white' : 'border border-slate-700 text-slate-400 hover:bg-slate-800'}`}>
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button onClick={() => setBancaPagina(p => Math.min(totalPag - 1, p + 1))} disabled={bancaPagina === totalPag - 1}
+                    className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">›</button>
+                </div>
+              )}
+              </>
+              )
+            })()}
           </div>
         )}
 
