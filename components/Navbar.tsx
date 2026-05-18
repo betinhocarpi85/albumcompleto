@@ -41,7 +41,7 @@ export default function Navbar() {
 
   return (
     <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-      <div className="max-w-6xl mx-auto w-full px-6 h-16 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto w-full px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/">
           <Image src="/logo.png" alt="Completando" height={28} width={155} className="h-7 w-auto" priority />
