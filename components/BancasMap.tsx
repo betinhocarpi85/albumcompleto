@@ -26,7 +26,7 @@ interface Props {
   focusBanca?: { lat: number; lng: number; slug: string } | null
 }
 
-export default function BancasMap({ bancas, centro = [-15.77972, -47.92972], zoom = 5, onSelect, focusBanca }: Props) {
+export default function BancasMap({ bancas, centro = [-22.9068, -43.1729], zoom = 5, onSelect, focusBanca }: Props) {
   const mapRef      = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<unknown>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
