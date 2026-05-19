@@ -3,11 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPropostaEmail } from '@/lib/email'
 import { pushNovaPropostas } from '@/lib/push'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  // 5 propostas por minuto por usuário
+  if (!await checkRateLimit(`propostas:${user.id}`, 5, 60)) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+  }
 
   const body = await request.json()
   const { para_user_id, album_id, eu_ofereco, eu_recebo, tipo, valor_total, valor_original } = body
@@ -16,13 +22,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
 
+  // Garante que os arrays contêm apenas números inteiros positivos
+  const isNumArray = (v: unknown) =>
+    Array.isArray(v) && v.every(n => typeof n === 'number' && Number.isInteger(n) && n > 0)
+
+  if (!isNumArray(eu_ofereco) || !isNumArray(eu_recebo)) {
+    return NextResponse.json({ error: 'eu_ofereco e eu_recebo devem ser arrays de inteiros positivos' }, { status: 400 })
+  }
+
+  if (typeof tipo !== 'string' || !['troca', 'compra'].includes(tipo)) {
+    return NextResponse.json({ error: 'Tipo inválido' }, { status: 400 })
+  }
+
   // Compra exige valor_total > 0 e stickers selecionados
   if (tipo === 'compra') {
     const vt = typeof valor_total === 'number' ? valor_total : parseFloat(valor_total ?? '0')
     if (!vt || vt <= 0 || vt > 99999) {
       return NextResponse.json({ error: 'Valor total inválido' }, { status: 400 })
     }
-    if (!Array.isArray(eu_recebo) || eu_recebo.length === 0) {
+    if ((eu_recebo as number[]).length === 0) {
       return NextResponse.json({ error: 'Selecione ao menos uma figurinha' }, { status: 400 })
     }
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const PLANOS = {
   mensal: { amount: 199,  description: 'Completando PRO — Mensal', meses: 1  },
@@ -11,6 +12,11 @@ export async function POST(request: NextRequest) {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  // 3 checkouts por minuto por usuário
+  if (!await checkRateLimit(`checkout:${user.id}`, 3, 60)) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+  }
 
   const { plano } = await request.json() as { plano: string }
   if (!plano || !(plano in PLANOS)) {

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBoasVindasEmail } from '@/lib/email'
 import { geocodeCepRobusto } from '@/lib/maps-utils'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   const admin = createAdminClient()
@@ -25,6 +26,11 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  // 5 saves por minuto por usuário
+  if (!await checkRateLimit(`save-profile:${user.id}`, 5, 60)) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
   }
 
   const body = await request.json()
