@@ -64,7 +64,23 @@ export async function POST(request: NextRequest) {
     expira.setFullYear(expira.getFullYear() + 1)
   }
 
+  // Idempotência: usa o ID do evento para não processar duas vezes em retentativas
+  const orderId = (body.data?.id ?? body.id ?? '') as string
   const sb = createAdminClient()
+
+  if (orderId) {
+    const { count } = await sb
+      .from('admin_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'webhook_paid')
+      .eq('target_id', orderId)
+
+    if (count && count > 0) {
+      console.log(`[webhook/pagarme] ℹ️  evento ${orderId} já processado — ignorando`)
+      return NextResponse.json({ ok: true })
+    }
+  }
+
   const { error } = await sb
     .from('profiles')
     .update({ plano: 'pro', plano_expira_em: expira.toISOString() })
@@ -74,6 +90,13 @@ export async function POST(request: NextRequest) {
     console.error('[webhook/pagarme] erro ao atualizar plano:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // Registra evento processado para idempotência futura
+  await sb.from('admin_logs').insert({
+    action:    'webhook_paid',
+    target_id: orderId || userId,
+    details:   `plano=${plano} userId=${userId} expira=${expira.toISOString()}`,
+  }).catch(e => console.error('[webhook/pagarme] log:', e))
 
   console.log(`[webhook/pagarme] ✅ plano ${plano} ativado para ${userId} até ${expira.toISOString()}`)
 

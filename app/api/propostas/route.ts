@@ -22,6 +22,29 @@ export async function POST(request: NextRequest) {
 
   const sb = createAdminClient()
 
+  // Verifica limite de propostas para usuários free (máx 3 pendentes)
+  const { data: perfil } = await sb
+    .from('profiles')
+    .select('plano, plano_expira_em')
+    .eq('id', user.id)
+    .single()
+
+  const isPro = perfil?.plano === 'pro' &&
+    perfil?.plano_expira_em &&
+    new Date(perfil.plano_expira_em) > new Date()
+
+  if (!isPro) {
+    const { count } = await sb
+      .from('propostas')
+      .select('*', { count: 'exact', head: true })
+      .eq('de_user_id', user.id)
+      .eq('status', 'pendente')
+
+    if ((count ?? 0) >= 3) {
+      return NextResponse.json({ error: 'LIMITE_FREE' }, { status: 403 })
+    }
+  }
+
   // Bloqueia spam
   const { data: existente } = await sb
     .from('propostas')
