@@ -3,36 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pushNovoMatch } from '@/lib/push'
 import type { AnuncioItem } from '@/lib/store'
-import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
-import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
-import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
-
-// Mapas sid→gnum por álbum, pré-computados no boot
-const GNUM_MAPS: Record<string, Map<string, number>> = {
-  'copa-2026':              buildGlobalNumberMap(albumCopa2026),
-  'brasileirao-masc-2026':  buildGlobalNumberMap(albumBrasileiraoMasc2026),
-  'brasileirao-fem-2026':   buildGlobalNumberMap(albumBrasileiraoFem2026),
-}
-
-function resolveGnum(albumId: string, sid: string, gNumHint: number): number | null {
-  const gnumMap = GNUM_MAPS[albumId]
-  if (!gnumMap) {
-    console.warn(`[anuncios/save] resolveGnum: albumId '${albumId}' not in GNUM_MAPS`)
-    return null
-  }
-  const expected = gnumMap.get(sid)
-  if (expected === undefined) {
-    console.warn(`[anuncios/save] resolveGnum: sid '${sid}' not found in map for '${albumId}' (hint=${gNumHint})`)
-    return null              // sid desconhecido
-  }
-  const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)
-  if (albumMeta && expected > albumMeta.totalStickers) {
-    console.warn(`[anuncios/save] resolveGnum: gNum ${expected} > totalStickers ${albumMeta.totalStickers} for sid '${sid}'`)
-    return null  // acima do total oficial
-  }
-  return expected
-}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -52,16 +23,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
   }
 
-  // ── Resolução de gNums ANTES do delete (evita perda de dados se validação falhar) ──
-  const validItems = items.flatMap(a => {
-    const gNumHint = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
-    const gNum = resolveGnum(albumId, a.sid, gNumHint)
-    if (gNum === null) return []
-    return [{ ...a, gNum }]
-  })
+  // Valida que o albumId é conhecido
+  const albumMeta = ALBUMS_REGISTRY.find(a => a.id === albumId)
+  if (!albumMeta) {
+    return NextResponse.json({ error: 'Álbum desconhecido' }, { status: 400 })
+  }
+
+  // Filtra itens com sid e gNum válidos (gNum deve ser > 0 e ≤ totalStickers)
+  const validItems = items.filter(a => {
+    const sid = a.sid
+    const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
+    if (!sid || typeof sid !== 'string') return false
+    if (!gNum || gNum <= 0 || gNum > albumMeta.totalStickers) return false
+    return true
+  }).map(a => ({
+    ...a,
+    gNum: typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0),
+  }))
 
   const discarded = items.length - validItems.length
   console.log(`[anuncios/save] user=${user.id.slice(0,8)} album=${albumId} tipo=${tipo} total=${items.length} valid=${validItems.length} discarded=${discarded}`)
+  if (discarded > 0) {
+    const examples = items.filter(a => {
+      const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
+      return !a.sid || gNum <= 0 || gNum > albumMeta.totalStickers
+    }).slice(0, 3).map(a => `sid=${a.sid} gNum=${a.gNum}`)
+    console.warn(`[anuncios/save] discarded examples:`, examples)
+  }
 
   const sb = createAdminClient()
 
@@ -93,7 +81,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (insError) {
-      console.error('[anuncios/save] insert error:', insError.message, insError.code)
+      console.error('[anuncios/save] insert error:', insError.message, insError.code, insError.details)
       return NextResponse.json({ error: 'Erro ao salvar anúncios', detail: insError.message }, { status: 500 })
     }
   }
