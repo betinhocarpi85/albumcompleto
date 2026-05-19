@@ -208,7 +208,9 @@ function PhoneCard({ phone, nome, banca }: { phone: string; nome: string; banca?
                       <p className="text-[10px] text-amber-700 font-medium">{banca.nome}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-amber-600 shrink-0">{banca.distanciaKm} km</span>
+                  {banca.distanciaKm > 0 && (
+                    <span className="text-[10px] font-bold text-amber-600 shrink-0">{banca.distanciaKm} km</span>
+                  )}
                 </div>
                 <p className="text-[10px] text-amber-700">📍 {banca.endereco} — {banca.cidade}/{banca.uf}</p>
                 <div className="flex gap-2">

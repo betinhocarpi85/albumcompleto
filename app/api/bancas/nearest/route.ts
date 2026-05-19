@@ -23,16 +23,12 @@ export async function GET() {
 
   const sb = createAdminClient()
 
-  // Busca lat/lng do usuário
+  // Busca dados do perfil
   const { data: profile } = await sb
     .from('profiles')
-    .select('lat, lng')
+    .select('lat, lng, cidade, uf')
     .eq('id', user.id)
     .single()
-
-  if (!profile?.lat || !profile?.lng) {
-    return NextResponse.json({ banca: null, motivo: 'sem_localizacao' })
-  }
 
   // Busca todas as bancas ativas com coordenadas
   const { data: bancas } = await sb
@@ -46,17 +42,42 @@ export async function GET() {
     return NextResponse.json({ banca: null, motivo: 'sem_bancas' })
   }
 
-  // Encontra a banca mais próxima via Haversine
-  let nearest: BancaMaisProxima | null = null
-  let menorDist = Infinity
+  // ── Estratégia 1: lat/lng exato (Haversine) ──────────────────────────────
+  if (profile?.lat && profile?.lng) {
+    let nearest: BancaMaisProxima | null = null
+    let menorDist = Infinity
 
-  for (const b of bancas) {
-    const dist = haversineKm(profile.lat, profile.lng, b.lat, b.lng)
-    if (dist < menorDist) {
-      menorDist = dist
-      nearest = { ...b, distanciaKm: Math.round(dist * 10) / 10 }
+    for (const b of bancas) {
+      const dist = haversineKm(profile.lat, profile.lng, b.lat, b.lng)
+      if (dist < menorDist) {
+        menorDist = dist
+        nearest = { ...b, distanciaKm: Math.round(dist * 10) / 10 }
+      }
+    }
+
+    if (nearest) return NextResponse.json({ banca: nearest })
+  }
+
+  // ── Estratégia 2: fallback por cidade/uf do perfil ───────────────────────
+  if (profile?.cidade) {
+    const cidadeLower = profile.cidade.trim().toLowerCase()
+    const ufLower     = (profile.uf ?? '').trim().toLowerCase()
+
+    // Tenta cidade + UF primeiro, depois só cidade
+    const porCidade = bancas.find(b =>
+      b.cidade.trim().toLowerCase() === cidadeLower &&
+      (!ufLower || b.uf.trim().toLowerCase() === ufLower)
+    ) ?? bancas.find(b =>
+      b.cidade.trim().toLowerCase() === cidadeLower
+    )
+
+    if (porCidade) {
+      return NextResponse.json({
+        banca: { ...porCidade, distanciaKm: 0 },
+        motivo: 'por_cidade',
+      })
     }
   }
 
-  return NextResponse.json({ banca: nearest })
+  return NextResponse.json({ banca: null, motivo: 'sem_localizacao' })
 }
