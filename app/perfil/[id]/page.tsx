@@ -69,7 +69,7 @@ export default function PerfilPublicoPage() {
     )
   }
 
-  const initials = perfil.nome.slice(0, 2).toUpperCase()
+  const initials = (perfil.nome ?? '').slice(0, 2).toUpperCase()
 
   return (
     <div className="max-w-xl mx-auto px-3 py-4 animate-fadein">

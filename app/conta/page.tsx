@@ -809,7 +809,12 @@ function ContaPageInner() {
                           }
                         }
                         const novo = { ...perfil, ...perfilEdit }
-                        dbSaveProfile(novo)
+                        try {
+                          await dbSaveProfile(novo)
+                        } catch (e) {
+                          alert('Erro ao salvar dados: ' + (e instanceof Error ? e.message : 'Tente novamente.'))
+                          return
+                        }
                         setPerfil(novo)
                         setEditDados(false)
                       }}
