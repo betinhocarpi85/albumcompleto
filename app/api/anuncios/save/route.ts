@@ -29,11 +29,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Álbum desconhecido' }, { status: 400 })
   }
 
-  // Filtra itens com sid e gNum válidos (gNum deve ser > 0 e ≤ totalStickers)
+  // Filtra itens com sid e gNum válidos
+  // Nota: o sid pode conter sufixo "__troca" ou "__venda" (codificado pelo cliente para
+  // permitir que a mesma figurinha apareça como troca E venda sem violar UNIQUE(sid))
   const validItems = items.filter(a => {
-    const sid = a.sid
+    if (!a.sid || typeof a.sid !== 'string') return false
     const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
-    if (!sid || typeof sid !== 'string') return false
     if (!gNum || gNum <= 0 || gNum > albumMeta.totalStickers) return false
     return true
   }).map(a => ({
@@ -43,21 +44,6 @@ export async function POST(request: NextRequest) {
 
   const discarded = items.length - validItems.length
   console.log(`[anuncios/save] user=${user.id.slice(0,8)} album=${albumId} tipo=${tipo} total=${items.length} valid=${validItems.length} discarded=${discarded}`)
-  if (discarded > 0) {
-    const examples = items.filter(a => {
-      const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
-      return !a.sid || gNum <= 0 || gNum > albumMeta.totalStickers
-    }).slice(0, 3).map(a => `sid=${a.sid} gNum=${a.gNum}`)
-    console.warn(`[anuncios/save] discarded examples:`, examples)
-  }
-
-  // Deduplicar por sid — em caso de troca + venda para o mesmo sid, fica o último (venda)
-  const sidMap = new Map<string, typeof validItems[0]>()
-  for (const item of validItems) sidMap.set(item.sid, item)
-  const deduped = Array.from(sidMap.values())
-  if (deduped.length !== validItems.length) {
-    console.warn(`[anuncios/save] deduplicated ${validItems.length - deduped.length} duplicate sids`)
-  }
 
   const sb = createAdminClient()
 
@@ -72,14 +58,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Erro ao limpar anúncios', detail: delError.message }, { status: 500 })
   }
 
-  // 2. Insert novos (deduped)
-  if (deduped.length > 0) {
+  // 2. Insert novos — sids com sufixo são únicos no DB (BRA-1__troca ≠ BRA-1__venda)
+  if (validItems.length > 0) {
     const { error: insError } = await sb.from('anuncios').insert(
-      deduped.map(a => ({
+      validItems.map(a => ({
         user_id:      user.id,
         album_id:     albumId,
         tipo,
-        sid:          a.sid,
+        sid:          a.sid,           // ex: "BRA-1__troca" ou "BRA-1__venda"
         g_num:        a.gNum,
         nome:         a.nome,
         qty:          a.qty ?? 1,
@@ -94,9 +80,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 3. Notifica matches — só quando salva "tenho" e tem itens válidos
-  if (tipo === 'tenho' && deduped.length > 0) {
-    const gNums = deduped.map(a => a.gNum).filter(Boolean)
+  // 3. Notifica matches — usa gNums únicos para não duplicar notificações
+  if (tipo === 'tenho' && validItems.length > 0) {
+    const gNums = [...new Set(validItems.map(a => a.gNum).filter(Boolean))]
 
     if (gNums.length > 0) {
       const { data: candidatos } = await sb
@@ -121,5 +107,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, saved: deduped.length, discarded })
+  return NextResponse.json({ ok: true, saved: validItems.length, discarded })
 }
