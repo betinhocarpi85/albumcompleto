@@ -28,7 +28,7 @@ export default function CadastroPage() {
 
   async function handleSubmit() {
     const e: string[] = []
-    if (!email.includes('@'))       e.push('E-mail inválido.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.push('E-mail inválido.')
     if (senha.length < 6)           e.push('A senha deve ter pelo menos 6 caracteres.')
     if (senha !== confirmar)         e.push('As senhas não coincidem.')
     if (e.length) { setErros(e); return }

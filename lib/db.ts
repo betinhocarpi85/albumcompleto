@@ -70,7 +70,8 @@ export async function signOut() {
 export async function dbUpdatePassword(novaSenha: string): Promise<{ error: string | null }> {
   const sb = createClient()
   const { error } = await sb.auth.updateUser({ password: novaSenha })
-  return { error: error?.message ?? null }
+  if (error) return { error: error.message || 'Erro ao atualizar senha.' }
+  return { error: null }
 }
 
 export async function dbResetPassword(email: string): Promise<{ error: string | null }> {
@@ -667,10 +668,11 @@ export async function dbGetHistorico(): Promise<HistoricoItem[]> {
   if (!uid) return []
   const sb = createClient()
 
-  // 1. Busca avaliações agrupadas por proposta — só propostas com 2 avaliações (mútua)
+  // 1. Busca avaliações do usuário — só propostas com 2 avaliações (mútua)
   const { data: avals } = await sb
     .from('avaliacoes')
     .select('proposta_id, de_user_id, para_user_id')
+    .or(`de_user_id.eq.${uid},para_user_id.eq.${uid}`)
 
   if (!avals || avals.length === 0) return []
 
