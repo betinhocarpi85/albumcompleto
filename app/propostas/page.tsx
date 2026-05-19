@@ -586,13 +586,24 @@ export default function PropostasPage() {
                       {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
-                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-blue-700">💰 Valor oferecido</span>
-                    <span className="text-base font-black text-blue-900">
-                      {p.valor_total != null
-                        ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                        : '—'}
-                    </span>
+                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 space-y-1.5">
+                    {/* Preço anunciado — só exibe se comprador alterou */}
+                    {p.valor_original != null && p.valor_total != null && Math.abs(p.valor_original - p.valor_total) > 0.009 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Preço anunciado</span>
+                        <span className="text-xs text-slate-400 line-through">
+                          {p.valor_original.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-blue-700">💰 Valor oferecido</span>
+                      <span className="text-base font-black text-blue-900">
+                        {p.valor_total != null
+                          ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                          : '—'}
+                      </span>
+                    </div>
                   </div>
                   {/* Contra de preço já enviada */}
                   {p.contra_feita_por && p.contra_valor != null && (
@@ -878,13 +889,23 @@ export default function PropostasPage() {
                       {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
-                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-blue-700">💰 Seu valor oferecido</span>
-                    <span className="text-base font-black text-blue-900">
-                      {p.valor_total != null
-                        ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                        : '—'}
-                    </span>
+                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 space-y-1.5">
+                    {p.valor_original != null && p.valor_total != null && Math.abs(p.valor_original - p.valor_total) > 0.009 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Preço anunciado</span>
+                        <span className="text-xs text-slate-400 line-through">
+                          {p.valor_original.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-blue-700">💰 Seu valor oferecido</span>
+                      <span className="text-base font-black text-blue-900">
+                        {p.valor_total != null
+                          ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                          : '—'}
+                      </span>
+                    </div>
                   </div>
                   {/* Contra-preço do vendedor */}
                   {p.contra_feita_por && p.contra_valor != null && (
@@ -1126,11 +1147,22 @@ export default function PropostasPage() {
             </p>
 
             {precoContraModal.proposta.valor_total != null && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
-                <span className="text-xs text-blue-600">Valor do comprador</span>
-                <span className="text-sm font-black text-blue-800">
-                  {precoContraModal.proposta.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-3 space-y-1">
+                {precoContraModal.proposta.valor_original != null &&
+                  Math.abs(precoContraModal.proposta.valor_original - precoContraModal.proposta.valor_total) > 0.009 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400">Preço anunciado</span>
+                    <span className="text-xs text-slate-400 line-through">
+                      {precoContraModal.proposta.valor_original.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-600">Valor oferecido pelo comprador</span>
+                  <span className="text-sm font-black text-blue-800">
+                    {precoContraModal.proposta.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
               </div>
             )}
 

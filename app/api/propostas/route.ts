@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const body = await request.json()
-  const { para_user_id, album_id, eu_ofereco, eu_recebo, tipo, valor_total } = body
+  const { para_user_id, album_id, eu_ofereco, eu_recebo, tipo, valor_total, valor_original } = body
 
   if (!para_user_id || !album_id || !eu_ofereco || !eu_recebo || !tipo) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
@@ -75,14 +75,18 @@ export async function POST(request: NextRequest) {
   const vt = tipo === 'compra'
     ? (typeof valor_total === 'number' ? valor_total : parseFloat(valor_total ?? '0'))
     : null
+  const vo = tipo === 'compra' && valor_original != null
+    ? (typeof valor_original === 'number' ? valor_original : parseFloat(valor_original ?? '0'))
+    : null
   const { error } = await sb.from('propostas').insert({
-    de_user_id:   user.id,
+    de_user_id:     user.id,
     para_user_id,
     album_id,
     eu_ofereco,
     eu_recebo,
     tipo,
-    valor_total:  vt,
+    valor_total:    vt,
+    valor_original: vo,
     status: 'pendente',
   })
 

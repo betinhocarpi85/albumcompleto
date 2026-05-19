@@ -8,8 +8,8 @@ function verifyBasicAuth(authHeader: string): boolean {
   const secret = (process.env.PAGARME_WEBHOOK_SECRET ?? '').trim()
 
   if (!user || !secret) {
-    console.warn('[webhook/pagarme] ⚠️  PAGARME_WEBHOOK_USER ou PAGARME_WEBHOOK_SECRET não configurados — verificação ignorada')
-    return true
+    console.error('[webhook/pagarme] ❌ PAGARME_WEBHOOK_USER ou PAGARME_WEBHOOK_SECRET não configurados — rejeitando request')
+    return false
   }
 
   if (!authHeader.startsWith('Basic ')) return false

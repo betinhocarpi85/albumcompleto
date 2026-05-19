@@ -10,7 +10,9 @@ import { Suspense } from 'react'
 function EntrarForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const next   = params.get('next') ?? '/album'
+  const ALLOWED = ['/album', '/matches', '/propostas', '/anuncios', '/conta', '/bancas', '/notificacoes']
+  const nextRaw = params.get('next') ?? '/album'
+  const next    = ALLOWED.includes(nextRaw) ? nextRaw : '/album'
 
   const [email,   setEmail]   = useState('')
   const [senha,   setSenha]   = useState('')
@@ -24,7 +26,7 @@ function EntrarForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.includes('@')) { setErro('E-mail inválido.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setErro('E-mail inválido.'); return }
     if (!senha)                { setErro('Informe a senha.'); return }
     setErro('')
     setLoading(true)

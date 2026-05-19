@@ -396,8 +396,10 @@ export interface PropostaComPerfil {
   album_id:     string
   status:       'pendente' | 'aceita' | 'recusada'
   created_at:   string
-  /** Preço oferecido pelo comprador (tipo=compra) */
-  valor_total:  number | null
+  /** Preço anunciado originalmente (soma dos preços individuais no momento do envio) */
+  valor_original: number | null
+  /** Preço oferecido pelo comprador (pode diferir do original se negociou) */
+  valor_total:    number | null
   /** Contra-proposta rodada 1 — troca: stickers; compra: novo preço do vendedor */
   contra_eu_ofereco:  number[] | null
   contra_eu_recebo:   number[] | null
@@ -436,7 +438,8 @@ async function enrichPropostas(
       album_id:           (p.album_id as string)      ?? 'copa-2026',
       status:             p.status as 'pendente' | 'aceita' | 'recusada',
       created_at:         p.created_at as string,
-      valor_total:        (p.valor_total  as number | null) ?? null,
+      valor_original:     (p.valor_original as number | null) ?? null,
+      valor_total:        (p.valor_total   as number | null) ?? null,
       contra_eu_ofereco:  (p.contra_eu_ofereco  as number[] | null) ?? null,
       contra_eu_recebo:   (p.contra_eu_recebo   as number[] | null) ?? null,
       contra_feita_por:   (p.contra_feita_por   as string   | null) ?? null,
@@ -501,7 +504,8 @@ export async function dbEnviarProposta(
   eu_ofereco: number[],
   eu_recebo: number[],
   tipo: TipoProposta,
-  valor_total?: number
+  valor_total?: number,
+  valor_original?: number
 ): Promise<{ error: string | null }> {
   const uid = await getUserId()
   if (!uid) return { error: 'Não autenticado' }
@@ -530,7 +534,8 @@ export async function dbEnviarProposta(
     eu_ofereco,
     eu_recebo,
     tipo,
-    valor_total:  tipo === 'compra' ? (valor_total ?? null) : null,
+    valor_total:    tipo === 'compra' ? (valor_total    ?? null) : null,
+    valor_original: tipo === 'compra' ? (valor_original ?? null) : null,
     status:       'pendente',
   })
   return { error: error?.message ?? null }

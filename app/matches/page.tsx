@@ -206,8 +206,8 @@ export default function MatchesPage() {
     setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
   }
 
-  async function enviarInteresse(userId: string, nome: string, stickers: number[], valorTotal: number) {
-    const { error } = await dbEnviarProposta(userId, albumId, [], stickers, 'compra', valorTotal)
+  async function enviarInteresse(userId: string, nome: string, stickers: number[], valorTotal: number, valorOriginal: number) {
+    const { error } = await dbEnviarProposta(userId, albumId, [], stickers, 'compra', valorTotal, valorOriginal)
     if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
     if (error) { alert('Não foi possível enviar. Tente novamente.'); return }
     setInteresseEnviado(prev => ({ ...prev, [userId]: true }))
@@ -784,7 +784,7 @@ export default function MatchesPage() {
                               disabled={selecionados.size === 0 || !valorFinal || valorFinal <= 0}
                               onClick={() => {
                                 if (selecionados.size === 0 || !valorFinal || valorFinal <= 0) return
-                                enviarInteresse(v.id, v.user.name, Array.from(selecionados), valorFinal)
+                                enviarInteresse(v.id, v.user.name, Array.from(selecionados), valorFinal, totalCalc)
                               }}
                               className={['w-full font-bold py-3 rounded-xl text-sm transition-colors',
                                 selecionados.size > 0 && valorFinal > 0
