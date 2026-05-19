@@ -144,8 +144,13 @@ export default function MatchesPage() {
   }
 
   async function carregarMatches(id: AlbumId) {
-    const [coladas, result] = await Promise.all([dbGetColadas(id), dbGetMatches(id)])
-    processarResultado(id, coladas, result)
+    try {
+      const [coladas, result] = await Promise.all([dbGetColadas(id), dbGetMatches(id)])
+      processarResultado(id, coladas, result)
+    } catch (e) {
+      console.error('[matches] carregarMatches:', e)
+      setLoadingMatches(false)
+    }
   }
 
   useEffect(() => {
@@ -157,11 +162,11 @@ export default function MatchesPage() {
         setActiveAlbums(ids)
         const id = ids[0] ?? 'copa-2026'
         setAlbumId(id)
-        Promise.all([dbGetColadas(id), dbGetMatches(id)]).then(([coladas, result]) => {
-          processarResultado(id, coladas, result)
-        })
-      })
-    })
+        Promise.all([dbGetColadas(id), dbGetMatches(id)])
+          .then(([coladas, result]) => processarResultado(id, coladas, result))
+          .catch(e => { console.error('[matches] load:', e); setLoadingMatches(false) })
+      }).catch(e => { console.error('[matches] activeAlbums:', e); setLoadingMatches(false) })
+    }).catch(e => { console.error('[matches] session:', e); setLoadingMatches(false) })
   }, [])
 
   const vendasFiltradas = useMemo(() => {

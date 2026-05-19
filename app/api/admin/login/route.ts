@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCredentials, getAdminToken, ADMIN_COOKIE } from '@/lib/admin-auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-// Rate limiting simples em memória (por IP)
-const attempts = new Map<string, { count: number; resetAt: number }>()
 const MAX_ATTEMPTS = 5
 const WINDOW_MS    = 15 * 60 * 1000 // 15 minutos
 
@@ -14,28 +13,42 @@ function getClientIp(req: NextRequest): string {
   )
 }
 
-function isRateLimited(ip: string): boolean {
-  const now  = Date.now()
-  const rec  = attempts.get(ip)
-
-  if (!rec || now > rec.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
-    return false
-  }
-
-  rec.count += 1
-  if (rec.count > MAX_ATTEMPTS) return true
-  return false
+/** Conta tentativas falhas do IP nas últimas WINDOW_MS ms usando admin_logs */
+async function countRecentFailures(ip: string): Promise<number> {
+  const sb  = createAdminClient()
+  const since = new Date(Date.now() - WINDOW_MS).toISOString()
+  const { count } = await sb
+    .from('admin_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('action', 'login_failed')
+    .eq('target_id', ip)
+    .gte('created_at', since)
+  return count ?? 0
 }
 
-function clearAttempts(ip: string) {
-  attempts.delete(ip)
+async function logFailure(ip: string) {
+  const sb = createAdminClient()
+  await sb.from('admin_logs').insert({
+    action:    'login_failed',
+    target_id: ip,
+    details:   `Tentativa de login inválida de ${ip}`,
+  })
+}
+
+async function logSuccess(ip: string) {
+  const sb = createAdminClient()
+  await sb.from('admin_logs').insert({
+    action:    'login_success',
+    target_id: ip,
+    details:   `Login de admin bem-sucedido de ${ip}`,
+  })
 }
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request)
 
-  if (isRateLimited(ip)) {
+  const failures = await countRecentFailures(ip)
+  if (failures >= MAX_ATTEMPTS) {
     return NextResponse.json(
       { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
       { status: 429 }
@@ -45,17 +58,20 @@ export async function POST(request: NextRequest) {
   const { username, password } = await request.json()
 
   if (!await verifyCredentials(username, password)) {
+    await logFailure(ip)
+    // Delay artificial para dificultar brute-force mesmo sem rate limit
+    await new Promise(r => setTimeout(r, 1000))
     return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
   }
 
-  clearAttempts(ip)
+  await logSuccess(ip)
 
   const res = NextResponse.json({ ok: true })
   res.cookies.set(ADMIN_COOKIE, getAdminToken(), {
     httpOnly: true,
     secure:   process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge:   30 * 60, // 30 minutos de inatividade
+    maxAge:   30 * 60,
     path:     '/',
   })
   return res

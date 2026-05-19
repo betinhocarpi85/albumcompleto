@@ -47,37 +47,45 @@ export async function POST(request: NextRequest) {
 
   const sb = createAdminClient()
 
-  // 1. Delete existentes
-  const { error: delError } = await sb.from('anuncios').delete()
-    .eq('user_id', user.id)
-    .eq('album_id', albumId)
-    .eq('tipo', tipo)
-
-  if (delError) {
-    console.error('[anuncios/save] delete error:', delError.message)
-    return NextResponse.json({ error: 'Erro ao limpar anúncios', detail: delError.message }, { status: 500 })
-  }
-
-  // 2. Insert novos — sids com sufixo são únicos no DB (BRA-1__troca ≠ BRA-1__venda)
+  // 1. Upsert novos primeiro — garante que dados existem antes de remover os antigos
+  //    (evita perda de dados se o insert falhar após o delete)
   if (validItems.length > 0) {
-    const { error: insError } = await sb.from('anuncios').insert(
+    const { error: upsError } = await sb.from('anuncios').upsert(
       validItems.map(a => ({
         user_id:      user.id,
         album_id:     albumId,
         tipo,
-        sid:          a.sid,           // ex: "BRA-1__troca" ou "BRA-1__venda"
+        sid:          a.sid,
         g_num:        a.gNum,
         nome:         a.nome,
         qty:          a.qty ?? 1,
         sticker_tipo: a.tipo,
         preco:        a.preco ?? null,
-      }))
+      })),
+      { onConflict: 'user_id,sid' }
     )
 
-    if (insError) {
-      console.error('[anuncios/save] insert error:', insError.message, insError.code, insError.details)
-      return NextResponse.json({ error: 'Erro ao salvar anúncios', detail: insError.message }, { status: 500 })
+    if (upsError) {
+      console.error('[anuncios/save] upsert error:', upsError.message, upsError.code)
+      return NextResponse.json({ error: 'Erro ao salvar anúncios', detail: upsError.message }, { status: 500 })
     }
+  }
+
+  // 2. Remove apenas os que não estão mais na lista (sids removidos pelo usuário)
+  const newSids = validItems.map(a => a.sid)
+  const deleteQuery = sb.from('anuncios')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('album_id', albumId)
+    .eq('tipo', tipo)
+
+  const { error: delError } = newSids.length > 0
+    ? await deleteQuery.not('sid', 'in', `(${newSids.map(s => `"${s}"`).join(',')})`)
+    : await deleteQuery
+
+  if (delError) {
+    console.error('[anuncios/save] delete error:', delError.message)
+    // Não retorna erro — upsert já salvou os dados novos
   }
 
   // 3. Notifica matches — usa gNums únicos para não duplicar notificações
