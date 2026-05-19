@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         sticker_tipo: a.tipo,
         preco:        a.preco ?? null,
       })),
-      { onConflict: 'user_id,sid' }
+      { onConflict: 'user_id,tipo,album_id,sid' }
     )
 
     if (upsError) {
