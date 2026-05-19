@@ -440,7 +440,7 @@ export default function PropostasPage() {
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <Link href="/matches" className="text-sm text-slate-400 hover:text-slate-600">‹</Link>
+        <button onClick={() => window.history.back()} className="text-sm text-slate-400 hover:text-slate-600">‹</button>
         <h1 className="text-lg font-black text-slate-800">Propostas</h1>
       </div>
 
