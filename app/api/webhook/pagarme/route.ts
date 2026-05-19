@@ -92,11 +92,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Registra evento processado para idempotência futura
-  await sb.from('admin_logs').insert({
-    action:    'webhook_paid',
-    target_id: orderId || userId,
-    details:   `plano=${plano} userId=${userId} expira=${expira.toISOString()}`,
-  }).catch(e => console.error('[webhook/pagarme] log:', e))
+  try {
+    await sb.from('admin_logs').insert({
+      action:    'webhook_paid',
+      target_id: orderId || userId,
+      details:   `plano=${plano} userId=${userId} expira=${expira.toISOString()}`,
+    })
+  } catch (e) {
+    console.error('[webhook/pagarme] log:', e)
+  }
 
   console.log(`[webhook/pagarme] ✅ plano ${plano} ativado para ${userId} até ${expira.toISOString()}`)
 
