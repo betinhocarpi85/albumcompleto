@@ -919,7 +919,7 @@ export default function PropostasPage() {
 
       {/* Modal avaliação */}
       {avalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => { if (!avalSalvando) setAvalModal(null) }} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-fadein">
             <p className="text-2xl mb-2">⭐</p>
@@ -970,7 +970,7 @@ export default function PropostasPage() {
 
       {/* Modal confirmação */}
       {confirmando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => { if (!loading) setConfirmando(null) }}
@@ -1027,7 +1027,7 @@ export default function PropostasPage() {
 
       {/* Modal contra-proposta */}
       {contraModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-0 sm:px-4">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => { if (!contraLoading) setContraModal(null) }}
