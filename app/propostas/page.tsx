@@ -267,7 +267,8 @@ export default function PropostasPage() {
   const [avalSalvando, setAvalSalvando] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [adulto, setAdulto]       = useState(true)
-  const [userId, setUserId]           = useState<string | null>(null)
+  const [userId, setUserId]       = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [contraModal, setContraModal] = useState<{
     proposta: Proposta
     baseOfereco: number[]    // lista completa de opções a mostrar no modal
@@ -310,8 +311,14 @@ export default function PropostasPage() {
           : p
       }
 
-      setRecebidas(rec.map(enrich))
-      setEnviadas(env.map(enrich))
+      const recEnriched = rec.map(enrich)
+      const envEnriched = env.map(enrich)
+      setRecebidas(recEnriched)
+      setEnviadas(envEnriched)
+      // Auto-expande apenas pendentes (precisam de ação)
+      setExpandedIds(new Set(
+        [...recEnriched, ...envEnriched].filter(p => p.status === 'pendente').map(p => p.id)
+      ))
     })
   }, [])
 
@@ -410,6 +417,14 @@ export default function PropostasPage() {
     }
   }
 
+  function toggleCard(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   const pendentesRecebidas = recebidas.filter(p => p.status === 'pendente').length
   const pendentesEnviadas  = enviadas.filter(p => p.status === 'pendente').length
 
@@ -489,14 +504,18 @@ export default function PropostasPage() {
           )}
 
           {recebidasFiltradas.map(p => {
-            const st    = STATUS_CONFIG[p.status]
-            const tipo  = TIPO_CONFIG[p.tipo]
-            const phone = p.telefone
+            const st         = STATUS_CONFIG[p.status]
+            const tipo       = TIPO_CONFIG[p.tipo]
+            const phone      = p.telefone
+            const isExpanded = expandedIds.has(p.id)
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-                {/* Header do card */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
+                {/* Header do card — clicável para expandir/colapsar */}
+                <button
+                  onClick={() => toggleCard(p.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                >
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm font-black">
                       {p.contraparte_nome.slice(0, 2).toUpperCase()}
@@ -516,7 +535,11 @@ export default function PropostasPage() {
                       {p.contraparte_localidade} · {formatDate(p.created_at)}
                     </p>
                   </div>
-                </div>
+                  <span className={`text-slate-400 text-xs transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+
+                {/* Corpo expansível */}
+                {isExpanded && (<>
 
                 {/* Figurinhas */}
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
@@ -693,16 +716,26 @@ export default function PropostasPage() {
 
                 {/* Recusada */}
                 {p.status === 'recusada' && (
-                  <div className="px-3 pb-3 flex items-center gap-2">
-                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
+                  <div className="px-3 pb-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
                       <p className="text-xs text-slate-500">Proposta recusada.</p>
                     </div>
-                    <button onClick={() => apagar(p.id)}
-                      className="shrink-0 px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors">
-                      🗑️ Apagar
+                  </div>
+                )}
+
+                {/* Botão apagar — só após aceita ou recusada */}
+                {(p.status === 'aceita' || p.status === 'recusada') && (
+                  <div className="px-3 pb-3 border-t border-slate-50 pt-2">
+                    <button
+                      onClick={() => apagar(p.id)}
+                      className="w-full py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors"
+                    >
+                      🗑️ Apagar proposta
                     </button>
                   </div>
                 )}
+
+                </>)}
               </div>
             )
           })}
@@ -727,13 +760,18 @@ export default function PropostasPage() {
           )}
 
           {enviadasFiltradas.map(p => {
-            const st    = STATUS_CONFIG[p.status]
-            const tipo  = TIPO_CONFIG[p.tipo]
-            const phone = p.telefone
+            const st         = STATUS_CONFIG[p.status]
+            const tipo       = TIPO_CONFIG[p.tipo]
+            const phone      = p.telefone
+            const isExpanded = expandedIds.has(p.id)
             return (
               <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
+                {/* Header clicável */}
+                <button
+                  onClick={() => toggleCard(p.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                >
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm font-black">
                       {p.contraparte_nome.slice(0, 2).toUpperCase()}
@@ -753,7 +791,11 @@ export default function PropostasPage() {
                       {p.contraparte_localidade} · {formatDate(p.created_at)}
                     </p>
                   </div>
-                </div>
+                  <span className={`text-slate-400 text-xs transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+
+                {/* Corpo expansível */}
+                {isExpanded && (<>
 
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
                   <div className="px-3 py-3">
@@ -915,16 +957,26 @@ export default function PropostasPage() {
 
                 {/* Recusada */}
                 {p.status === 'recusada' && (
-                  <div className="px-3 pb-3 flex items-center gap-2">
-                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
+                  <div className="px-3 pb-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
                       <p className="text-xs text-slate-500">{p.contraparte_nome} recusou esta proposta.</p>
                     </div>
-                    <button onClick={() => apagar(p.id)}
-                      className="shrink-0 px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors">
-                      🗑️ Apagar
+                  </div>
+                )}
+
+                {/* Botão apagar — só após aceita ou recusada */}
+                {(p.status === 'aceita' || p.status === 'recusada') && (
+                  <div className="px-3 pb-3 border-t border-slate-50 pt-2">
+                    <button
+                      onClick={() => apagar(p.id)}
+                      className="w-full py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 text-xs font-semibold transition-colors"
+                    >
+                      🗑️ Apagar proposta
                     </button>
                   </div>
                 )}
+
+                </>)}
               </div>
             )
           })}
