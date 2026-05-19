@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       .eq('de_user_id', user.id)
       .eq('status', 'pendente')
 
-    if ((count ?? 0) >= 3) {
+    if ((count ?? 0) >= 1) {
       return NextResponse.json({ error: 'LIMITE_FREE' }, { status: 403 })
     }
   }
