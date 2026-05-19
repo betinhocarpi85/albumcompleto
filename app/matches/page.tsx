@@ -111,6 +111,9 @@ export default function MatchesPage() {
   const [albumId,      setAlbumId]      = useState<AlbumId>('copa-2026')
   const [activeAlbums, setActiveAlbums] = useState<AlbumId[]>([])
   const [mostrarSeletor, setMostrarSeletor] = useState(false)
+  // Venda: seleção de figurinhas e preço por vendedor
+  const [vendaSelecionados, setVendaSelecionados] = useState<Record<string, Set<number>>>({})
+  const [vendaValorCustom,  setVendaValorCustom]  = useState<Record<string, string>>({})
 
   function trocarAlbum(id: AlbumId) {
     setAlbumId(id)
@@ -203,12 +206,30 @@ export default function MatchesPage() {
     setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
   }
 
-  async function enviarInteresse(userId: string, nome: string, stickers: number[], tipo: 'compra') {
-    const { error } = await dbEnviarProposta(userId, albumId, [], stickers, tipo)
+  async function enviarInteresse(userId: string, nome: string, stickers: number[], valorTotal: number) {
+    const { error } = await dbEnviarProposta(userId, albumId, [], stickers, 'compra', valorTotal)
     if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
     if (error) { alert('Não foi possível enviar. Tente novamente.'); return }
     setInteresseEnviado(prev => ({ ...prev, [userId]: true }))
     setPropostaSucesso({ nome: nome.split(' ')[0] })
+  }
+
+  function initVendaSelecionados(vendaId: string, items: VendaRecord['items']) {
+    if (vendaSelecionados[vendaId]) return   // já inicializado
+    // Seleciona por padrão apenas os itens que o usuário ainda precisa
+    const needed = items.filter(i => meuTenhoSet.size === 0 || !meuTenhoSet.has(i.num))
+    const initial = new Set((needed.length > 0 ? needed : items).map(i => i.num))
+    setVendaSelecionados(prev => ({ ...prev, [vendaId]: initial }))
+  }
+
+  function toggleVendaSelecionado(vendaId: string, num: number) {
+    setVendaSelecionados(prev => {
+      const cur = new Set(prev[vendaId] ?? [])
+      if (cur.has(num)) cur.delete(num); else cur.add(num)
+      return { ...prev, [vendaId]: new Set(cur) }
+    })
+    // Reset preço customizado quando seleção muda
+    setVendaValorCustom(prev => { const n = { ...prev }; delete n[vendaId]; return n })
   }
 
   const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -624,16 +645,31 @@ export default function MatchesPage() {
 
             <div className="space-y-3">
               {vendaPagina.map(v => {
-                const isOpen    = expanded === v.id
-                const jaEnviou  = interesseEnviado[v.id] ?? false
+                const isOpen   = expanded === v.id
+                const jaEnviou = interesseEnviado[v.id] ?? false
+                const selecionados = vendaSelecionados[v.id] ?? new Set<number>()
+                const itensSel = v.items.filter(i => selecionados.has(i.num))
+                const totalCalc = itensSel.reduce((s, i) => s + i.preco, 0)
+                const valorStr  = vendaValorCustom[v.id] ?? ''
+                const valorFinal = valorStr !== ''
+                  ? parseFloat(valorStr.replace(',', '.'))
+                  : totalCalc
+
+                // Resumo para o card fechado
                 const itensNeed = meuTenhoSet.size > 0 ? v.items.filter(i => !meuTenhoSet.has(i.num)) : v.items
                 const precos    = itensNeed.length > 0 ? itensNeed.map(i => i.preco) : v.items.map(i => i.preco)
-                const pMin = Math.min(...precos), pMax = Math.max(...precos)
+                const pMin = precos.length > 0 ? Math.min(...precos) : 0
+                const pMax = precos.length > 0 ? Math.max(...precos) : 0
                 const faixa = pMin === pMax ? fmtBRL(pMin) : `${fmtBRL(pMin)} – ${fmtBRL(pMax)}`
 
                 return (
                   <div key={v.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <button onClick={() => setExpanded(isOpen ? null : v.id)}
+                    <button
+                      onClick={() => {
+                        const next = isOpen ? null : v.id
+                        setExpanded(next)
+                        if (next) initVendaSelecionados(v.id, v.items)
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
                       <Link href={`/perfil/${v.id}`} onClick={e => e.stopPropagation()} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${v.user.avatarColor} flex items-center justify-center flex-shrink-0`}>
@@ -653,20 +689,32 @@ export default function MatchesPage() {
 
                     {isOpen && (
                       <div className="border-t border-slate-50 px-4 pt-3 pb-4 animate-fadein">
-                        <div className="flex flex-wrap gap-2 mb-4">
+
+                        {/* Instrução */}
+                        <p className="text-[11px] text-slate-400 text-center mb-3">
+                          Toque nas figurinhas para selecionar/remover do pedido
+                        </p>
+
+                        {/* Grade de figurinhas — todas toggleáveis */}
+                        <div className="flex flex-wrap gap-2 mb-3">
                           {v.items.map(item => {
-                            const jaColada    = meuTenhoSet.size > 0 && meuTenhoSet.has(item.num)
-                            const isBrilhante = item.tipo === 'brilhante'
-                            const isEscudo    = item.tipo === 'escudo'
-                            const info        = currentGlobalInfo.get(item.num)
+                            const jaColada  = meuTenhoSet.size > 0 && meuTenhoSet.has(item.num)
+                            const sel       = selecionados.has(item.num)
+                            const info      = currentGlobalInfo.get(item.num)
                             return (
-                              <div key={item.num}
+                              <button
+                                key={item.num}
+                                onClick={() => !jaColada && toggleVendaSelecionado(v.id, item.num)}
                                 title={info ? `${info.code}-${info.localNum} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}
-                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0 select-none',
-                                  jaColada ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-40'
-                                    : isBrilhante ? 'bg-amber-50 border-amber-300 text-amber-700'
-                                    : isEscudo ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
-                                    : 'bg-white border-slate-200 text-slate-600'].join(' ')}>
+                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0 transition-all',
+                                  jaColada
+                                    ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-30 cursor-default'
+                                    : sel
+                                      ? item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-400 text-amber-800 shadow-sm'
+                                        : item.tipo === 'escudo'   ? 'bg-indigo-50 border-indigo-400 text-indigo-800 shadow-sm'
+                                        : 'bg-blue-50 border-blue-400 text-blue-800 shadow-sm'
+                                      : 'bg-white border-slate-200 text-slate-300 opacity-40 hover:opacity-60',
+                                ].join(' ')}>
                                 {jaColada ? (
                                   <span className="text-[10px] font-bold leading-none">✓</span>
                                 ) : (
@@ -676,22 +724,74 @@ export default function MatchesPage() {
                                     <span className="text-[8px] leading-none font-semibold opacity-75">{fmtBRL(item.preco).replace('R$ ', 'R$')}</span>
                                   </>
                                 )}
-                              </div>
+                              </button>
                             )
                           })}
                         </div>
+
                         {meuTenhoSet.size > 0 && v.items.some(i => meuTenhoSet.has(i.num)) && (
-                          <p className="text-[10px] text-slate-400 text-center -mt-2 mb-3">Figurinhas acinzentadas já estão no seu álbum</p>
+                          <p className="text-[10px] text-slate-400 text-center -mt-1 mb-2">Figurinhas acinzentadas já estão no seu álbum</p>
                         )}
+
+                        {/* Resumo do pedido + campo de preço */}
+                        {selecionados.size > 0 && (
+                          <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-3 mb-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-blue-700">
+                                {selecionados.size} figurinha{selecionados.size !== 1 ? 's' : ''} selecionada{selecionados.size !== 1 ? 's' : ''}
+                              </span>
+                              <span className="text-xs font-black text-blue-800">{fmtBRL(totalCalc)}</span>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-blue-600 mb-1">Valor a oferecer (pode alterar):</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-blue-700">R$</span>
+                                <input
+                                  type="number"
+                                  min="0.01"
+                                  max="99999"
+                                  step="0.01"
+                                  placeholder={totalCalc.toFixed(2)}
+                                  value={valorStr}
+                                  onChange={e => setVendaValorCustom(prev => ({ ...prev, [v.id]: e.target.value }))}
+                                  className="flex-1 text-sm font-bold text-blue-900 bg-white border border-blue-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                              </div>
+                              {valorStr !== '' && valorFinal !== totalCalc && (
+                                <p className="text-[10px] text-blue-500 mt-1">
+                                  {valorFinal < totalCalc
+                                    ? `↓ Propondo ${fmtBRL(totalCalc - valorFinal)} abaixo do preço anunciado`
+                                    : `↑ Propondo ${fmtBRL(valorFinal - totalCalc)} acima do preço anunciado`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {selecionados.size === 0 && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 mb-3 text-center">
+                            <p className="text-xs text-slate-400">Selecione ao menos uma figurinha para continuar</p>
+                          </div>
+                        )}
+
                         {adulto ? (
                           jaEnviou ? (
                             <div className="w-full py-3 rounded-xl text-sm text-center bg-green-50 border border-green-200 text-green-700 font-bold">
                               ✓ Interesse enviado! Aguardando {v.user.name.split(' ')[0]} aceitar.
                             </div>
                           ) : (
-                            <button onClick={() => enviarInteresse(v.id, v.user.name, v.items.map(i => i.num), 'compra')}
-                              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
-                              💬 Tenho interesse — contatar vendedor
+                            <button
+                              disabled={selecionados.size === 0 || !valorFinal || valorFinal <= 0}
+                              onClick={() => {
+                                if (selecionados.size === 0 || !valorFinal || valorFinal <= 0) return
+                                enviarInteresse(v.id, v.user.name, Array.from(selecionados), valorFinal)
+                              }}
+                              className={['w-full font-bold py-3 rounded-xl text-sm transition-colors',
+                                selecionados.size > 0 && valorFinal > 0
+                                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                                  : 'bg-slate-100 text-slate-400 cursor-not-allowed',
+                              ].join(' ')}>
+                              🛒 Enviar interesse de compra · {selecionados.size > 0 ? fmtBRL(valorFinal) : '--'}
                             </button>
                           )
                         ) : (

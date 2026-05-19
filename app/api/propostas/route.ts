@@ -10,10 +10,21 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const body = await request.json()
-  const { para_user_id, album_id, eu_ofereco, eu_recebo, tipo } = body
+  const { para_user_id, album_id, eu_ofereco, eu_recebo, tipo, valor_total } = body
 
   if (!para_user_id || !album_id || !eu_ofereco || !eu_recebo || !tipo) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
+  }
+
+  // Compra exige valor_total > 0 e stickers selecionados
+  if (tipo === 'compra') {
+    const vt = typeof valor_total === 'number' ? valor_total : parseFloat(valor_total ?? '0')
+    if (!vt || vt <= 0 || vt > 99999) {
+      return NextResponse.json({ error: 'Valor total inválido' }, { status: 400 })
+    }
+    if (!Array.isArray(eu_recebo) || eu_recebo.length === 0) {
+      return NextResponse.json({ error: 'Selecione ao menos uma figurinha' }, { status: 400 })
+    }
   }
 
   if (user.id === para_user_id) {
@@ -61,6 +72,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Cria a proposta
+  const vt = tipo === 'compra'
+    ? (typeof valor_total === 'number' ? valor_total : parseFloat(valor_total ?? '0'))
+    : null
   const { error } = await sb.from('propostas').insert({
     de_user_id:   user.id,
     para_user_id,
@@ -68,6 +82,7 @@ export async function POST(request: NextRequest) {
     eu_ofereco,
     eu_recebo,
     tipo,
+    valor_total:  vt,
     status: 'pendente',
   })
 

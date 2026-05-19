@@ -278,6 +278,12 @@ export default function PropostasPage() {
     round: 1 | 2
   } | null>(null)
   const [contraLoading, setContraLoading] = useState(false)
+  // Modal de contra-proposta de preço (compra)
+  const [precoContraModal, setPrecoContraModal] = useState<{
+    proposta: Proposta
+    valorInput: string
+  } | null>(null)
+  const [precoContraLoading, setPrecoContraLoading] = useState(false)
 
   useEffect(() => {
     getSession().then(async session => {
@@ -341,6 +347,35 @@ export default function PropostasPage() {
   async function apagar(id: string) {
     setOcultarIds(prev => new Set([...prev, id]))
     await fetch(`/api/propostas/${id}`, { method: 'DELETE', credentials: 'include' })
+  }
+
+  async function enviarContraPreco() {
+    if (!precoContraModal || precoContraLoading) return
+    const val = parseFloat(precoContraModal.valorInput.replace(',', '.'))
+    if (!val || val <= 0 || val > 99999) { alert('Valor inválido'); return }
+    setPrecoContraLoading(true)
+    try {
+      const res = await fetch(`/api/propostas/${precoContraModal.proposta.id}/contra`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contra_valor: val }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        alert((j as { error?: string }).error ?? 'Erro ao enviar contra-proposta')
+        return
+      }
+      const pid = precoContraModal.proposta.id
+      setRecebidas(prev => prev.map(p =>
+        p.id === pid
+          ? { ...p, contra_feita_por: userId ?? 'me', contra_valor: val }
+          : p
+      ))
+      setPrecoContraModal(null)
+    } finally {
+      setPrecoContraLoading(false)
+    }
   }
 
   async function enviarContra() {
@@ -541,7 +576,35 @@ export default function PropostasPage() {
                 {/* Corpo expansível */}
                 {isExpanded && (<>
 
-                {/* Figurinhas */}
+                {/* ── COMPRA: mostra figurinhas solicitadas + preço ── */}
+                {p.tipo === 'compra' ? (<>
+                  <div className="px-3 py-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                      Figurinhas que o comprador quer ({p.eu_recebo.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                    </div>
+                  </div>
+                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-700">💰 Valor oferecido</span>
+                    <span className="text-base font-black text-blue-900">
+                      {p.valor_total != null
+                        ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : '—'}
+                    </span>
+                  </div>
+                  {/* Contra de preço já enviada */}
+                  {p.contra_feita_por && p.contra_valor != null && (
+                    <div className="mx-3 mb-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-amber-700">↩ Seu contra-preço enviado</span>
+                      <span className="text-base font-black text-amber-900">
+                        {p.contra_valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  )}
+                </>) : (<>
+                {/* ── TROCA: grid de figurinhas ── */}
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
@@ -562,8 +625,7 @@ export default function PropostasPage() {
                 </div>
 
                 {/* Balanço (só trocas) */}
-                {p.tipo === 'troca' && (
-                  <div className={[
+                <div className={[
                     'mx-3 mb-3 px-3 py-2 rounded-xl text-xs text-center font-semibold',
                     p.eu_ofereco.length === p.eu_recebo.length
                       ? 'bg-green-50 text-green-700'
@@ -572,11 +634,11 @@ export default function PropostasPage() {
                     {p.eu_ofereco.length === p.eu_recebo.length
                       ? `✓ Troca ${p.eu_ofereco.length}×${p.eu_recebo.length} — mesma quantidade`
                       : `✨ Troca ${p.eu_ofereco.length}×${p.eu_recebo.length} — proporção personalizada`}
-                  </div>
-                )}
+                </div>
+                </>)}
 
-                {/* Contra rodada 1 — enviada pelo user2 (você) */}
-                {p.contra_feita_por && p.contra_eu_ofereco && (
+                {/* Contra rodada 1 — enviada pelo user2 (você) — só para trocas */}
+                {p.tipo === 'troca' && p.contra_feita_por && p.contra_eu_ofereco && (
                   <div className="mx-3 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
                     <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-2">
                       ↩ Sua contra-proposta
@@ -631,8 +693,8 @@ export default function PropostasPage() {
 
                 {/* Ações — pendente */}
                 {p.status === 'pendente' && (
-                  /* Enviou contra mas user1 ainda não respondeu → aguardando */
-                  p.contra_feita_por && !p.contra2_feita_por ? (
+                  /* Contra já enviada → aguardando comprador responder */
+                  p.contra_feita_por && (p.tipo === 'compra' || !p.contra2_feita_por) ? (
                     <div className="px-3 pb-3">
                       <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
                         <p className="text-xs text-slate-500">
@@ -648,21 +710,30 @@ export default function PropostasPage() {
                     >
                       Recusar
                     </button>
-                    {/* Contra — só disponível se nenhuma rodada foi enviada ainda */}
-                    {!p.contra_feita_por && !p.contra2_feita_por && (
-                      <button
-                        onClick={() => setContraModal({
-                          proposta: p,
-                          baseOfereco:     p.eu_ofereco,
-                          baseRecebo:      p.eu_recebo,
-                          selectedOfereco: new Set(p.eu_ofereco),
-                          selectedRecebo:  new Set(p.eu_recebo),
-                          round: 1,
-                        })}
-                        className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
-                      >
-                        ↩ Contra
-                      </button>
+                    {/* Contra — compra: propor novo preço | troca: propor novas figurinhas */}
+                    {!p.contra_feita_por && (
+                      p.tipo === 'compra' ? (
+                        <button
+                          onClick={() => setPrecoContraModal({ proposta: p, valorInput: '' })}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                        >
+                          💰 Propor preço
+                        </button>
+                      ) : !p.contra2_feita_por ? (
+                        <button
+                          onClick={() => setContraModal({
+                            proposta: p,
+                            baseOfereco:     p.eu_ofereco,
+                            baseRecebo:      p.eu_recebo,
+                            selectedOfereco: new Set(p.eu_ofereco),
+                            selectedRecebo:  new Set(p.eu_recebo),
+                            round: 1,
+                          })}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                        >
+                          ↩ Contra
+                        </button>
+                      ) : null
                     )}
                     {adulto ? (
                       <button
@@ -797,6 +868,35 @@ export default function PropostasPage() {
                 {/* Corpo expansível */}
                 {isExpanded && (<>
 
+                {/* ── COMPRA (enviadas = comprador) ── */}
+                {p.tipo === 'compra' ? (<>
+                  <div className="px-3 py-3">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                      Figurinhas que você solicitou ({p.eu_recebo.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                    </div>
+                  </div>
+                  <div className="mx-3 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-700">💰 Seu valor oferecido</span>
+                    <span className="text-base font-black text-blue-900">
+                      {p.valor_total != null
+                        ? p.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : '—'}
+                    </span>
+                  </div>
+                  {/* Contra-preço do vendedor */}
+                  {p.contra_feita_por && p.contra_valor != null && (
+                    <div className="mx-3 mb-2 bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-amber-700">↩ {p.contraparte_nome} propôs</span>
+                      <span className="text-base font-black text-amber-900">
+                        {p.contra_valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  )}
+                </>) : (<>
+                {/* ── TROCA (enviadas) ── */}
                 <div className="grid grid-cols-2 divide-x divide-slate-50">
                   <div className="px-3 py-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
@@ -815,6 +915,7 @@ export default function PropostasPage() {
                     </div>
                   </div>
                 </div>
+                </>)}
 
                 {/* Aceita — revelar telefone + banca + avaliar */}
                 {p.status === 'aceita' && (
@@ -852,7 +953,36 @@ export default function PropostasPage() {
                 {p.status === 'pendente' && (
                   <div className="px-3 pb-3 space-y-2">
 
-                    {/* Contra recebida do user2 — user1 pode responder */}
+                    {/* ── COMPRA: comprador recebeu contra-preço do vendedor ── */}
+                    {p.tipo === 'compra' && p.contra_feita_por ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmando({ id: p.id, acao: 'recusar' })}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Recusar
+                        </button>
+                        {adulto ? (
+                          <button
+                            onClick={() => setConfirmando({ id: p.id, acao: 'aceitar' })}
+                            className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
+                          >
+                            ✓ Aceitar
+                          </button>
+                        ) : (
+                          <div className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center justify-center">
+                            🔒 +18
+                          </div>
+                        )}
+                      </div>
+                    ) : p.tipo === 'compra' ? (
+                      /* Compra sem contra ainda — aguardando vendedor */
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
+                        <p className="text-xs text-slate-500">Aguardando resposta de {p.contraparte_nome}…</p>
+                      </div>
+                    ) : (<>
+
+                    {/* ── TROCA: contra recebida do vendedor (rodada 1) ── */}
                     {p.contra_feita_por && p.contra_eu_ofereco && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                         <p className="text-xs font-bold text-amber-700 mb-2">
@@ -906,7 +1036,7 @@ export default function PropostasPage() {
                       </div>
                     )}
 
-                    {/* Botões de ação: aparecem para user1 quando recebeu contra (rodada 1) e ainda não re-controu */}
+                    {/* Botões troca: contra recebida e ainda não re-controu */}
                     {p.contra_feita_por && !p.contra2_feita_por ? (
                       <div className="flex gap-2">
                         <button
@@ -952,6 +1082,7 @@ export default function PropostasPage() {
                         </p>
                       </div>
                     )}
+                    </>)}
                   </div>
                 )}
 
@@ -980,6 +1111,59 @@ export default function PropostasPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal contra-preço (compra) */}
+      {precoContraModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { if (!precoContraLoading) setPrecoContraModal(null) }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-5 w-full max-w-sm animate-fadein">
+            <p className="text-2xl mb-1">💰</p>
+            <p className="font-black text-slate-800 mb-1">Propor novo preço</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Informe o valor que aceita receber pelas figurinhas solicitadas.
+            </p>
+
+            {precoContraModal.proposta.valor_total != null && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
+                <span className="text-xs text-blue-600">Valor do comprador</span>
+                <span className="text-sm font-black text-blue-800">
+                  {precoContraModal.proposta.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            )}
+
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Seu preço (R$)</label>
+            <input
+              type="number"
+              min="0.01"
+              max="99999"
+              step="0.01"
+              placeholder="Ex: 25.00"
+              value={precoContraModal.valorInput}
+              onChange={e => setPrecoContraModal(prev => prev ? { ...prev, valorInput: e.target.value } : prev)}
+              autoFocus
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent mb-4"
+            />
+
+            <div className="flex gap-2">
+              <button
+                disabled={precoContraLoading}
+                onClick={() => setPrecoContraModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={precoContraLoading || !precoContraModal.valorInput || parseFloat(precoContraModal.valorInput) <= 0}
+                onClick={enviarContraPreco}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {precoContraLoading ? '…' : '💰 Enviar contra-preço'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

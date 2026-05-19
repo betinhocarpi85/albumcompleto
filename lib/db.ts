@@ -396,11 +396,14 @@ export interface PropostaComPerfil {
   album_id:     string
   status:       'pendente' | 'aceita' | 'recusada'
   created_at:   string
-  /** Contra-proposta rodada 1 (feita pelo para_user_id) */
+  /** Preço oferecido pelo comprador (tipo=compra) */
+  valor_total:  number | null
+  /** Contra-proposta rodada 1 — troca: stickers; compra: novo preço do vendedor */
   contra_eu_ofereco:  number[] | null
   contra_eu_recebo:   number[] | null
   contra_feita_por:   string   | null
-  /** Contra-proposta rodada 2 (feita pelo de_user_id em resposta à rodada 1) */
+  contra_valor:       number   | null   // compra: preço proposto pelo vendedor
+  /** Contra-proposta rodada 2 — só para trocas */
   contra2_eu_ofereco: number[] | null
   contra2_eu_recebo:  number[] | null
   contra2_feita_por:  string   | null
@@ -433,9 +436,11 @@ async function enrichPropostas(
       album_id:           (p.album_id as string)      ?? 'copa-2026',
       status:             p.status as 'pendente' | 'aceita' | 'recusada',
       created_at:         p.created_at as string,
+      valor_total:        (p.valor_total  as number | null) ?? null,
       contra_eu_ofereco:  (p.contra_eu_ofereco  as number[] | null) ?? null,
       contra_eu_recebo:   (p.contra_eu_recebo   as number[] | null) ?? null,
       contra_feita_por:   (p.contra_feita_por   as string   | null) ?? null,
+      contra_valor:       (p.contra_valor        as number   | null) ?? null,
       contra2_eu_ofereco: (p.contra2_eu_ofereco as number[] | null) ?? null,
       contra2_eu_recebo:  (p.contra2_eu_recebo  as number[] | null) ?? null,
       contra2_feita_por:  (p.contra2_feita_por  as string   | null) ?? null,
@@ -495,7 +500,8 @@ export async function dbEnviarProposta(
   album_id: AlbumId,
   eu_ofereco: number[],
   eu_recebo: number[],
-  tipo: TipoProposta
+  tipo: TipoProposta,
+  valor_total?: number
 ): Promise<{ error: string | null }> {
   const uid = await getUserId()
   if (!uid) return { error: 'Não autenticado' }
@@ -524,6 +530,7 @@ export async function dbEnviarProposta(
     eu_ofereco,
     eu_recebo,
     tipo,
+    valor_total:  tipo === 'compra' ? (valor_total ?? null) : null,
     status:       'pendente',
   })
   return { error: error?.message ?? null }
