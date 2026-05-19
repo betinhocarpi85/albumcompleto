@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
     if (!gNum || gNum <= 0 || gNum > albumMeta.totalStickers) return false
     // Preço: se for anúncio de venda, precisa de preço > 0 e ≤ 9999
-    if (a.tipo === 'venda' || a.acao === 'venda') {
+    if (a.acao === 'venda') {
       const preco = typeof a.preco === 'number' ? a.preco : parseFloat(a.preco ?? '0')
       if (!preco || preco <= 0 || preco > 9999) return false
     }
