@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBoasVindasEmail } from '@/lib/email'
-import { geocodeCep } from '@/lib/maps-utils'
+import { geocodeCepRobusto } from '@/lib/maps-utils'
 
 export async function POST(request: NextRequest) {
   const admin = createAdminClient()
@@ -65,13 +65,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Geocodifica CEP → lat/lng (fire-and-forget, não bloqueia a resposta)
+  // Geocodifica CEP → lat/lng (aguarda para garantir que as coords sejam salvas)
   if (cep) {
-    geocodeCep(cep).then(coords => {
-      if (!coords) return
-      admin.from('profiles').update({ lat: coords.lat, lng: coords.lng }).eq('id', user!.id)
-        .then(({ error }) => { if (error) console.error('[save-profile] geocode update:', error.message) })
-    }).catch(e => console.error('[save-profile] geocodeCep:', e))
+    try {
+      const coords = await geocodeCepRobusto(cep)
+      if (coords) {
+        const { error: geoErr } = await admin
+          .from('profiles')
+          .update({ lat: coords.lat, lng: coords.lng })
+          .eq('id', user!.id)
+        if (geoErr) console.error('[save-profile] geocode update:', geoErr.message)
+      }
+    } catch (e) {
+      console.error('[save-profile] geocodeCepRobusto:', e)
+    }
   }
 
   // Email de boas-vindas (fire-and-forget, não bloqueia a resposta)

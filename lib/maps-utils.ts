@@ -73,6 +73,52 @@ export async function geocodeCep(cep: string): Promise<{ lat: number; lng: numbe
   }
 }
 
+/**
+ * Geocodifica CEP com estratégia robusta:
+ * 1. Nominatim por CEP
+ * 2. ViaCEP → endereço → Nominatim por endereço
+ * 3. ViaCEP → cidade/UF → Nominatim por cidade (coordenada aproximada)
+ */
+export async function geocodeCepRobusto(cep: string): Promise<{ lat: number; lng: number } | null> {
+  const clean = cep.replace(/\D/g, '')
+  if (clean.length !== 8) return null
+
+  // Tentativa 1: Nominatim direto pelo CEP
+  const direct = await geocodeCep(clean)
+  if (direct) return direct
+
+  // Tentativa 2 e 3: ViaCEP para obter endereço completo
+  try {
+    const via = await fetch(`https://viacep.com.br/ws/${clean}/json/`).then(r => r.json())
+    if (via?.erro) return null
+
+    const nominatim = async (q: string) => {
+      try {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          { headers: { 'User-Agent': 'completando.com.br/1.0' } }
+        ).then(r => r.json())
+        return r?.[0] ? { lat: parseFloat(r[0].lat), lng: parseFloat(r[0].lon) } : null
+      } catch { return null }
+    }
+
+    // Tentativa 2: endereço + bairro + cidade + UF
+    if (via.logradouro) {
+      const q = [via.logradouro, via.bairro, via.localidade, via.uf, 'Brasil'].filter(Boolean).join(', ')
+      const coords = await nominatim(q)
+      if (coords) return coords
+    }
+
+    // Tentativa 3: só cidade + UF (coordenada aproximada do centro)
+    if (via.localidade) {
+      const q = `${via.localidade}, ${via.uf}, Brasil`
+      return await nominatim(q)
+    }
+  } catch { /* ignora */ }
+
+  return null
+}
+
 /** Haversine: distância em km entre dois pontos */
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R    = 6371
