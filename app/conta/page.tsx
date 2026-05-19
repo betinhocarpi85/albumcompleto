@@ -11,12 +11,12 @@ import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetAc
 import UpgradeModal from '@/components/UpgradeModal'
 
 
-type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
 
 const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge?: number; href?: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
   { key: 'albuns',      icon: '📖', label: 'Meus Álbuns' },
-  { key: 'propostas',   icon: '🔁', label: 'Propostas' },
+  { key: 'propostas',   icon: '🔁', label: 'Propostas',  href: '/propostas' },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
   { key: 'historico',   icon: '📦', label: 'Histórico' },
   { key: 'dados',       icon: '👤', label: 'Meus Dados' },
@@ -818,56 +818,6 @@ function ContaPageInner() {
                       Salvar alterações
                     </button>
                   )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PROPOSTAS */}
-          {section === 'propostas' && (
-            <div className="animate-fadein space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-bold text-slate-800">Propostas de troca</p>
-                <Link href="/propostas" className="text-xs text-green-600 font-semibold hover:underline">
-                  Ver todas →
-                </Link>
-              </div>
-
-              {propostasPendentes > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-                  <span className="text-2xl">🔔</span>
-                  <div className="flex-1">
-                    <p className="font-bold text-amber-800 text-sm">
-                      {propostasPendentes} proposta{propostasPendentes > 1 ? 's' : ''} aguardando resposta
-                    </p>
-                    <p className="text-xs text-amber-600">Responda em até 48h para não perder o match</p>
-                  </div>
-                  <Link href="/propostas"
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl transition-colors flex-shrink-0">
-                    Responder
-                  </Link>
-                </div>
-              )}
-
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-50">
-                  <p className="font-semibold text-slate-700 text-sm">Acesso rápido</p>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {[
-                    { icon: '📥', label: 'Propostas recebidas', desc: `${propostasPendentes} pendente${propostasPendentes !== 1 ? 's' : ''}`, href: '/propostas' },
-                    { icon: '📤', label: 'Propostas enviadas',  desc: 'Ver respostas', href: '/propostas' },
-                  ].map(item => (
-                    <Link key={item.label} href={item.href}
-                      className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
-                      <span className="text-xl">{item.icon}</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800">{item.label}</p>
-                        <p className="text-xs text-slate-400">{item.desc}</p>
-                      </div>
-                      <span className="text-slate-300 text-sm">›</span>
-                    </Link>
-                  ))}
                 </div>
               </div>
             </div>
