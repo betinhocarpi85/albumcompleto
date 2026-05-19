@@ -30,42 +30,34 @@ export async function GET(request: NextRequest) {
   const albumId = (request.nextUrl.searchParams.get('albumId') ?? 'copa-2026') as AlbumId
   const sb = createAdminClient()
 
-  const [myAdsRes, othersAdsRes, allColadasRes, profilesRes] = await Promise.all([
+  const [myAdsRes, othersAdsRes] = await Promise.all([
     sb.from('anuncios').select('user_id,g_num,sid,preco,sticker_tipo')
       .eq('user_id', user.id).eq('album_id', albumId).eq('tipo', 'tenho'),
     sb.from('anuncios').select('user_id,g_num,sid,preco,sticker_tipo')
       .neq('user_id', user.id).eq('album_id', albumId).eq('tipo', 'tenho'),
-    sb.from('coladas').select('user_id,sticker_id')
-      .eq('album_id', albumId),
-    sb.from('profiles').select('id,nome,bairro,cidade,uf'),
   ])
 
-  // Fallback de nome via auth admin para perfis sem nome no banco
+  // Ids dos usuários com anúncios — usados para filtrar coladas e profiles
   const otherUserIds = [...new Set((othersAdsRes.data ?? []).map(a => a.user_id))]
-  const emailMap = new Map<string, string>()
-  await Promise.all([user.id, ...otherUserIds].map(async id => {
-    try {
-      const { data } = await sb.auth.admin.getUserById(id)
-      const u = data?.user
-      if (!u) return
-      const display =
-        (u.user_metadata?.full_name as string | undefined) ||
-        (u.user_metadata?.name     as string | undefined) ||
-        u.email?.split('@')[0] ||
-        ''
-      if (display) emailMap.set(id, display)
-    } catch { /* silencioso */ }
-  }))
+  const allRelevantIds = [user.id, ...otherUserIds]
+
+  const [allColadasRes, profilesRes] = await Promise.all([
+    sb.from('coladas').select('user_id,sticker_id')
+      .eq('album_id', albumId)
+      .in('user_id', allRelevantIds)   // só usuários relevantes, não a tabela inteira
+      .limit(50000),
+    sb.from('profiles').select('id,nome,bairro,cidade,uf')
+      .in('id', allRelevantIds),        // idem — elimina N+1 getUserById e full-table scan
+  ])
 
   const dbProfileMap = new Map((profilesRes.data ?? []).map(p => [p.id, p]))
-  const allRelevantIds = [user.id, ...otherUserIds]
 
   const profiles = allRelevantIds.map(id => {
     const db = dbProfileMap.get(id)
     const partes = [db?.bairro, db?.cidade, db?.uf].filter(Boolean)
     return {
       id,
-      nome:   db?.nome   || emailMap.get(id) || 'Usuário',
+      nome:   db?.nome || 'Usuário',
       cidade: partes.join(', '),
     }
   })
