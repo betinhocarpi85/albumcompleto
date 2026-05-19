@@ -51,6 +51,14 @@ export async function POST(request: NextRequest) {
     console.warn(`[anuncios/save] discarded examples:`, examples)
   }
 
+  // Deduplicar por sid — em caso de troca + venda para o mesmo sid, fica o último (venda)
+  const sidMap = new Map<string, typeof validItems[0]>()
+  for (const item of validItems) sidMap.set(item.sid, item)
+  const deduped = Array.from(sidMap.values())
+  if (deduped.length !== validItems.length) {
+    console.warn(`[anuncios/save] deduplicated ${validItems.length - deduped.length} duplicate sids`)
+  }
+
   const sb = createAdminClient()
 
   // 1. Delete existentes
@@ -64,10 +72,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Erro ao limpar anúncios', detail: delError.message }, { status: 500 })
   }
 
-  // 2. Insert novos
-  if (validItems.length > 0) {
+  // 2. Insert novos (deduped)
+  if (deduped.length > 0) {
     const { error: insError } = await sb.from('anuncios').insert(
-      validItems.map(a => ({
+      deduped.map(a => ({
         user_id:      user.id,
         album_id:     albumId,
         tipo,
@@ -87,8 +95,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Notifica matches — só quando salva "tenho" e tem itens válidos
-  if (tipo === 'tenho' && validItems.length > 0) {
-    const gNums = validItems.map(a => a.gNum).filter(Boolean)
+  if (tipo === 'tenho' && deduped.length > 0) {
+    const gNums = deduped.map(a => a.gNum).filter(Boolean)
 
     if (gNums.length > 0) {
       const { data: candidatos } = await sb
@@ -113,5 +121,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, saved: validItems.length, discarded })
+  return NextResponse.json({ ok: true, saved: deduped.length, discarded })
 }

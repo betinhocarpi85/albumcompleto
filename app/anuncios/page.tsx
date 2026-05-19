@@ -213,16 +213,18 @@ export default function AnunciosPage() {
   }
 
   // Troca: toggle direto sem modal
+  // Remove eventual venda do mesmo sid para evitar duplicata no DB
   async function toggleTroca(s: StickerFlat) {
     if (!adulto) return
     const key = makeKey(s.sid, 'troca')
     const jaAnunciado = anunciadosKeys.has(key)
     const next = jaAnunciado
       ? anuncios.filter(a => a.key !== key)
-      : [...anuncios, {
-          key, sid: s.sid, gNum: s.gNum, nome: s.nome,
-          catName: s.catName, tipo: s.tipo, acao: 'troca' as TipoAnuncio, preco: '',
-        }]
+      : [
+          ...anuncios.filter(a => a.sid !== s.sid), // remove troca E venda do mesmo sid
+          { key, sid: s.sid, gNum: s.gNum, nome: s.nome,
+            catName: s.catName, tipo: s.tipo, acao: 'troca' as TipoAnuncio, preco: '' },
+        ]
     setAnuncios(next)
     await salvar(next)
   }
@@ -246,7 +248,10 @@ export default function AnunciosPage() {
       catName: allStickersFlat.find(s => s.sid === modal.sid)?.catName ?? '',
       tipo: modal.tipo, acao: 'venda', preco: modal.preco,
     }
-    const next = modal.isNew ? [...anuncios, novo] : anuncios.map(a => a.key === modal.key ? novo : a)
+    const next = modal.isNew
+      // Remove troca do mesmo sid (venda substitui) e adiciona venda
+      ? [...anuncios.filter(a => a.sid !== modal.sid), novo]
+      : anuncios.map(a => a.key === modal.key ? novo : a)
     setAnuncios(next)
     await salvar(next)
     setModal(null)
