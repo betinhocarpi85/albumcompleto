@@ -605,6 +605,16 @@ export default function PropostasPage() {
 
                 {/* Ações — pendente */}
                 {p.status === 'pendente' && (
+                  /* Enviou contra mas user1 ainda não respondeu → aguardando */
+                  p.contra_feita_por && !p.contra2_feita_por ? (
+                    <div className="px-3 pb-3">
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
+                        <p className="text-xs text-slate-500">
+                          Aguardando resposta de {p.contraparte_nome}…
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="flex gap-2 px-3 pb-3">
                     <button
                       onClick={() => setConfirmando({ id: p.id, acao: 'recusar' })}
@@ -612,7 +622,7 @@ export default function PropostasPage() {
                     >
                       Recusar
                     </button>
-                    {/* Contra-proposta — só disponível se ainda não fez uma */}
+                    {/* Contra — só disponível se nenhuma rodada foi enviada ainda */}
                     {!p.contra_feita_por && !p.contra2_feita_por && (
                       <button
                         onClick={() => setContraModal({
@@ -641,6 +651,7 @@ export default function PropostasPage() {
                       </div>
                     )}
                   </div>
+                  )
                 )}
 
                 {/* Aceita — revelar telefone + banca + avaliar */}
