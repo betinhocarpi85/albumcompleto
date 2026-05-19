@@ -90,6 +90,14 @@ export async function pushPropostaRecusada(userId: string, quemRecusou: string) 
   })
 }
 
+export async function pushContraProposta(userId: string, quemFez: string) {
+  return sendToUser(userId, {
+    title: '🔄 Nova contra-proposta!',
+    body:  `${quemFez} fez uma contra-proposta. Veja e responda!`,
+    url:   'https://completando.com.br/propostas',
+  })
+}
+
 export async function pushNovoMatch(userId: string, qtd: number) {
   const pode = await checkCooldown(userId, 'notif_match_last_at', COOLDOWN_MATCH_MS)
   if (!pode) return

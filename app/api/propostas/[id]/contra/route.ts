@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { pushContraProposta } from '@/lib/push'
 
 export async function POST(
   request: NextRequest,
@@ -53,6 +54,12 @@ export async function POST(
       console.error('[propostas/contra] round1 error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Notifica o remetente original (de_user_id) que recebeu uma contra-proposta
+    const { data: perfil } = await sb.from('profiles').select('nome').eq('id', user.id).single()
+    pushContraProposta(proposta.de_user_id, perfil?.nome ?? 'Alguém')
+      .catch(e => console.error('[propostas/contra] push round1:', e))
+
     return NextResponse.json({ ok: true, round: 1 })
   }
 
@@ -69,6 +76,12 @@ export async function POST(
       console.error('[propostas/contra] round2 error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Notifica o destinatário (para_user_id) que recebeu a contra-proposta da rodada 2
+    const { data: perfil } = await sb.from('profiles').select('nome').eq('id', user.id).single()
+    pushContraProposta(proposta.para_user_id, perfil?.nome ?? 'Alguém')
+      .catch(e => console.error('[propostas/contra] push round2:', e))
+
     return NextResponse.json({ ok: true, round: 2 })
   }
 
