@@ -71,6 +71,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,   // Permite zoom — acessibilidade (WCAG 1.4.4)
   themeColor: '#22c55e',
+  viewportFit: 'cover', // habilita env(safe-area-inset-*) para notch/home-bar
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

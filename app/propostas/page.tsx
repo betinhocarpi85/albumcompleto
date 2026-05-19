@@ -1093,8 +1093,11 @@ export default function PropostasPage() {
               </div>
             </div>
 
-            {/* Botões — sempre visíveis na base */}
-            <div className="shrink-0 px-5 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex gap-2">
+            {/* Botões — sempre visíveis na base, acima da barra do sistema */}
+            <div
+              className="shrink-0 px-5 pt-4 border-t border-slate-100 bg-white rounded-b-2xl flex gap-2"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
               <button
                 disabled={contraLoading}
                 onClick={() => setContraModal(null)}
