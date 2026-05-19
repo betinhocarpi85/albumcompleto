@@ -9,7 +9,31 @@ import {
   dbAvaliar, dbJaAvaliou,
   type PropostaComPerfil, type TipoProposta,
 } from '@/lib/db'
+import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
+import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
+import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
+
+// Mapa gNum → { code, localNum } por álbum
+function buildGnumToLocal(album: Album) {
+  const maxGnum = ALBUMS_REGISTRY.find(a => a.id === album.id)?.totalStickers ?? Infinity
+  const map = new Map<number, { code: string; localNum: number }>()
+  let counter = 1
+  for (const cat of album.categories) {
+    for (const s of cat.stickers) {
+      if (counter <= maxGnum) map.set(counter, { code: cat.code, localNum: s.number })
+      counter++
+    }
+  }
+  return map
+}
+
+const GNUM_TO_LOCAL: Record<string, Map<number, { code: string; localNum: number }>> = {
+  'copa-2026':              buildGnumToLocal(albumCopa2026),
+  'brasileirao-masc-2026': buildGnumToLocal(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':  buildGnumToLocal(albumBrasileiraoFem2026),
+}
 
 type Aba    = 'recebidas' | 'enviadas'
 type Filtro = 'todos' | 'troca' | 'compra'
@@ -47,10 +71,18 @@ function formatPhone(raw: string): string {
   return raw
 }
 
-function StickerPill({ num }: { num: number }) {
+function StickerPill({ num, albumId }: { num: number; albumId: string }) {
+  const info = (GNUM_TO_LOCAL[albumId] ?? GNUM_TO_LOCAL['copa-2026']).get(num)
   return (
-    <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg border-2 border-slate-200 bg-slate-50 text-[11px] font-black text-slate-600 flex-shrink-0">
-      {num}
+    <span className="inline-flex flex-col items-center justify-center w-9 h-9 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-600 flex-shrink-0 gap-0">
+      {info ? (
+        <>
+          {info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-50">{info.code}</span>}
+          <span className="text-[11px] font-black leading-none">{info.localNum}</span>
+        </>
+      ) : (
+        <span className="text-[11px] font-black leading-none">{num}</span>
+      )}
     </span>
   )
 }
@@ -375,7 +407,7 @@ export default function PropostasPage() {
                       Ele/ela oferece ({p.eu_ofereco.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
                   <div className="px-3 py-3">
@@ -383,7 +415,7 @@ export default function PropostasPage() {
                       Quer receber ({p.eu_recebo.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
                 </div>
@@ -533,7 +565,7 @@ export default function PropostasPage() {
                       Você oferece ({p.eu_ofereco.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
                   <div className="px-3 py-3">
@@ -541,7 +573,7 @@ export default function PropostasPage() {
                       Você recebe ({p.eu_recebo.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} />)}
+                      {p.eu_recebo.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
                     </div>
                   </div>
                 </div>

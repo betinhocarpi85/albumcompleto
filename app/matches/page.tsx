@@ -18,7 +18,7 @@ import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 import UpgradeModal from '@/components/UpgradeModal'
 
 // ─── Mapas por álbum ─────────────────────────────────────────────────────────
-interface StickerInfo { name: string; code: string; tipo: string }
+interface StickerInfo { name: string; code: string; tipo: string; localNum: number }
 
 function buildAlbumMaps(album: Album) {
   const sidToGlobal = buildGlobalNumberMap(album)
@@ -29,7 +29,7 @@ function buildAlbumMaps(album: Album) {
   for (const cat of album.categories) {
     for (const s of cat.stickers) {
       if (counter <= maxGnum) {
-        globalInfo.set(counter, { name: s.name, code: cat.code, tipo: s.type })
+        globalInfo.set(counter, { name: s.name, code: cat.code, tipo: s.type, localNum: s.number })
       }
       counter++
     }
@@ -467,10 +467,19 @@ export default function MatchesPage() {
                               const removido = remDele.has(num)
                               return (
                                 <button key={num} onClick={() => toggleRemovidoDele(match.id, num)}
-                                  title={info ? `${info.code}-${num} · ${info.name}` : `#${num}`}
-                                  className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
+                                  title={info ? `${info.code}-${info.localNum} · ${info.name}` : `#${num}`}
+                                  className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all active:scale-90',
                                     removido ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50' : 'bg-blue-50 border-blue-300 text-blue-700 hover:border-red-300 hover:bg-red-50'].join(' ')}>
-                                  <span className="text-[10px] font-bold leading-none">{removido ? '✕' : num}</span>
+                                  {removido ? (
+                                    <span className="text-[10px] font-bold leading-none">✕</span>
+                                  ) : info ? (
+                                    <>
+                                      {info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-60">{info.code}</span>}
+                                      <span className="text-[10px] font-black leading-none">{info.localNum}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-[10px] font-bold leading-none">{num}</span>
+                                  )}
                                 </button>
                               )
                             })}
@@ -484,10 +493,19 @@ export default function MatchesPage() {
                               const removido = rem.has(num)
                               return (
                                 <button key={num} onClick={() => toggleRemovido(match.id, num)}
-                                  title={info ? `${info.code}-${num} · ${info.name}` : `#${num}`}
-                                  className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center transition-all active:scale-90',
+                                  title={info ? `${info.code}-${info.localNum} · ${info.name}` : `#${num}`}
+                                  className={['w-9 h-9 rounded-lg border-2 flex flex-col items-center justify-center gap-0 transition-all active:scale-90',
                                     removido ? 'bg-slate-100 border-slate-200 text-slate-300 opacity-50' : 'bg-green-50 border-green-300 text-green-700 hover:border-red-300 hover:bg-red-50'].join(' ')}>
-                                  <span className="text-[10px] font-bold leading-none">{removido ? '✕' : num}</span>
+                                  {removido ? (
+                                    <span className="text-[10px] font-bold leading-none">✕</span>
+                                  ) : info ? (
+                                    <>
+                                      {info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-60">{info.code}</span>}
+                                      <span className="text-[10px] font-black leading-none">{info.localNum}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-[10px] font-bold leading-none">{num}</span>
+                                  )}
                                 </button>
                               )
                             })}
@@ -638,8 +656,8 @@ export default function MatchesPage() {
                             const info        = currentGlobalInfo.get(item.num)
                             return (
                               <div key={item.num}
-                                title={info ? `${info.code}-${item.num} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}
-                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 select-none',
+                                title={info ? `${info.code}-${info.localNum} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}
+                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0 select-none',
                                   jaColada ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-40'
                                     : isBrilhante ? 'bg-amber-50 border-amber-300 text-amber-700'
                                     : isEscudo ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
@@ -648,10 +666,9 @@ export default function MatchesPage() {
                                   <span className="text-[10px] font-bold leading-none">✓</span>
                                 ) : (
                                   <>
-                                    <span className="text-[10px] font-black leading-none">{item.num}</span>
+                                    {info && info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-60">{info.code}</span>}
+                                    <span className="text-[10px] font-black leading-none">{info ? info.localNum : item.num}</span>
                                     <span className="text-[8px] leading-none font-semibold opacity-75">{fmtBRL(item.preco).replace('R$ ', 'R$')}</span>
-                                    {isBrilhante && <span className="text-[7px] leading-none">✨</span>}
-                                    {isEscudo    && <span className="text-[7px] leading-none">🛡</span>}
                                   </>
                                 )}
                               </div>
