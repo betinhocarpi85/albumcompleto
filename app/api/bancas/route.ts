@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
   const cidade = searchParams.get('cidade') ?? ''
   const todas  = searchParams.get('todas') === '1' // admin: inclui inativas
 
+  // todas=1 expõe bancas inativas — requer autenticação admin
+  if (todas && !await isAdminAuth()) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
   if (!todas) query = query.eq('ativa', true)
   if (uf)     query = query.eq('uf', uf)

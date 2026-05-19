@@ -6,6 +6,16 @@
  * Domínio remetente:   RESEND_FROM  (ex: "Completando <noreply@completando.com.br>")
  */
 
+/** Escapa caracteres HTML para evitar injeção em templates de email */
+function esc(s: string | null | undefined): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? ''
 const RESEND_FROM    = process.env.RESEND_FROM    ?? 'Completando <noreply@completando.com.br>'
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
@@ -94,11 +104,11 @@ export async function sendMatchEmail(opts: {
     <p style="margin:0 0 8px;font-size:22px;text-align:center;">🎉</p>
     <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e293b;text-align:center;">Você tem um match!</h1>
     <p style="margin:0 0 24px;font-size:14px;color:#64748b;text-align:center;">
-      Olá, <strong>${userName}</strong>! Encontramos alguém que tem o que você precisa.
+      Olá, <strong>${esc(userName)}</strong>! Encontramos alguém que tem o que você precisa.
     </p>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#15803d;">${matchName}</p>
-      <p style="margin:0 0 12px;font-size:13px;color:#64748b;">📍 ${matchCidade || 'Localização não informada'}</p>
+      <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#15803d;">${esc(matchName)}</p>
+      <p style="margin:0 0 12px;font-size:13px;color:#64748b;">📍 ${esc(matchCidade) || 'Localização não informada'}</p>
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#166534;">
         ${lines.join('')}
       </ul>
@@ -128,7 +138,7 @@ export async function sendPropostaEmail(opts: {
     <p style="margin:0 0 8px;font-size:22px;text-align:center;">🔁</p>
     <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e293b;text-align:center;">Nova proposta de troca!</h1>
     <p style="margin:0 0 24px;font-size:14px;color:#64748b;text-align:center;">
-      Olá, <strong>${userName}</strong>! <strong>${remetente}</strong> enviou uma proposta para você.
+      Olá, <strong>${esc(userName)}</strong>! <strong>${esc(remetente)}</strong> enviou uma proposta para você.
     </p>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin-bottom:24px;">
       <table width="100%" cellpadding="0" cellspacing="0">
@@ -155,7 +165,7 @@ export async function sendPropostaEmail(opts: {
     </div>
   `)
 
-  await sendEmail(to, `🔁 ${remetente} enviou uma proposta de troca!`, html)
+  await sendEmail(to, `🔁 ${esc(remetente)} enviou uma proposta de troca!`, html)
 }
 
 // ── Boas-vindas ───────────────────────────────────────────────────────────────
@@ -170,7 +180,7 @@ export async function sendBoasVindasEmail(opts: {
     <p style="margin:0 0 8px;font-size:22px;text-align:center;">👋</p>
     <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e293b;text-align:center;">Bem-vindo ao Completando!</h1>
     <p style="margin:0 0 24px;font-size:14px;color:#64748b;text-align:center;">
-      Olá, <strong>${nome}</strong>! Sua conta foi criada com sucesso.
+      Olá, <strong>${esc(nome)}</strong>! Sua conta foi criada com sucesso.
     </p>
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin-bottom:24px;">
       <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#15803d;">Como começar:</p>
@@ -207,7 +217,7 @@ export async function sendPagamentoEmail(opts: {
     <p style="margin:0 0 8px;font-size:22px;text-align:center;">⭐</p>
     <h1 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1e293b;text-align:center;">Assinatura PRO ativada!</h1>
     <p style="margin:0 0 24px;font-size:14px;color:#64748b;text-align:center;">
-      Olá, <strong>${nome}</strong>! Seu pagamento foi confirmado.
+      Olá, <strong>${esc(nome)}</strong>! Seu pagamento foi confirmado.
     </p>
     <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
       <p style="margin:0;font-size:13px;color:#92400e;">Plano <strong>PRO ${planoLabel}</strong></p>
