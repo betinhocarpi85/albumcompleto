@@ -6,7 +6,7 @@ import {
   getSession, dbGetProfile,
   dbGetPropostasRecebidas, dbGetPropostasEnviadas,
   dbUpdateProposta, dbGetPhoneForProposta,
-  dbAvaliar, dbJaAvaliou,
+  dbAvaliar, dbJaAvaliou, dbEnviarContraproposta,
   type PropostaComPerfil, type TipoProposta,
 } from '@/lib/db'
 import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
@@ -87,6 +87,32 @@ function StickerPill({ num, albumId }: { num: number; albumId: string }) {
   )
 }
 
+function StickerToggle({
+  num, albumId, selected, onToggle,
+}: { num: number; albumId: string; selected: boolean; onToggle: () => void }) {
+  const info = (GNUM_TO_LOCAL[albumId] ?? GNUM_TO_LOCAL['copa-2026']).get(num)
+  return (
+    <button
+      onClick={onToggle}
+      className={[
+        'inline-flex flex-col items-center justify-center w-9 h-9 rounded-lg border-2 transition-all gap-0',
+        selected
+          ? 'border-amber-400 bg-amber-50 text-amber-800'
+          : 'border-slate-200 bg-slate-50 text-slate-300 opacity-40',
+      ].join(' ')}
+    >
+      {info ? (
+        <>
+          {info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-60">{info.code}</span>}
+          <span className="text-[11px] font-black leading-none">{info.localNum}</span>
+        </>
+      ) : (
+        <span className="text-[11px] font-black leading-none">{num}</span>
+      )}
+    </button>
+  )
+}
+
 function BancaCard({ banca }: { banca: BancaProxima }) {
   const mapsUrl = banca.cep?.startsWith('http')
     ? banca.cep
@@ -124,10 +150,15 @@ function BancaCard({ banca }: { banca: BancaProxima }) {
   )
 }
 
-function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
+function PhoneCard({ phone, nome, banca }: { phone: string; nome: string; banca?: BancaProxima | null }) {
   const [aberto, setAberto] = useState(false)
   const digits = phone.replace(/\D/g, '')
   const waLink = `https://wa.me/55${digits}`
+  const mapsUrl = banca
+    ? (banca.cep?.startsWith('http')
+        ? banca.cep
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${banca.endereco}, ${banca.cidade}, ${banca.uf}`)}`)
+    : null
   return (
     <div className="border border-green-200 rounded-xl overflow-hidden">
       {/* Header — sempre visível */}
@@ -157,11 +188,49 @@ function PhoneCard({ phone, nome }: { phone: string; nome: string }) {
           <p className="text-[11px] text-green-600">
             Combine data, local e horário diretamente com {nome}.
           </p>
-          <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-            <span className="text-base leading-none mt-0.5">🛡️</span>
-            <p className="text-[11px] text-amber-700 leading-relaxed">
-              <strong>Dica de segurança:</strong> prefira se encontrar em locais públicos e movimentados — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
-            </p>
+
+          {/* Dica de segurança + banca sugerida */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden">
+            <div className="flex gap-2 px-3 py-2.5">
+              <span className="text-base leading-none mt-0.5">🛡️</span>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                <strong>Dica de segurança:</strong> prefira se encontrar em locais públicos e movimentados — shoppings, praças, lanchonetes. Evite endereços residenciais com pessoas que não conhece.
+              </p>
+            </div>
+
+            {banca && (
+              <div className="border-t border-amber-200 px-3 py-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">🗺️</span>
+                    <div>
+                      <p className="text-[11px] font-bold text-amber-800">Banca sugerida para o encontro</p>
+                      <p className="text-[10px] text-amber-700 font-medium">{banca.nome}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-600 shrink-0">{banca.distanciaKm} km</span>
+                </div>
+                <p className="text-[10px] text-amber-700">📍 {banca.endereco} — {banca.cidade}/{banca.uf}</p>
+                <div className="flex gap-2">
+                  <a
+                    href={`/bancas/${banca.slug}`}
+                    className="flex-1 text-center text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white py-1.5 rounded-lg transition-colors"
+                  >
+                    Ver banca
+                  </a>
+                  {mapsUrl && (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center text-[11px] font-bold bg-white border border-amber-300 hover:bg-amber-50 text-amber-700 py-1.5 rounded-lg transition-colors"
+                    >
+                      📍 Abrir no Maps
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -193,6 +262,12 @@ export default function PropostasPage() {
   const [avalSalvando, setAvalSalvando] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [adulto, setAdulto]       = useState(true)
+  const [contraModal, setContraModal] = useState<{
+    proposta: Proposta
+    selectedOfereco: Set<number>
+    selectedRecebo: Set<number>
+  } | null>(null)
+  const [contraLoading, setContraLoading] = useState(false)
 
   useEffect(() => {
     getSession().then(async session => {
@@ -251,6 +326,31 @@ export default function PropostasPage() {
   async function apagar(id: string) {
     setOcultarIds(prev => new Set([...prev, id]))
     await fetch(`/api/propostas/${id}`, { method: 'DELETE', credentials: 'include' })
+  }
+
+  async function enviarContra() {
+    if (!contraModal || contraLoading) return
+    setContraLoading(true)
+    try {
+      const { error } = await dbEnviarContraproposta(
+        contraModal.proposta.id,
+        Array.from(contraModal.selectedOfereco),
+        Array.from(contraModal.selectedRecebo),
+      )
+      if (error) { alert(error); return }
+      // Optimistic update
+      const pid = contraModal.proposta.id
+      const novaOfereco = Array.from(contraModal.selectedOfereco)
+      const novaRecebo  = Array.from(contraModal.selectedRecebo)
+      setRecebidas(prev => prev.map(p =>
+        p.id === pid
+          ? { ...p, contra_feita_por: 'me', contra_eu_ofereco: novaOfereco, contra_eu_recebo: novaRecebo }
+          : p
+      ))
+      setContraModal(null)
+    } finally {
+      setContraLoading(false)
+    }
   }
 
   async function confirmar() {
@@ -434,6 +534,33 @@ export default function PropostasPage() {
                   </div>
                 )}
 
+                {/* Contra-proposta enviada — mostra versão modificada */}
+                {p.contra_feita_por && p.contra_eu_ofereco && (
+                  <div className="mx-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-2">
+                      ↩ Sua contra-proposta
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[9px] text-amber-500 mb-1">
+                          Ele/ela oferece ({p.contra_eu_ofereco.length})
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {p.contra_eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-amber-500 mb-1">
+                          Você dá ({(p.contra_eu_recebo ?? []).length})
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {(p.contra_eu_recebo ?? []).map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Ações — pendente */}
                 {p.status === 'pendente' && (
                   <div className="flex gap-2 px-3 pb-3">
@@ -443,6 +570,19 @@ export default function PropostasPage() {
                     >
                       Recusar
                     </button>
+                    {/* Contra-proposta — só disponível se ainda não fez uma */}
+                    {!p.contra_feita_por && (
+                      <button
+                        onClick={() => setContraModal({
+                          proposta: p,
+                          selectedOfereco: new Set(p.eu_ofereco),
+                          selectedRecebo:  new Set(p.eu_recebo),
+                        })}
+                        className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                      >
+                        ↩ Contra
+                      </button>
+                    )}
                     {adulto ? (
                       <button
                         onClick={() => setConfirmando({ id: p.id, acao: 'aceitar' })}
@@ -470,7 +610,7 @@ export default function PropostasPage() {
                       </p>
                     </div>
                     {phone
-                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} />
+                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
                       : (
                         <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
                           <span className="text-slate-400 text-sm">⏳</span>
@@ -479,9 +619,6 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
-                    {p.bancaProxima && (
-                      <BancaCard banca={p.bancaProxima} />
-                    )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
@@ -588,7 +725,7 @@ export default function PropostasPage() {
                       </p>
                     </div>
                     {phone
-                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} />
+                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
                       : (
                         <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
                           <span className="text-slate-400 text-sm">⏳</span>
@@ -597,9 +734,6 @@ export default function PropostasPage() {
                           </p>
                         </div>
                       )}
-                    {p.bancaProxima && (
-                      <BancaCard banca={p.bancaProxima} />
-                    )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
@@ -615,10 +749,38 @@ export default function PropostasPage() {
 
                 {/* Pendente */}
                 {p.status === 'pendente' && (
-                  <div className="px-3 pb-3">
+                  <div className="px-3 pb-3 space-y-2">
+                    {/* Contra-proposta recebida */}
+                    {p.contra_feita_por && p.contra_eu_ofereco && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <p className="text-xs font-bold text-amber-700 mb-2">
+                          ↩ {p.contraparte_nome} fez uma contra-proposta
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[9px] text-amber-500 mb-1">
+                              Você oferece ({p.contra_eu_ofereco.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {p.contra_eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-amber-500 mb-1">
+                              Você recebe ({(p.contra_eu_recebo ?? []).length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {(p.contra_eu_recebo ?? []).map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
                       <p className="text-xs text-slate-500">
-                        Aguardando resposta de {p.contraparte_nome}…
+                        {p.contra_feita_por
+                          ? `Aguardando decisão de ${p.contraparte_nome}…`
+                          : `Aguardando resposta de ${p.contraparte_nome}…`}
                       </p>
                     </div>
                   </div>
@@ -744,6 +906,89 @@ export default function PropostasPage() {
                 ].join(' ')}
               >
                 {loading ? '…' : confirmando.acao === 'aceitar' ? '✓ Aceitar' : 'Recusar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal contra-proposta */}
+      {contraModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => { if (!contraLoading) setContraModal(null) }}
+          />
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 w-full sm:max-w-md animate-fadein max-h-[90vh] overflow-y-auto">
+            <p className="text-2xl mb-1">↩</p>
+            <p className="font-black text-slate-800 mb-1">Contra-proposta</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Toque nas figurinhas para removê-las. Só é possível enviar uma contra-proposta por proposta.
+            </p>
+
+            {/* Ele/ela oferece */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-slate-600 mb-2">
+                {contraModal.proposta.contraparte_nome} oferece
+                {' '}({contraModal.selectedOfereco.size} de {contraModal.proposta.eu_ofereco.length} selecionadas)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {contraModal.proposta.eu_ofereco.map(n => (
+                  <StickerToggle
+                    key={n}
+                    num={n}
+                    albumId={contraModal.proposta.album_id}
+                    selected={contraModal.selectedOfereco.has(n)}
+                    onToggle={() => {
+                      const next = new Set(contraModal.selectedOfereco)
+                      if (next.has(n)) next.delete(n); else next.add(n)
+                      setContraModal(prev => prev ? { ...prev, selectedOfereco: next } : prev)
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Você dá */}
+            <div className="mb-5">
+              <p className="text-xs font-bold text-slate-600 mb-2">
+                Você dá
+                {' '}({contraModal.selectedRecebo.size} de {contraModal.proposta.eu_recebo.length} selecionadas)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {contraModal.proposta.eu_recebo.map(n => (
+                  <StickerToggle
+                    key={n}
+                    num={n}
+                    albumId={contraModal.proposta.album_id}
+                    selected={contraModal.selectedRecebo.has(n)}
+                    onToggle={() => {
+                      const next = new Set(contraModal.selectedRecebo)
+                      if (next.has(n)) next.delete(n); else next.add(n)
+                      setContraModal(prev => prev ? { ...prev, selectedRecebo: next } : prev)
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                disabled={contraLoading}
+                onClick={() => setContraModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={
+                  contraLoading ||
+                  (contraModal.selectedOfereco.size === 0 && contraModal.selectedRecebo.size === 0)
+                }
+                onClick={enviarContra}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {contraLoading ? '…' : '↩ Enviar contra'}
               </button>
             </div>
           </div>
