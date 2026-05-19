@@ -107,6 +107,11 @@ export async function DELETE(request: Request) {
 
   const sb = createAdminClient()
 
+  // Deleta o auth user primeiro — se falhar, não apagamos os dados do banco
+  const { error } = await sb.auth.admin.deleteUser(userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Auth user deletado com sucesso — limpa os dados do banco
   await Promise.all([
     sb.from('anuncios').delete().eq('user_id', userId),
     sb.from('coladas').delete().eq('user_id', userId),
@@ -115,9 +120,6 @@ export async function DELETE(request: Request) {
     sb.from('user_preferences').delete().eq('user_id', userId),
     sb.from('profiles').delete().eq('id', userId),
   ])
-  const { error } = await sb.auth.admin.deleteUser(userId)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await sb.from('admin_logs').insert({
     action:    'delete_user',

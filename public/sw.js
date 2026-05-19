@@ -1,5 +1,5 @@
 const CACHE = 'completando-v1'
-const NEVER_CACHE = ['/api/', '/auth/', '/admin/']
+const NEVER_CACHE = ['/api/', '/auth/', '/admin/', '/conta', '/matches', '/propostas', '/anuncios', '/notificacoes', '/album']
 
 self.addEventListener('install', () => self.skipWaiting())
 

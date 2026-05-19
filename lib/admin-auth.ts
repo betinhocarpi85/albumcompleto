@@ -4,16 +4,22 @@ import { scryptSync, timingSafeEqual, randomBytes } from 'crypto'
 
 export const ADMIN_COOKIE = 'cdo_admin'
 
-/** Token de sessão — derivado apenas do ADMIN_SECRET */
+/** Token de sessão — derivado do ADMIN_SECRET (falha fechado se não configurado) */
 export function getAdminToken(): string {
-  const s = (process.env.ADMIN_SECRET ?? 'completando-admin-secret').trim()
+  const s = (process.env.ADMIN_SECRET ?? '').trim()
+  if (!s) return ''   // token vazio nunca bate com um cookie real
   return `cdo-admin-session::${s}`
 }
 
 export async function isAdminAuth(): Promise<boolean> {
   try {
+    const token = getAdminToken()
+    if (!token) {
+      console.error('[admin-auth] ADMIN_SECRET não configurado — acesso negado')
+      return false
+    }
     const store = await cookies()
-    return store.get(ADMIN_COOKIE)?.value === getAdminToken()
+    return store.get(ADMIN_COOKIE)?.value === token
   } catch {
     return false
   }

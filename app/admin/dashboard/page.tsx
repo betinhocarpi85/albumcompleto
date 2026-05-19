@@ -63,7 +63,9 @@ export default async function AdminDashboardPage() {
 
   const authUsers = await Promise.all(
     (firstPageProfiles ?? []).map(p =>
-      sb.auth.admin.getUserById(p.id).then(r => r.data?.user)
+      sb.auth.admin.getUserById(p.id)
+        .then(r => r.data?.user)
+        .catch(() => undefined)
     )
   )
 
