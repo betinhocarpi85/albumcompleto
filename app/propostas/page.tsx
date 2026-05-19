@@ -1032,64 +1032,69 @@ export default function PropostasPage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => { if (!contraLoading) setContraModal(null) }}
           />
-          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 w-full sm:max-w-md animate-fadein max-h-[90vh] overflow-y-auto">
-            <p className="text-2xl mb-1">↩</p>
-            <p className="font-black text-slate-800 mb-1">
-              Contra-proposta{contraModal.round === 2 ? ' (rodada 2)' : ''}
-            </p>
-            <p className="text-xs text-slate-400 mb-4">
-              Toque nas figurinhas para removê-las. Cada lado pode fazer uma contra-proposta.
-            </p>
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-fadein max-h-[90vh] flex flex-col">
 
-            {/* Figurinhas lado A */}
-            <div className="mb-4">
-              <p className="text-xs font-bold text-slate-600 mb-2">
-                {contraModal.round === 1
-                  ? `${contraModal.proposta.contraparte_nome} oferece`
-                  : 'Você oferece'}
-                {' '}({contraModal.selectedOfereco.size} de {contraModal.baseOfereco.length} selecionadas)
+            {/* Conteúdo rolável */}
+            <div className="flex-1 overflow-y-auto p-5 pb-2">
+              <p className="text-2xl mb-1">↩</p>
+              <p className="font-black text-slate-800 mb-1">
+                Contra-proposta{contraModal.round === 2 ? ' (rodada 2)' : ''}
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {contraModal.baseOfereco.map(n => (
-                  <StickerToggle
-                    key={n}
-                    num={n}
-                    albumId={contraModal.proposta.album_id}
-                    selected={contraModal.selectedOfereco.has(n)}
-                    onToggle={() => {
-                      const next = new Set(contraModal.selectedOfereco)
-                      if (next.has(n)) next.delete(n); else next.add(n)
-                      setContraModal(prev => prev ? { ...prev, selectedOfereco: next } : prev)
-                    }}
-                  />
-                ))}
+              <p className="text-xs text-slate-400 mb-4">
+                Toque nas figurinhas para removê-las. Cada lado pode fazer uma contra-proposta.
+              </p>
+
+              {/* Figurinhas lado A */}
+              <div className="mb-4">
+                <p className="text-xs font-bold text-slate-600 mb-2">
+                  {contraModal.round === 1
+                    ? `${contraModal.proposta.contraparte_nome} oferece`
+                    : 'Você oferece'}
+                  {' '}({contraModal.selectedOfereco.size} de {contraModal.baseOfereco.length} selecionadas)
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {contraModal.baseOfereco.map(n => (
+                    <StickerToggle
+                      key={n}
+                      num={n}
+                      albumId={contraModal.proposta.album_id}
+                      selected={contraModal.selectedOfereco.has(n)}
+                      onToggle={() => {
+                        const next = new Set(contraModal.selectedOfereco)
+                        if (next.has(n)) next.delete(n); else next.add(n)
+                        setContraModal(prev => prev ? { ...prev, selectedOfereco: next } : prev)
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Figurinhas lado B */}
+              <div className="mb-2">
+                <p className="text-xs font-bold text-slate-600 mb-2">
+                  {contraModal.round === 1 ? 'Você dá' : 'Você recebe'}
+                  {' '}({contraModal.selectedRecebo.size} de {contraModal.baseRecebo.length} selecionadas)
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {contraModal.baseRecebo.map(n => (
+                    <StickerToggle
+                      key={n}
+                      num={n}
+                      albumId={contraModal.proposta.album_id}
+                      selected={contraModal.selectedRecebo.has(n)}
+                      onToggle={() => {
+                        const next = new Set(contraModal.selectedRecebo)
+                        if (next.has(n)) next.delete(n); else next.add(n)
+                        setContraModal(prev => prev ? { ...prev, selectedRecebo: next } : prev)
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Figurinhas lado B */}
-            <div className="mb-5">
-              <p className="text-xs font-bold text-slate-600 mb-2">
-                {contraModal.round === 1 ? 'Você dá' : 'Você recebe'}
-                {' '}({contraModal.selectedRecebo.size} de {contraModal.baseRecebo.length} selecionadas)
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {contraModal.baseRecebo.map(n => (
-                  <StickerToggle
-                    key={n}
-                    num={n}
-                    albumId={contraModal.proposta.album_id}
-                    selected={contraModal.selectedRecebo.has(n)}
-                    onToggle={() => {
-                      const next = new Set(contraModal.selectedRecebo)
-                      if (next.has(n)) next.delete(n); else next.add(n)
-                      setContraModal(prev => prev ? { ...prev, selectedRecebo: next } : prev)
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2">
+            {/* Botões — sempre visíveis na base */}
+            <div className="shrink-0 px-5 py-4 border-t border-slate-100 bg-white rounded-b-2xl flex gap-2">
               <button
                 disabled={contraLoading}
                 onClick={() => setContraModal(null)}
