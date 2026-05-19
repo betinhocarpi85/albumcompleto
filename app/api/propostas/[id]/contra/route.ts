@@ -29,12 +29,10 @@ export async function POST(
 
   const sb = createAdminClient()
 
-  // Busca proposta — confirma que caller é o destinatário e proposta está pendente
   const { data: proposta, error: errBusca } = await sb
     .from('propostas')
-    .select('id, de_user_id, para_user_id, status, contra_feita_por')
+    .select('id, de_user_id, para_user_id, status, contra_feita_por, contra2_feita_por')
     .eq('id', id)
-    .eq('para_user_id', user.id)
     .eq('status', 'pendente')
     .single()
 
@@ -42,24 +40,37 @@ export async function POST(
     return NextResponse.json({ error: 'Proposta não encontrada' }, { status: 404 })
   }
 
-  if (proposta.contra_feita_por) {
-    return NextResponse.json({ error: 'Contra-proposta já enviada' }, { status: 409 })
-  }
-
-  const { error } = await sb
-    .from('propostas')
-    .update({
+  // Rodada 1: para_user_id faz contra (proposta ainda sem contra)
+  if (user.id === proposta.para_user_id && !proposta.contra_feita_por) {
+    const { error } = await sb.from('propostas').update({
       contra_eu_ofereco: eu_ofereco,
       contra_eu_recebo:  eu_recebo,
       contra_feita_por:  user.id,
       updated_at:        new Date().toISOString(),
-    })
-    .eq('id', id)
+    }).eq('id', id)
 
-  if (error) {
-    console.error('[propostas/contra] update error:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error('[propostas/contra] round1 error:', error.message)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, round: 1 })
   }
 
-  return NextResponse.json({ ok: true })
+  // Rodada 2: de_user_id faz contra (já existe contra do para_user_id, ainda sem contra2)
+  if (user.id === proposta.de_user_id && proposta.contra_feita_por && !proposta.contra2_feita_por) {
+    const { error } = await sb.from('propostas').update({
+      contra2_eu_ofereco: eu_ofereco,
+      contra2_eu_recebo:  eu_recebo,
+      contra2_feita_por:  user.id,
+      updated_at:         new Date().toISOString(),
+    }).eq('id', id)
+
+    if (error) {
+      console.error('[propostas/contra] round2 error:', error.message)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, round: 2 })
+  }
+
+  return NextResponse.json({ error: 'Sem permissão ou limite de contra-propostas atingido' }, { status: 403 })
 }

@@ -262,16 +262,21 @@ export default function PropostasPage() {
   const [avalSalvando, setAvalSalvando] = useState(false)
   const [loading, setLoading]     = useState(false)
   const [adulto, setAdulto]       = useState(true)
+  const [userId, setUserId]           = useState<string | null>(null)
   const [contraModal, setContraModal] = useState<{
     proposta: Proposta
+    baseOfereco: number[]    // lista completa de opções a mostrar no modal
+    baseRecebo: number[]
     selectedOfereco: Set<number>
     selectedRecebo: Set<number>
+    round: 1 | 2
   } | null>(null)
   const [contraLoading, setContraLoading] = useState(false)
 
   useEffect(() => {
     getSession().then(async session => {
       if (!session) return
+      setUserId(session.user.id)
       const [rec, env, prof] = await Promise.all([
         dbGetPropostasRecebidas(),
         dbGetPropostasEnviadas(),
@@ -338,15 +343,25 @@ export default function PropostasPage() {
         Array.from(contraModal.selectedRecebo),
       )
       if (error) { alert(error); return }
-      // Optimistic update
-      const pid = contraModal.proposta.id
-      const novaOfereco = Array.from(contraModal.selectedOfereco)
-      const novaRecebo  = Array.from(contraModal.selectedRecebo)
-      setRecebidas(prev => prev.map(p =>
-        p.id === pid
-          ? { ...p, contra_feita_por: 'me', contra_eu_ofereco: novaOfereco, contra_eu_recebo: novaRecebo }
-          : p
-      ))
+      const pid       = contraModal.proposta.id
+      const novaOfe   = Array.from(contraModal.selectedOfereco)
+      const novaRec   = Array.from(contraModal.selectedRecebo)
+      const round     = contraModal.round
+      if (round === 1) {
+        // User2 enviou a primeira contra → atualiza recebidas
+        setRecebidas(prev => prev.map(p =>
+          p.id === pid
+            ? { ...p, contra_feita_por: userId ?? 'me', contra_eu_ofereco: novaOfe, contra_eu_recebo: novaRec }
+            : p
+        ))
+      } else {
+        // User1 enviou a segunda contra → atualiza enviadas
+        setEnviadas(prev => prev.map(p =>
+          p.id === pid
+            ? { ...p, contra2_feita_por: userId ?? 'me', contra2_eu_ofereco: novaOfe, contra2_eu_recebo: novaRec }
+            : p
+        ))
+      }
       setContraModal(null)
     } finally {
       setContraLoading(false)
@@ -534,9 +549,9 @@ export default function PropostasPage() {
                   </div>
                 )}
 
-                {/* Contra-proposta enviada — mostra versão modificada */}
+                {/* Contra rodada 1 — enviada pelo user2 (você) */}
                 {p.contra_feita_por && p.contra_eu_ofereco && (
-                  <div className="mx-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="mx-3 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
                     <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-2">
                       ↩ Sua contra-proposta
                     </p>
@@ -561,6 +576,33 @@ export default function PropostasPage() {
                   </div>
                 )}
 
+                {/* Contra rodada 2 — re-contra do user1, user2 só pode aceitar/recusar */}
+                {p.contra2_feita_por && p.contra2_eu_ofereco && (
+                  <div className="mx-3 mb-2 bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
+                      ↩ Nova proposta de {p.contraparte_nome}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[9px] text-indigo-500 mb-1">
+                          Ele/ela oferece ({p.contra2_eu_ofereco.length})
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {p.contra2_eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-indigo-500 mb-1">
+                          Você dá ({(p.contra2_eu_recebo ?? []).length})
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {(p.contra2_eu_recebo ?? []).map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Ações — pendente */}
                 {p.status === 'pendente' && (
                   <div className="flex gap-2 px-3 pb-3">
@@ -571,12 +613,15 @@ export default function PropostasPage() {
                       Recusar
                     </button>
                     {/* Contra-proposta — só disponível se ainda não fez uma */}
-                    {!p.contra_feita_por && (
+                    {!p.contra_feita_por && !p.contra2_feita_por && (
                       <button
                         onClick={() => setContraModal({
                           proposta: p,
+                          baseOfereco:     p.eu_ofereco,
+                          baseRecebo:      p.eu_recebo,
                           selectedOfereco: new Set(p.eu_ofereco),
                           selectedRecebo:  new Set(p.eu_recebo),
+                          round: 1,
                         })}
                         className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
                       >
@@ -747,10 +792,11 @@ export default function PropostasPage() {
                   </div>
                 )}
 
-                {/* Pendente */}
+                {/* Pendente — enviadas */}
                 {p.status === 'pendente' && (
                   <div className="px-3 pb-3 space-y-2">
-                    {/* Contra-proposta recebida */}
+
+                    {/* Contra recebida do user2 — user1 pode responder */}
                     {p.contra_feita_por && p.contra_eu_ofereco && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                         <p className="text-xs font-bold text-amber-700 mb-2">
@@ -776,13 +822,80 @@ export default function PropostasPage() {
                         </div>
                       </div>
                     )}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
-                      <p className="text-xs text-slate-500">
-                        {p.contra_feita_por
-                          ? `Aguardando decisão de ${p.contraparte_nome}…`
-                          : `Aguardando resposta de ${p.contraparte_nome}…`}
-                      </p>
-                    </div>
+
+                    {/* Re-contra enviada pelo user1 (rodada 2) */}
+                    {p.contra2_feita_por && p.contra2_eu_ofereco && (
+                      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                        <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
+                          ↩ Sua nova proposta
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[9px] text-indigo-500 mb-1">
+                              Você oferece ({p.contra2_eu_ofereco.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {p.contra2_eu_ofereco.map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-indigo-500 mb-1">
+                              Você recebe ({(p.contra2_eu_recebo ?? []).length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {(p.contra2_eu_recebo ?? []).map(n => <StickerPill key={n} num={n} albumId={p.album_id} />)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botões de ação: aparecem para user1 quando recebeu contra (rodada 1) e ainda não re-controu */}
+                    {p.contra_feita_por && !p.contra2_feita_por ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setConfirmando({ id: p.id, acao: 'recusar' })}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Recusar
+                        </button>
+                        <button
+                          onClick={() => setContraModal({
+                            proposta: p,
+                            baseOfereco:     p.contra_eu_ofereco ?? p.eu_ofereco,
+                            baseRecebo:      p.contra_eu_recebo  ?? p.eu_recebo,
+                            selectedOfereco: new Set(p.contra_eu_ofereco ?? p.eu_ofereco),
+                            selectedRecebo:  new Set(p.contra_eu_recebo  ?? p.eu_recebo),
+                            round: 2,
+                          })}
+                          className="flex-1 py-2.5 rounded-xl border-2 border-amber-300 text-sm font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+                        >
+                          ↩ Contra
+                        </button>
+                        {adulto ? (
+                          <button
+                            onClick={() => setConfirmando({ id: p.id, acao: 'aceitar' })}
+                            className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
+                          >
+                            ✓ Aceitar
+                          </button>
+                        ) : (
+                          <div className="flex-1 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center justify-center">
+                            🔒 +18
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-center">
+                        <p className="text-xs text-slate-500">
+                          {p.contra2_feita_por
+                            ? `Aguardando decisão de ${p.contraparte_nome}…`
+                            : p.contra_feita_por
+                              ? `Aguardando sua resposta…`
+                              : `Aguardando resposta de ${p.contraparte_nome}…`}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -921,19 +1034,23 @@ export default function PropostasPage() {
           />
           <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 w-full sm:max-w-md animate-fadein max-h-[90vh] overflow-y-auto">
             <p className="text-2xl mb-1">↩</p>
-            <p className="font-black text-slate-800 mb-1">Contra-proposta</p>
+            <p className="font-black text-slate-800 mb-1">
+              Contra-proposta{contraModal.round === 2 ? ' (rodada 2)' : ''}
+            </p>
             <p className="text-xs text-slate-400 mb-4">
-              Toque nas figurinhas para removê-las. Só é possível enviar uma contra-proposta por proposta.
+              Toque nas figurinhas para removê-las. Cada lado pode fazer uma contra-proposta.
             </p>
 
-            {/* Ele/ela oferece */}
+            {/* Figurinhas lado A */}
             <div className="mb-4">
               <p className="text-xs font-bold text-slate-600 mb-2">
-                {contraModal.proposta.contraparte_nome} oferece
-                {' '}({contraModal.selectedOfereco.size} de {contraModal.proposta.eu_ofereco.length} selecionadas)
+                {contraModal.round === 1
+                  ? `${contraModal.proposta.contraparte_nome} oferece`
+                  : 'Você oferece'}
+                {' '}({contraModal.selectedOfereco.size} de {contraModal.baseOfereco.length} selecionadas)
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {contraModal.proposta.eu_ofereco.map(n => (
+                {contraModal.baseOfereco.map(n => (
                   <StickerToggle
                     key={n}
                     num={n}
@@ -949,14 +1066,14 @@ export default function PropostasPage() {
               </div>
             </div>
 
-            {/* Você dá */}
+            {/* Figurinhas lado B */}
             <div className="mb-5">
               <p className="text-xs font-bold text-slate-600 mb-2">
-                Você dá
-                {' '}({contraModal.selectedRecebo.size} de {contraModal.proposta.eu_recebo.length} selecionadas)
+                {contraModal.round === 1 ? 'Você dá' : 'Você recebe'}
+                {' '}({contraModal.selectedRecebo.size} de {contraModal.baseRecebo.length} selecionadas)
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {contraModal.proposta.eu_recebo.map(n => (
+                {contraModal.baseRecebo.map(n => (
                   <StickerToggle
                     key={n}
                     num={n}

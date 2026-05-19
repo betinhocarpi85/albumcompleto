@@ -395,10 +395,14 @@ export interface PropostaComPerfil {
   album_id:     string
   status:       'pendente' | 'aceita' | 'recusada'
   created_at:   string
-  /** Contra-proposta (preenchida pelo destinatário, se enviada) */
-  contra_eu_ofereco: number[] | null
-  contra_eu_recebo:  number[] | null
-  contra_feita_por:  string   | null
+  /** Contra-proposta rodada 1 (feita pelo para_user_id) */
+  contra_eu_ofereco:  number[] | null
+  contra_eu_recebo:   number[] | null
+  contra_feita_por:   string   | null
+  /** Contra-proposta rodada 2 (feita pelo de_user_id em resposta à rodada 1) */
+  contra2_eu_ofereco: number[] | null
+  contra2_eu_recebo:  number[] | null
+  contra2_feita_por:  string   | null
 }
 
 async function enrichPropostas(
@@ -428,9 +432,12 @@ async function enrichPropostas(
       album_id:           (p.album_id as string)      ?? 'copa-2026',
       status:             p.status as 'pendente' | 'aceita' | 'recusada',
       created_at:         p.created_at as string,
-      contra_eu_ofereco:  (p.contra_eu_ofereco as number[] | null) ?? null,
-      contra_eu_recebo:   (p.contra_eu_recebo  as number[] | null) ?? null,
-      contra_feita_por:   (p.contra_feita_por  as string   | null) ?? null,
+      contra_eu_ofereco:  (p.contra_eu_ofereco  as number[] | null) ?? null,
+      contra_eu_recebo:   (p.contra_eu_recebo   as number[] | null) ?? null,
+      contra_feita_por:   (p.contra_feita_por   as string   | null) ?? null,
+      contra2_eu_ofereco: (p.contra2_eu_ofereco as number[] | null) ?? null,
+      contra2_eu_recebo:  (p.contra2_eu_recebo  as number[] | null) ?? null,
+      contra2_feita_por:  (p.contra2_feita_por  as string   | null) ?? null,
     }
   })
 }

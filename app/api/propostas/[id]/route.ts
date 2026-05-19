@@ -19,17 +19,25 @@ export async function PATCH(
 
   const sb = createAdminClient()
 
-  // Busca proposta — garante que o usuário é o destinatário
+  // Busca proposta — qualquer parte pode aceitar/recusar quando tem contra-proposta
   const { data: proposta, error: errBusca } = await sb
     .from('propostas')
-    .select('id, de_user_id, para_user_id, status')
+    .select('id, de_user_id, para_user_id, status, contra_feita_por')
     .eq('id', id)
-    .eq('para_user_id', user.id) // só quem recebeu pode aceitar/recusar
     .eq('status', 'pendente')
     .single()
 
   if (errBusca || !proposta) {
     return NextResponse.json({ error: 'Proposta não encontrada' }, { status: 404 })
+  }
+
+  // para_user_id pode sempre aceitar/recusar
+  // de_user_id só pode quando recebeu uma contra-proposta do para_user_id
+  const isPara = proposta.para_user_id === user.id
+  const isDe   = proposta.de_user_id   === user.id && !!proposta.contra_feita_por
+
+  if (!isPara && !isDe) {
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 
   // Atualiza status
@@ -49,12 +57,16 @@ export async function PATCH(
 
   const nomeResp = respProfile?.nome ?? 'Alguém'
 
-  // Push para quem enviou a proposta (fire-and-forget, sem cooldown pois é evento pontual)
+  // Notifica a contraparte
+  const contraparteId = proposta.de_user_id === user.id
+    ? proposta.para_user_id
+    : proposta.de_user_id
+
   if (status === 'aceita') {
-    pushPropostaAceita(proposta.de_user_id, nomeResp)
+    pushPropostaAceita(contraparteId, nomeResp)
       .catch(e => console.error('[propostas/patch] push aceita:', e))
   } else {
-    pushPropostaRecusada(proposta.de_user_id, nomeResp)
+    pushPropostaRecusada(contraparteId, nomeResp)
       .catch(e => console.error('[propostas/patch] push recusada:', e))
   }
 
