@@ -16,7 +16,6 @@ const ALBUM_MAX_GNUMS: Record<string, number> = Object.fromEntries(
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
 type TipoAnuncio = 'venda' | 'troca'
-type Tab         = 'disponiveis' | 'anunciadas'
 type SubTab      = TipoAnuncio
 
 interface AnuncioLocal {
@@ -119,19 +118,13 @@ export default function AnunciosPage() {
   const [coladas,  setColadas]  = useState<Set<string>>(new Set())
   const [anuncios, setAnuncios] = useState<AnuncioLocal[]>([])
   const [loading,  setLoading]  = useState(true)
-  const [tab,      setTab]      = useState<Tab>('disponiveis')
   const [subTab,   setSubTab]   = useState<SubTab>('troca')
   const [modal,    setModal]    = useState<VendaModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
   const [erroSave, setErroSave] = useState(false)
-  const [filtroAcao, setFiltroAcao]   = useState<TipoAnuncio>('troca')
-  // disponíveis
-  const [openTipos, setOpenTipos]     = useState<Set<StickerType>>(new Set(['normal']))
-  const [openCats,  setOpenCats]      = useState<Set<string>>(new Set())
-  // anunciadas
-  const [openTiposAn, setOpenTiposAn] = useState<Set<StickerType>>(new Set(['normal']))
-  const [openCatsAn,  setOpenCatsAn]  = useState<Set<string>>(new Set())
+  const [openTipos, setOpenTipos] = useState<Set<StickerType>>(new Set(['normal']))
+  const [openCats,  setOpenCats]  = useState<Set<string>>(new Set())
 
   // Dados do álbum atual (derivados do albumId, sem hook)
   const { flat: allStickersFlat, porTipo: porTipoECat } = ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']
@@ -180,13 +173,6 @@ export default function AnunciosPage() {
   function toggleCat(id: string) {
     setOpenCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
-  function toggleTipoAn(t: StickerType) {
-    setOpenTiposAn(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
-  }
-  function toggleCatAn(id: string) {
-    setOpenCatsAn(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
-  }
-
   async function trocarAlbum(id: AlbumId) {
     setAlbumId(id)
     setMostrarSeletor(false)
@@ -317,29 +303,6 @@ export default function AnunciosPage() {
     }
   }
 
-  const anunciosFiltrados = useMemo(() =>
-    anuncios.filter(a => a.acao === filtroAcao)
-  , [anuncios, filtroAcao])
-
-  // Agrupa anúncios filtrados por tipo → por categoria (para a aba Anunciadas)
-  const anunciadosPorTipoECat = useMemo(() => {
-    const result: Record<StickerType, { catId: string; catName: string; catFlag: string; items: AnuncioLocal[] }[]> = {
-      normal: [], escudo: [], brilhante: [], especial: [],
-      'extra-gold': [], 'extra-silver': [], 'extra-bronze': [], 'extra-purple': [], 'coca-cola': [],
-    }
-    const currentAlbum = (ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']).album
-    const currentFlat  = (ALBUM_DATA[albumId] ?? ALBUM_DATA['copa-2026']).flat
-    for (const cat of currentAlbum.categories) {
-      for (const tipo of Object.keys(result) as StickerType[]) {
-        const items = anunciosFiltrados.filter(a =>
-          a.tipo === tipo && currentFlat.find(s => s.sid === a.sid)?.catId === cat.id
-        )
-        if (items.length) result[tipo].push({ catId: cat.id, catName: cat.name, catFlag: cat.flag ?? '📌', items })
-      }
-    }
-    return result
-  }, [anunciosFiltrados, albumId])
-
   if (loading) return (
     <div className="max-w-2xl mx-auto px-3 py-10 text-center">
       <span className="w-8 h-8 border-2 border-green-400 border-t-transparent rounded-full animate-spin inline-block" />
@@ -451,14 +414,18 @@ export default function AnunciosPage() {
       })()}
 
       {/* Resumo */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-slate-50 rounded-2xl px-4 py-3 text-center">
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-slate-50 rounded-2xl px-3 py-3 text-center">
           <p className="text-2xl font-black text-slate-700">{coladas.size}</p>
           <p className="text-[11px] text-slate-500 mt-0.5">No álbum</p>
         </div>
-        <div className="bg-blue-50 rounded-2xl px-4 py-3 text-center">
-          <p className="text-2xl font-black text-blue-700">{anuncios.length}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">Anunciadas</p>
+        <div className="bg-blue-50 rounded-2xl px-3 py-3 text-center">
+          <p className="text-2xl font-black text-blue-700">{anuncios.filter(a => a.acao === 'troca').length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">🔁 Troca</p>
+        </div>
+        <div className="bg-green-50 rounded-2xl px-3 py-3 text-center">
+          <p className="text-2xl font-black text-green-700">{anuncios.filter(a => a.acao === 'venda').length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">💰 Venda</p>
         </div>
       </div>
 
@@ -473,23 +440,7 @@ export default function AnunciosPage() {
         </div>
       ) : (
         <>
-          {/* Abas principais */}
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setTab('disponiveis')}
-              className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
-                tab === 'disponiveis' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
-              📋 Disponíveis
-            </button>
-            <button onClick={() => { setTab('anunciadas'); setFiltroAcao('troca') }}
-              className={['flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
-                tab === 'anunciadas' ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-slate-200'].join(' ')}>
-              📢 Anunciadas
-            </button>
-          </div>
-
-          {/* ── ABA DISPONÍVEIS ── */}
-          {tab === 'disponiveis' && (
-            <div className="animate-fadein">
+          <div className="animate-fadein">
 
               {/* Sub-abas Troca / Venda */}
               <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
@@ -618,119 +569,7 @@ export default function AnunciosPage() {
                   )
                 })}
               </div>
-            </div>
-          )}
-
-          {/* ── ABA ANUNCIADAS ── */}
-          {tab === 'anunciadas' && (
-            <div className="animate-fadein">
-              {anuncios.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
-                  <p className="text-3xl mb-2">📭</p>
-                  <p className="font-bold text-slate-700 text-sm mb-1">Nenhum anúncio ainda</p>
-                  <p className="text-xs text-slate-400">Vá para Disponíveis e selecione figurinhas.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Filtro Troca / Venda */}
-                  <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
-                    {(['troca', 'venda'] as const).map(f => (
-                      <button key={f} onClick={() => setFiltroAcao(f)}
-                        className={['flex-1 py-2 rounded-lg text-sm font-bold transition-all',
-                          filtroAcao === f
-                            ? f === 'venda' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'].join(' ')}>
-                        {f === 'venda' ? '💰 Venda' : '🔁 Troca'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Quadros por tipo */}
-                  <div className="space-y-3">
-                    {TIPO_META.map(({ key: tipoKey, label, icon, desc }) => {
-                      const grupos = anunciadosPorTipoECat[tipoKey]
-                      const totalTipo = grupos.reduce((a, g) => a + g.items.length, 0)
-                      const isOpen = openTiposAn.has(tipoKey)
-
-                      return (
-                        <div key={tipoKey}
-                          className={['bg-white rounded-2xl border-2 shadow-sm overflow-hidden transition-all',
-                            isOpen && totalTipo > 0 ? 'border-slate-300' : 'border-slate-100'].join(' ')}>
-
-                          {/* Header do tipo */}
-                          <button onClick={() => toggleTipoAn(tipoKey)}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left">
-                            <span className="text-2xl">{icon}</span>
-                            <div className="flex-1">
-                              <p className="font-bold text-slate-800 text-sm">{label}</p>
-                              <p className="text-xs text-slate-400">{desc}</p>
-                            </div>
-                            {totalTipo > 0 && (
-                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                {totalTipo} anúncio{totalTipo > 1 ? 's' : ''}
-                              </span>
-                            )}
-                            {totalTipo === 0 && (
-                              <span className="text-xs text-slate-300 font-medium">nenhuma</span>
-                            )}
-                            <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
-                          </button>
-
-                          {/* Categorias dentro do tipo */}
-                          {isOpen && totalTipo > 0 && (
-                            <div className="border-t border-slate-50 px-4 pb-4 pt-2 space-y-2">
-                              {grupos.map(g => {
-                                const catKey = `an__${tipoKey}__${g.catId}`
-                                const catOpen = openCatsAn.has(catKey)
-                                return (
-                                  <div key={g.catId} className="border border-slate-100 rounded-xl overflow-hidden">
-                                    <button onClick={() => toggleCatAn(catKey)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-                                      <span className="flex-1 text-sm font-semibold text-slate-700">{g.catName.replace(/^[^\p{L}\p{N}]+/u, '')}</span>
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                                        {g.items.length}✓
-                                      </span>
-                                      <span className="text-xs text-slate-400">{catOpen ? '▲' : '▼'}</span>
-                                    </button>
-
-                                    {catOpen && (
-                                      <div className="px-3 pb-3 pt-1 border-t border-slate-50 flex flex-wrap gap-2">
-                                        {g.items.map(a => (
-                                          <button key={a.key}
-                                            onClick={() => a.acao === 'venda' ? editarModalVenda(a) : remover(a.key)}
-                                            title={`#${a.gNum} · ${a.nome} · ${a.acao === 'venda' ? `R$ ${parseFloat(a.preco||'0').toFixed(2)}` : 'Troca — toque para remover'}`}
-                                            className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-all',
-                                              a.acao === 'venda'
-                                                ? 'border-green-300 bg-green-50 hover:border-green-500 hover:bg-green-100 text-green-700'
-                                                : 'border-blue-300 bg-blue-50 hover:border-red-300 hover:bg-red-50 text-blue-700'].join(' ')}>
-                                            <span className="text-[11px] font-black leading-none">{a.gNum}</span>
-                                            {TIPO_ICON[a.tipo] && <span className="text-[8px] leading-none">{TIPO_ICON[a.tipo]}</span>}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                              <p className="text-[10px] text-slate-400 text-center pt-1">
-                                Toque para editar ou remover
-                              </p>
-                            </div>
-                          )}
-
-                          {isOpen && totalTipo === 0 && (
-                            <div className="border-t border-slate-50 px-4 py-3 text-center">
-                              <p className="text-xs text-slate-400">Nenhum anúncio {label.toLowerCase()}</p>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          </div>
         </>
       )}
     </div>
