@@ -11,7 +11,7 @@ import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetAc
 import UpgradeModal from '@/components/UpgradeModal'
 
 
-type Section = 'visao-geral' | 'albuns' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
 
 const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge?: number; href?: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
