@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { haversineKm } from '@/lib/maps-utils'
@@ -10,21 +10,23 @@ export interface BancaMaisProxima {
   endereco: string
   cidade:   string
   uf:       string
-  cep:      string | null   // URL do Maps (campo reutilizado)
+  cep:      string | null
   lat:      number
   lng:      number
-  distanciaKm: number
+  distanciaKm: number   // distância máxima entre os dois (pior caso)
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
+  const propostaId = request.nextUrl.searchParams.get('proposta_id')
+
   const sb = createAdminClient()
 
-  // Busca dados do perfil
-  const { data: profile } = await sb
+  // Busca coordenadas do usuário atual
+  const { data: myProfile } = await sb
     .from('profiles')
     .select('lat, lng, cidade, uf')
     .eq('id', user.id)
@@ -42,28 +44,71 @@ export async function GET() {
     return NextResponse.json({ banca: null, motivo: 'sem_bancas' })
   }
 
-  // ── Estratégia 1: lat/lng exato (Haversine) ──────────────────────────────
-  if (profile?.lat && profile?.lng) {
+  // ── Estratégia 1: minimiza soma das distâncias dos DOIS usuários ──────────
+  if (propostaId && myProfile?.lat && myProfile?.lng) {
+    // Descobre quem é a contraparte
+    const { data: proposta } = await sb
+      .from('propostas')
+      .select('de_user_id, para_user_id')
+      .eq('id', propostaId)
+      .single()
+
+    if (proposta) {
+      const outraParteId = proposta.de_user_id === user.id
+        ? proposta.para_user_id
+        : proposta.de_user_id
+
+      const { data: outraProfile } = await sb
+        .from('profiles')
+        .select('lat, lng')
+        .eq('id', outraParteId)
+        .single()
+
+      if (outraProfile?.lat && outraProfile?.lng) {
+        // Minimiza a soma: banca mais acessível para os dois
+        let melhor: BancaMaisProxima | null = null
+        let menorSoma = Infinity
+
+        for (const b of bancas) {
+          const d1 = haversineKm(myProfile.lat,         myProfile.lng,         b.lat, b.lng)
+          const d2 = haversineKm(outraProfile.lat, outraProfile.lng, b.lat, b.lng)
+          const soma = d1 + d2
+          if (soma < menorSoma) {
+            menorSoma = soma
+            melhor = {
+              ...b,
+              // Mostra a maior distância (pior caso) para dar expectativa realista
+              distanciaKm: Math.round(Math.max(d1, d2) * 10) / 10,
+            }
+          }
+        }
+
+        if (melhor) return NextResponse.json({ banca: melhor, estrategia: 'dois_usuarios' })
+      }
+    }
+  }
+
+  // ── Estratégia 2: banca mais próxima do usuário atual ────────────────────
+  if (myProfile?.lat && myProfile?.lng) {
     let nearest: BancaMaisProxima | null = null
     let menorDist = Infinity
 
     for (const b of bancas) {
-      const dist = haversineKm(profile.lat, profile.lng, b.lat, b.lng)
+      const dist = haversineKm(myProfile.lat, myProfile.lng, b.lat, b.lng)
       if (dist < menorDist) {
         menorDist = dist
         nearest = { ...b, distanciaKm: Math.round(dist * 10) / 10 }
       }
     }
 
-    if (nearest) return NextResponse.json({ banca: nearest })
+    if (nearest) return NextResponse.json({ banca: nearest, estrategia: 'usuario_atual' })
   }
 
-  // ── Estratégia 2: fallback por cidade/uf do perfil ───────────────────────
-  if (profile?.cidade) {
-    const cidadeLower = profile.cidade.trim().toLowerCase()
-    const ufLower     = (profile.uf ?? '').trim().toLowerCase()
+  // ── Estratégia 3: fallback por cidade/uf do perfil ───────────────────────
+  if (myProfile?.cidade) {
+    const cidadeLower = myProfile.cidade.trim().toLowerCase()
+    const ufLower     = (myProfile.uf ?? '').trim().toLowerCase()
 
-    // Tenta cidade + UF primeiro, depois só cidade
     const porCidade = bancas.find(b =>
       b.cidade.trim().toLowerCase() === cidadeLower &&
       (!ufLower || b.uf.trim().toLowerCase() === ufLower)
@@ -74,7 +119,7 @@ export async function GET() {
     if (porCidade) {
       return NextResponse.json({
         banca: { ...porCidade, distanciaKm: 0 },
-        motivo: 'por_cidade',
+        estrategia: 'por_cidade',
       })
     }
   }

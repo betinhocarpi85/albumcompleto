@@ -242,9 +242,12 @@ function PhoneCard({ phone, nome, banca }: { phone: string; nome: string; banca?
 
 type AvaliacaoModal = { proposta: PropostaComPerfil; nota: number; comentario: string }
 
-async function fetchBancaProxima(): Promise<BancaProxima | null> {
+async function fetchBancaProxima(propostaId?: string): Promise<BancaProxima | null> {
   try {
-    const res = await fetch('/api/bancas/nearest', { credentials: 'include' })
+    const url = propostaId
+      ? `/api/bancas/nearest?proposta_id=${propostaId}`
+      : '/api/bancas/nearest'
+    const res = await fetch(url, { credentials: 'include' })
     if (!res.ok) return null
     const { banca } = await res.json()
     return banca ?? null
@@ -286,26 +289,24 @@ export default function PropostasPage() {
       ])
       setAdulto(!!prof.maior18)
 
-      // Para propostas aceitas, carrega telefone, avaliação e banca mais próxima
+      // Para propostas aceitas, carrega telefone, avaliação e banca equilibrada entre os dois
       const aceitas = [...rec, ...env].filter(p => p.status === 'aceita')
-      const [extras, bancaProxima] = await Promise.all([
-        aceitas.length > 0
-          ? Promise.all(aceitas.map(async p => {
-              const [phone, avaliado] = await Promise.all([
-                dbGetPhoneForProposta(p.id),
-                dbJaAvaliou(p.id),
-              ])
-              return { id: p.id, telefone: phone ?? undefined, avaliado }
-            }))
-          : Promise.resolve([]),
-        aceitas.length > 0 ? fetchBancaProxima() : Promise.resolve(null),
-      ])
+      const extras = aceitas.length > 0
+        ? await Promise.all(aceitas.map(async p => {
+            const [phone, avaliado, bancaProxima] = await Promise.all([
+              dbGetPhoneForProposta(p.id),
+              dbJaAvaliou(p.id),
+              fetchBancaProxima(p.id),   // passa proposta_id → minimiza soma das distâncias
+            ])
+            return { id: p.id, telefone: phone ?? undefined, avaliado, bancaProxima }
+          }))
+        : []
 
       const extrasMap = new Map(extras.map(e => [e.id, e]))
       const enrich = (p: PropostaComPerfil): Proposta => {
         const ex = extrasMap.get(p.id)
         return ex
-          ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado, bancaProxima }
+          ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado, bancaProxima: ex.bancaProxima }
           : p
       }
 
@@ -397,7 +398,7 @@ export default function PropostasPage() {
       if (acao === 'aceitar') {
         const [phone, bancaProxima] = await Promise.all([
           dbGetPhoneForProposta(id),
-          fetchBancaProxima(),
+          fetchBancaProxima(id),   // passa proposta_id → banca equilibrada para os dois
         ])
         const addExtras = (p: Proposta) =>
           p.id === id ? { ...p, telefone: phone ?? p.telefone, bancaProxima } : p
