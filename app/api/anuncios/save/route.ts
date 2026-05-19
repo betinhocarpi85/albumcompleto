@@ -32,8 +32,13 @@ export async function POST(request: NextRequest) {
   // Filtra itens com sid e gNum válidos
   // Nota: o sid pode conter sufixo "__troca" ou "__venda" (codificado pelo cliente para
   // permitir que a mesma figurinha apareça como troca E venda sem violar UNIQUE(sid))
+  // Regex que cobre todos os formatos de sid usados no app: "BRA-1__troca", "#10__venda", etc.
+  const SID_SAFE = /^[A-Za-z0-9#\-_]+$/
+
   const validItems = items.filter(a => {
     if (!a.sid || typeof a.sid !== 'string') return false
+    // Garante que o sid contém apenas caracteres seguros para interpolação no filtro PostgREST
+    if (!SID_SAFE.test(a.sid)) return false
     const gNum = typeof a.gNum === 'string' ? parseInt(a.gNum) : (a.gNum ?? 0)
     if (!gNum || gNum <= 0 || gNum > albumMeta.totalStickers) return false
     // Preço: se for anúncio de venda, precisa de preço > 0 e ≤ 9999
