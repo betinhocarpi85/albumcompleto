@@ -124,6 +124,7 @@ export default function AnunciosPage() {
   const [modal,    setModal]    = useState<VendaModal | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [salvo,    setSalvo]    = useState(false)
+  const [erroSave, setErroSave] = useState(false)
   const [filtroAcao, setFiltroAcao]   = useState<TipoAnuncio>('troca')
   // disponíveis
   const [openTipos, setOpenTipos]     = useState<Set<StickerType>>(new Set(['normal']))
@@ -267,6 +268,8 @@ export default function AnunciosPage() {
 
   async function salvar(lista: AnuncioLocal[]) {
     setSalvando(true)
+    let erroSalvo = false
+    setErroSave(false)
     try {
       const res = await fetch('/api/anuncios/save', {
         method:      'POST',
@@ -282,20 +285,32 @@ export default function AnunciosPage() {
             qty:   1,
             tipo:  a.tipo,
             preco: a.acao === 'venda' && a.preco ? parseFloat(a.preco) : undefined,
-            acao:  a.acao,
           })),
         }),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.error('[anuncios] save error:', res.status, err)
+        console.error('[anuncios] save error:', res.status, data)
+        erroSalvo = true
+      } else if (lista.length > 0 && data.saved === 0) {
+        // Items enviados mas nenhum foi salvo — sid não reconhecido pelo servidor
+        console.error('[anuncios] save: 0 items saved out of', lista.length, 'sent', data)
+        erroSalvo = true
+      } else if (data.discarded > 0) {
+        console.warn('[anuncios] save: some items discarded:', data)
       }
     } catch (e) {
       console.error('[anuncios] save fetch error:', e)
+      erroSalvo = true
     }
     setSalvando(false)
-    setSalvo(true)
-    setTimeout(() => setSalvo(false), 2000)
+    if (erroSalvo) {
+      setErroSave(true)
+      setTimeout(() => setErroSave(false), 4000)
+    } else {
+      setSalvo(true)
+      setTimeout(() => setSalvo(false), 2000)
+    }
   }
 
   const anunciosFiltrados = useMemo(() =>
@@ -376,10 +391,12 @@ export default function AnunciosPage() {
           <h1 className="text-xl font-black text-slate-800">Anúncios</h1>
           <p className="text-sm text-slate-500">Anuncie suas figurinhas repetidas</p>
         </div>
-        {(salvando || salvo) && (
+        {(salvando || salvo || erroSave) && (
           <span className={['text-xs font-semibold px-3 py-1.5 rounded-full',
-            salvando ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-700'].join(' ')}>
-            {salvando ? 'Salvando...' : '✓ Salvo'}
+            salvando  ? 'bg-slate-100 text-slate-500'  :
+            erroSave  ? 'bg-red-100 text-red-600'      :
+                        'bg-green-100 text-green-700'].join(' ')}>
+            {salvando ? 'Salvando...' : erroSave ? '⚠ Erro ao salvar' : '✓ Salvo'}
           </span>
         )}
       </div>
