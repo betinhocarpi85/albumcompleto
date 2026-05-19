@@ -39,6 +39,9 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const { albums } = await request.json()
+  if (!Array.isArray(albums)) {
+    return NextResponse.json({ error: 'albums deve ser um array' }, { status: 400 })
+  }
   const admin = createAdminClient()
 
   await admin.from('user_preferences').upsert({

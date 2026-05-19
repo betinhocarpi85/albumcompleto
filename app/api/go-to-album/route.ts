@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * GET /api/go-to-album
@@ -8,23 +7,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * Usa a origem do request para não quebrar em preview URLs ou localhost.
  */
 export async function GET(request: NextRequest) {
-  const admin = createAdminClient()
   const origin = request.nextUrl.origin
 
-  // Tenta autenticar via cookie
-  let autenticado = false
+  // Autentica via cookie de sessão
   const supabase = await createClient()
   const { data: { user: cookieUser } } = await supabase.auth.getUser()
-  if (cookieUser) autenticado = true
-
-  // Fallback: token via query param (mobile onde cookie ainda não propagou)
-  if (!autenticado) {
-    const token = request.nextUrl.searchParams.get('t')
-    if (token) {
-      const { data: { user: tokenUser } } = await admin.auth.getUser(token)
-      if (tokenUser) autenticado = true
-    }
-  }
+  const autenticado = !!cookieUser
 
   const dest = autenticado ? `${origin}/album?escolher=1` : `${origin}/entrar`
 
