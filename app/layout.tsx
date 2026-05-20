@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { preconnect, prefetchDNS } from 'react-dom'
+import Script from 'next/script'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -84,14 +85,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className="h-full antialiased">
       <head>
-        {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y7NBYH69MP" />
-        <script dangerouslySetInnerHTML={{ __html: `
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-Y7NBYH69MP');
-        `}} />
+        {/* Preconnect explícito para origens críticas — carrega TCP/TLS antes do JS */}
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://lafonveklbmpffwladrd.supabase.co'} />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://lafonveklbmpffwladrd.supabase.co'} />
+        <link rel="preconnect" href="https://a.tile.openstreetmap.org" />
+        <link rel="preconnect" href="https://b.tile.openstreetmap.org" />
+        <link rel="preconnect" href="https://c.tile.openstreetmap.org" />
       </head>
       <body className="min-h-full bg-slate-50">
         <SplashScreen />
@@ -104,6 +103,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorker />
         <OneSignalProvider />
         <PushPrompt />
+        {/* Google Analytics — afterInteractive: só carrega após hydration, não bloqueia LCP/FCP */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-Y7NBYH69MP"
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-Y7NBYH69MP');
+        `}</Script>
       </body>
     </html>
   )

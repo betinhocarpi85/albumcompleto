@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import 'leaflet/dist/leaflet.css'
 
 interface Banca {
   id: string
@@ -36,8 +35,11 @@ export default function BancasMap({ bancas, centro = [-22.9068, -43.1729], zoom 
   useEffect(() => {
     if (!mapRef.current || instanceRef.current) return
 
-    // Lazy import do Leaflet (evita SSR crash)
-    import('leaflet').then(L => {
+    // Lazy import do Leaflet + CSS (evita SSR crash e bundle leak no CSS principal)
+    Promise.all([
+      import('leaflet'),
+      import('leaflet/dist/leaflet.css' as never),
+    ]).then(([L]) => {
       if (!mapRef.current || instanceRef.current) return
 
       // Fix ícones padrão do Leaflet com webpack

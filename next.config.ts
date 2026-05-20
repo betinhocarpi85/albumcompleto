@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   compress: true,          // gzip/brotli das respostas
   poweredByHeader: false,  // remove header X-Powered-By
 
+  // Tree-shake packages grandes — reduz JS não utilizado
+  experimental: {
+    optimizePackageImports: [
+      '@supabase/supabase-js',
+      '@supabase/ssr',
+      'qrcode.react',
+    ],
+  },
+
   async headers() {
     const securityHeaders = [
       // Bloqueia clickjacking
@@ -26,8 +35,9 @@ const nextConfig: NextConfig = {
           // pouco ganho neste app SPA onde não há inputs de usuário em scripts
           "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https:",
-          // Supabase (auth + DB), Pagar.me (checkout), ViaCEP, Nominatim (geocoding)
+          // OSM tile servers para o mapa Leaflet
+          "img-src 'self' data: blob: https: https://*.tile.openstreetmap.org",
+          // Supabase (auth + DB), Pagar.me (checkout), ViaCEP, Nominatim (geocoding), OSM tiles
           [
             "connect-src 'self'",
             process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
@@ -35,6 +45,9 @@ const nextConfig: NextConfig = {
             'https://api.pagar.me',
             'https://viacep.com.br',
             'https://nominatim.openstreetmap.org',
+            'https://*.tile.openstreetmap.org',
+            'https://www.googletagmanager.com',
+            'https://www.google-analytics.com',
           ].filter(Boolean).join(' '),
           "font-src 'self'",
           "object-src 'none'",
