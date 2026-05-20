@@ -349,6 +349,7 @@ export default function AdminDashboard({
 
   // Bancas tab state
   const [bancas, setBancas]               = useState<Banca[]>([])
+  const [bancasTotal, setBancasTotal]     = useState(0)
   const [bancasLoading, setBancasLoading] = useState(false)
   const [bancaForm, setBancaForm]         = useState(false)
   const [bancaEditId, setBancaEditId]     = useState<string | null>(null)
@@ -374,6 +375,7 @@ export default function AdminDashboard({
     const r = await fetch('/api/bancas?todas=1')
     const d = await r.json()
     setBancas(d.bancas ?? [])
+    setBancasTotal(d.total ?? d.bancas?.length ?? 0)
     setBancasLoading(false)
   }, [])
 
@@ -973,7 +975,7 @@ export default function AdminDashboard({
           <TabBtn active={tab === 'anuncios'}  onClick={() => setTab('anuncios')}>📢 Anúncios ({stats.totalAnuncios})</TabBtn>
           <TabBtn active={tab === 'propostas'} onClick={() => setTab('propostas')}>🔁 Propostas ({stats.totalPropostas})</TabBtn>
           <TabBtn active={tab === 'logs'}      onClick={() => setTab('logs')}>📋 Logs</TabBtn>
-          <TabBtn active={tab === 'bancas'}    onClick={() => setTab('bancas')}>📍 Bancas ({bancas.length})</TabBtn>
+          <TabBtn active={tab === 'bancas'}    onClick={() => setTab('bancas')}>📍 Bancas ({bancasTotal || bancas.length})</TabBtn>
           <TabBtn active={tab === 'settings'}  onClick={() => setTab('settings')}>⚙️ Configurações</TabBtn>
         </div>
 

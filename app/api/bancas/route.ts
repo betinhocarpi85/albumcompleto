@@ -27,8 +27,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
-  let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome').limit(todas ? 10000 : 2000)
-  if (!todas) query = query.eq('ativa', true)
+  // Para o admin, busca também o count real (ignora o max_rows do PostgREST)
+  if (todas) {
+    // Conta total real com HEAD request (não busca dados, só o count)
+    let countQuery = sb.from('bancas').select('*', { count: 'exact', head: true })
+    const { count: totalCount } = await countQuery
+
+    // Busca os dados paginados (respeitando o max_rows do servidor)
+    let dataQuery = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
+    const { data, error } = await dataQuery
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ bancas: data ?? [], total: totalCount ?? (data?.length ?? 0) })
+  }
+
+  let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
+  query = query.eq('ativa', true)
   if (uf)     query = query.eq('uf', uf)
   if (cidade) query = query.ilike('cidade', `%${cidade}%`)
 
