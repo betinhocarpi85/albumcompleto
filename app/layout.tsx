@@ -85,12 +85,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className="h-full antialiased">
       <head>
-        {/* Preconnect explícito para origens críticas — carrega TCP/TLS antes do JS */}
+        {/* Preconnect apenas para a origem mais crítica — Supabase (auth + DB) */}
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://lafonveklbmpffwladrd.supabase.co'} />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://lafonveklbmpffwladrd.supabase.co'} />
-        <link rel="preconnect" href="https://a.tile.openstreetmap.org" />
-        <link rel="preconnect" href="https://b.tile.openstreetmap.org" />
-        <link rel="preconnect" href="https://c.tile.openstreetmap.org" />
       </head>
       <body className="min-h-full bg-slate-50">
         <SplashScreen />
