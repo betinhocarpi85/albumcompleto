@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import 'leaflet/dist/leaflet.css'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 

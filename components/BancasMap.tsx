@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import 'leaflet/dist/leaflet.css'
+// CSS do Leaflet importado no layout Server Component de /bancas (app/bancas/layout.tsx)
+// para scoping por rota — não polui o bundle CSS global
 
 interface Banca {
   id: string

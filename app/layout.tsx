@@ -8,7 +8,8 @@ import { Analytics } from '@vercel/analytics/next'
 import ServiceWorker from '@/components/ServiceWorker'
 import SplashScreen from '@/components/SplashScreen'
 import OneSignalProvider from '@/components/OneSignalProvider'
-import PushPrompt from '@/components/PushPrompt'
+// LazyPushPrompt: Client Component wrapper com ssr:false — sai do bundle inicial
+import LazyPushPrompt from '@/components/LazyPushPrompt'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 
@@ -99,7 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <ServiceWorker />
         <OneSignalProvider />
-        <PushPrompt />
+        <LazyPushPrompt />
         {/* Google Analytics — afterInteractive: só carrega após hydration, não bloqueia LCP/FCP */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-Y7NBYH69MP"
