@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import 'leaflet/dist/leaflet.css'
 
 interface Banca {
   id: string
@@ -50,6 +51,9 @@ export default function BancasMap({ bancas, centro = [-22.9068, -43.1729], zoom 
 
       const map = L.map(mapRef.current!).setView(centro, zoom)
       instanceRef.current = map
+
+      // Garante que o mapa recalcula dimensões após montagem no DOM
+      setTimeout(() => map.invalidateSize(), 50)
 
       // Enquadra automaticamente todas as bancas com coordenadas
       const comCoords = bancas.filter(b => b.lat && b.lng)
@@ -120,15 +124,5 @@ export default function BancasMap({ bancas, centro = [-22.9068, -43.1729], zoom 
     if (marker) setTimeout(() => marker.openPopup(), 750)
   }, [focusBanca])
 
-  return (
-    <>
-      {/* CSS do Leaflet */}
-      <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        crossOrigin=""
-      />
-      <div ref={mapRef} style={{ width: '100%', height: '100%', minHeight: 320, zIndex: 0 }} />
-    </>
-  )
+  return <div ref={mapRef} style={{ width: '100%', height: '100%', minHeight: 320, zIndex: 0 }} />
 }
