@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
-  let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
+  let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome').limit(todas ? 10000 : 2000)
   if (!todas) query = query.eq('ativa', true)
   if (uf)     query = query.eq('uf', uf)
   if (cidade) query = query.ilike('cidade', `%${cidade}%`)
