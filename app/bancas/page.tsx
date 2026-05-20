@@ -152,12 +152,26 @@ export default function BancasPage() {
                   disabled={pagina === 0}
                   className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 text-sm disabled:opacity-30 hover:bg-slate-50 transition-colors"
                 >‹</button>
-                {Array.from({ length: totalPag }, (_, i) => (
-                  <button key={i} onClick={() => { setPagina(i); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
-                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${pagina === i ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                    {i + 1}
-                  </button>
-                ))}
+                {(() => {
+                  const delta = 2
+                  const pages: (number | string)[] = []
+                  let prev = -1
+                  for (let i = 0; i < totalPag; i++) {
+                    if (i === 0 || i === totalPag - 1 || (i >= pagina - delta && i <= pagina + delta)) {
+                      if (prev !== -1 && i - prev > 1) pages.push(i - prev === 2 ? prev + 1 : '…')
+                      pages.push(i)
+                      prev = i
+                    }
+                  }
+                  return pages.map((p, idx) =>
+                    typeof p === 'string'
+                      ? <span key={`d${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm select-none">…</span>
+                      : <button key={p} onClick={() => { setPagina(p as number); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${pagina === p ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                          {(p as number) + 1}
+                        </button>
+                  )
+                })()}
                 <button
                   onClick={() => { setPagina(p => Math.min(totalPag - 1, p + 1)); listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
                   disabled={pagina === totalPag - 1}

@@ -1782,12 +1782,26 @@ export default function AdminDashboard({
                 <div className="flex items-center justify-center gap-1.5 mt-4">
                   <button onClick={() => { setBancaPagina(p => Math.max(0, p - 1)); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} disabled={bancaPagina === 0}
                     className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">‹</button>
-                  {Array.from({ length: totalPag }, (_, i) => (
-                    <button key={i} onClick={() => { setBancaPagina(i); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
-                      className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${bancaPagina === i ? 'bg-green-600 text-white' : 'border border-slate-700 text-slate-400 hover:bg-slate-800'}`}>
-                      {i + 1}
-                    </button>
-                  ))}
+                  {(() => {
+                    const delta = 2
+                    const pages: (number | string)[] = []
+                    let prev = -1
+                    for (let i = 0; i < totalPag; i++) {
+                      if (i === 0 || i === totalPag - 1 || (i >= bancaPagina - delta && i <= bancaPagina + delta)) {
+                        if (prev !== -1 && i - prev > 1) pages.push(i - prev === 2 ? prev + 1 : '…')
+                        pages.push(i)
+                        prev = i
+                      }
+                    }
+                    return pages.map((p, idx) =>
+                      typeof p === 'string'
+                        ? <span key={`d${idx}`} className="w-8 h-8 flex items-center justify-center text-slate-500 text-sm select-none">…</span>
+                        : <button key={p} onClick={() => { setBancaPagina(p as number); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                            className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${bancaPagina === p ? 'bg-green-600 text-white' : 'border border-slate-700 text-slate-400 hover:bg-slate-800'}`}>
+                            {(p as number) + 1}
+                          </button>
+                    )
+                  })()}
                   <button onClick={() => { setBancaPagina(p => Math.min(totalPag - 1, p + 1)); document.getElementById('bancas-lista')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} disabled={bancaPagina === totalPag - 1}
                     className="w-8 h-8 rounded-lg border border-slate-700 text-slate-400 text-sm disabled:opacity-30 hover:bg-slate-800 transition-colors">›</button>
                 </div>
