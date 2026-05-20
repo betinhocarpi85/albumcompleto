@@ -27,17 +27,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
-  // Para o admin, busca também o count real (ignora o max_rows do PostgREST)
+  // Para o admin: busca em batches de 1000 para superar o max_rows do PostgREST
   if (todas) {
-    // Conta total real com HEAD request (não busca dados, só o count)
-    let countQuery = sb.from('bancas').select('*', { count: 'exact', head: true })
-    const { count: totalCount } = await countQuery
-
-    // Busca os dados paginados (respeitando o max_rows do servidor)
-    let dataQuery = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
-    const { data, error } = await dataQuery
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ bancas: data ?? [], total: totalCount ?? (data?.length ?? 0) })
+    const BATCH = 1000
+    let all: unknown[] = []
+    let from = 0
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data, error } = await sb
+        .from('bancas')
+        .select('*')
+        .order('destaque', { ascending: false })
+        .order('nome')
+        .range(from, from + BATCH - 1)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      all = all.concat(data ?? [])
+      if (!data || data.length < BATCH) break
+      from += BATCH
+    }
+    return NextResponse.json({ bancas: all, total: all.length })
   }
 
   let query = sb.from('bancas').select('*').order('destaque', { ascending: false }).order('nome')
