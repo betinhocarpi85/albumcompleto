@@ -46,14 +46,14 @@ export const metadata: Metadata = {
     siteName:    'Completando',
     title:       'Completando — Troque e Venda Figurinhas',
     description: 'Match automático para troca e venda de figurinhas. Copa do Mundo 2026 e mais.',
-    images: [{ url: `${APP_URL}/opengraph-image`, width: 1200, height: 630, alt: 'Completando — Troque e Venda Figurinhas' }],
+    images: [{ url: `${APP_URL}/logo-bg.png`, width: 1200, height: 630, alt: 'Completando — Troque e Venda Figurinhas' }],
     locale: 'pt_BR',
   },
   twitter: {
     card:        'summary_large_image',
     title:       'Completando — Troque e Venda Figurinhas',
     description: 'Match automático para troca e venda de figurinhas. Copa do Mundo 2026 e mais.',
-    images:      [`${APP_URL}/opengraph-image`],
+    images:      [`${APP_URL}/logo-bg.png`],
   },
   robots: {
     index: true,
