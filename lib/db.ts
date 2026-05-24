@@ -542,9 +542,14 @@ export async function dbEnviarProposta(
 }
 
 export async function dbGetPhoneForProposta(proposta_id: string): Promise<string | null> {
-  const sb = createClient()
-  const { data } = await sb.rpc('get_phone_for_proposta', { p_proposta_id: proposta_id })
-  return (data as string | null) ?? null
+  try {
+    const r = await fetch(`/api/propostas/${proposta_id}/phone`, { credentials: 'include' })
+    if (!r.ok) return null
+    const d = await r.json()
+    return d.telefone ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function dbUpdateProposta(
