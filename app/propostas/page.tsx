@@ -43,7 +43,8 @@ interface BancaProxima {
   cep: string | null; distanciaKm: number
 }
 
-type Proposta = PropostaComPerfil & { telefone?: string; avaliado?: boolean; bancaProxima?: BancaProxima | null }
+// telefone: undefined = ainda não carregou | null = carregado mas sem telefone | string = ok
+type Proposta = PropostaComPerfil & { telefone?: string | null; avaliado?: boolean; bancaProxima?: BancaProxima | null; extrasCarregados?: boolean }
 
 const STATUS_CONFIG = {
   pendente: { label: 'Aguardando', bg: 'bg-amber-100',  text: 'text-amber-700'  },
@@ -305,7 +306,7 @@ export default function PropostasPage() {
               dbJaAvaliou(p.id),
               fetchBancaProxima(p.id),   // passa proposta_id → minimiza soma das distâncias
             ])
-            return { id: p.id, telefone: phone ?? undefined, avaliado, bancaProxima }
+            return { id: p.id, telefone: phone, avaliado, bancaProxima, extrasCarregados: true }
           }))
         : []
 
@@ -313,7 +314,7 @@ export default function PropostasPage() {
       const enrich = (p: PropostaComPerfil): Proposta => {
         const ex = extrasMap.get(p.id)
         return ex
-          ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado, bancaProxima: ex.bancaProxima }
+          ? { ...p, telefone: ex.telefone, avaliado: ex.avaliado, bancaProxima: ex.bancaProxima, extrasCarregados: true }
           : p
       }
 
@@ -443,7 +444,7 @@ export default function PropostasPage() {
           fetchBancaProxima(id),   // passa proposta_id → banca equilibrada para os dois
         ])
         const addExtras = (p: Proposta) =>
-          p.id === id ? { ...p, telefone: phone ?? p.telefone, bancaProxima } : p
+          p.id === id ? { ...p, telefone: phone, bancaProxima, extrasCarregados: true } : p
         setRecebidas(prev => prev.map(addExtras))
         setEnviadas(prev => prev.map(addExtras))
       }
@@ -773,16 +774,20 @@ export default function PropostasPage() {
                         {' '}Combine diretamente com {p.contraparte_nome}.
                       </p>
                     </div>
-                    {phone
-                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
-                      : (
+                    {!p.extrasCarregados
+                      ? (
                         <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
                           <span className="text-slate-400 text-sm">⏳</span>
-                          <p className="text-xs text-slate-500">
-                            Carregando contato de {p.contraparte_nome}…
-                          </p>
+                          <p className="text-xs text-slate-500">Carregando contato de {p.contraparte_nome}…</p>
                         </div>
-                      )}
+                      ) : phone
+                        ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
+                        : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                            <span className="text-amber-500 text-sm">📵</span>
+                            <p className="text-xs text-amber-700">{p.contraparte_nome} ainda não cadastrou telefone. Tente combinar pelos comentários da proposta.</p>
+                          </div>
+                        )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
@@ -947,16 +952,20 @@ export default function PropostasPage() {
                         {p.contraparte_nome} aceitou! Combine diretamente.
                       </p>
                     </div>
-                    {phone
-                      ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
-                      : (
+                    {!p.extrasCarregados
+                      ? (
                         <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-2">
                           <span className="text-slate-400 text-sm">⏳</span>
-                          <p className="text-xs text-slate-500">
-                            Carregando contato de {p.contraparte_nome}…
-                          </p>
+                          <p className="text-xs text-slate-500">Carregando contato de {p.contraparte_nome}…</p>
                         </div>
-                      )}
+                      ) : phone
+                        ? <PhoneCard phone={phone} nome={p.contraparte_nome} banca={p.bancaProxima} />
+                        : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                            <span className="text-amber-500 text-sm">📵</span>
+                            <p className="text-xs text-amber-700">{p.contraparte_nome} ainda não cadastrou telefone. Tente combinar pelos comentários da proposta.</p>
+                          </div>
+                        )}
                     {p.avaliado ? (
                       <p className="text-xs text-center text-slate-400 py-1">⭐ Avaliação enviada</p>
                     ) : (
