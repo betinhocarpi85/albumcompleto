@@ -98,6 +98,7 @@ export default function MatchesPage() {
   const [filtroTroca, setFiltroTroca] = useState<FiltroTroca>('todos')
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [propostaDuplicada, setPropostaDuplicada] = useState(false)
+  const [semTelefone, setSemTelefone] = useState(false)
   const [propostaSucesso, setPropostaSucesso] = useState<{ nome: string } | null>(null)
   const [interesseEnviado, setInteresseEnviado] = useState<Record<string, boolean>>({})
   const [adulto, setAdulto]         = useState(true)
@@ -114,6 +115,8 @@ export default function MatchesPage() {
   // Venda: seleção de figurinhas e preço por vendedor
   const [vendaSelecionados, setVendaSelecionados] = useState<Record<string, Set<number>>>({})
   const [vendaValorCustom,  setVendaValorCustom]  = useState<Record<string, string>>({})
+  const [vendaPagInterna,   setVendaPagInterna]   = useState<Record<string, number>>({})
+  const POR_PAGINA_INTERNA = 60
 
   function trocarAlbum(id: AlbumId) {
     setAlbumId(id)
@@ -202,6 +205,7 @@ export default function MatchesPage() {
   async function enviarProposta(match: MatchRecord, oferta: number[], recebe: number[]) {
     const { error } = await dbEnviarProposta(match.id, albumId, oferta, recebe, 'troca')
     if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
+    if (error === 'SEM_TELEFONE') { setSemTelefone(true); return }
     if (error) { alert('Não foi possível enviar a proposta. Tente novamente.'); return }
     setPropostaSucesso({ nome: match.user.name.split(' ')[0] })
   }
@@ -209,17 +213,16 @@ export default function MatchesPage() {
   async function enviarInteresse(userId: string, nome: string, stickers: number[], valorTotal: number, valorOriginal: number) {
     const { error } = await dbEnviarProposta(userId, albumId, [], stickers, 'compra', valorTotal, valorOriginal)
     if (error === 'JA_ENVIADA') { setPropostaDuplicada(true); return }
+    if (error === 'SEM_TELEFONE') { setSemTelefone(true); return }
     if (error) { alert('Não foi possível enviar. Tente novamente.'); return }
     setInteresseEnviado(prev => ({ ...prev, [userId]: true }))
     setPropostaSucesso({ nome: nome.split(' ')[0] })
   }
 
-  function initVendaSelecionados(vendaId: string, items: VendaRecord['items']) {
+  function initVendaSelecionados(vendaId: string, _items: VendaRecord['items']) {
     if (vendaSelecionados[vendaId]) return   // já inicializado
-    // Seleciona por padrão apenas os itens que o usuário ainda precisa
-    const needed = items.filter(i => meuTenhoSet.size === 0 || !meuTenhoSet.has(i.num))
-    const initial = new Set((needed.length > 0 ? needed : items).map(i => i.num))
-    setVendaSelecionados(prev => ({ ...prev, [vendaId]: initial }))
+    // Começa vazio — usuário seleciona o que quer
+    setVendaSelecionados(prev => ({ ...prev, [vendaId]: new Set<number>() }))
   }
 
   function toggleVendaSelecionado(vendaId: string, num: number) {
@@ -278,6 +281,27 @@ export default function MatchesPage() {
 
       {/* Modal upgrade PRO */}
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
+
+      {/* Modal sem telefone */}
+      {semTelefone && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSemTelefone(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
+            <p className="text-3xl mb-3">📵</p>
+            <p className="font-bold text-slate-800 text-lg mb-2">Telefone necessário</p>
+            <p className="text-sm text-slate-500 mb-5">
+              Para enviar propostas de troca, você precisa cadastrar seu telefone no perfil.
+              Ele só é compartilhado com quem você aceitar trocar.
+            </p>
+            <a href="/perfil" className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-colors">
+              Ir para o Perfil
+            </a>
+            <button onClick={() => setSemTelefone(false)} className="mt-3 text-sm text-slate-400 hover:text-slate-600">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="px-3">
 
@@ -687,17 +711,59 @@ export default function MatchesPage() {
                       <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
                     </button>
 
-                    {isOpen && (
+                    {isOpen && (() => {
+                      const pagInt   = vendaPagInterna[v.id] ?? 0
+                      const totPagInt = Math.ceil(v.items.length / POR_PAGINA_INTERNA)
+                      const itensPag  = v.items.slice(pagInt * POR_PAGINA_INTERNA, (pagInt + 1) * POR_PAGINA_INTERNA)
+                      const temJaColada = meuTenhoSet.size > 0 && v.items.some(i => meuTenhoSet.has(i.num))
+                      return (
                       <div className="border-t border-slate-50 px-4 pt-3 pb-4 animate-fadein">
 
-                        {/* Instrução */}
-                        <p className="text-[11px] text-slate-400 text-center mb-3">
-                          Toque nas figurinhas para selecionar/remover do pedido
-                        </p>
+                        {/* Instrução + controles */}
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[11px] text-slate-400">Toque para selecionar</p>
+                          <div className="flex gap-2">
+                            {selecionados.size > 0 && (
+                              <button
+                                onClick={() => { setVendaSelecionados(prev => ({ ...prev, [v.id]: new Set() })); setVendaValorCustom(prev => { const n = { ...prev }; delete n[v.id]; return n }) }}
+                                className="text-[10px] font-semibold text-red-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                                × Limpar
+                              </button>
+                            )}
+                            {meuTenhoSet.size > 0 && (
+                              <button
+                                onClick={() => {
+                                  const needed = new Set(v.items.filter(i => !meuTenhoSet.has(i.num)).map(i => i.num))
+                                  setVendaSelecionados(prev => ({ ...prev, [v.id]: needed }))
+                                  setVendaValorCustom(prev => { const n = { ...prev }; delete n[v.id]; return n })
+                                }}
+                                className="text-[10px] font-semibold text-blue-500 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                                ✓ Selecionar que preciso
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                        {/* Grade de figurinhas — todas toggleáveis */}
+                        {/* Paginação interna — topo */}
+                        {totPagInt > 1 && (
+                          <div className="flex items-center justify-center gap-1.5 mb-3">
+                            <button onClick={() => setVendaPagInterna(prev => ({ ...prev, [v.id]: Math.max(0, pagInt - 1) }))} disabled={pagInt === 0}
+                              className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-30 hover:bg-slate-50 transition-colors">‹</button>
+                            {Array.from({ length: totPagInt }, (_, i) => (
+                              <button key={i} onClick={() => setVendaPagInterna(prev => ({ ...prev, [v.id]: i }))}
+                                className={['w-7 h-7 rounded-lg text-xs font-bold transition-all', pagInt === i ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'].join(' ')}>
+                                {i + 1}
+                              </button>
+                            ))}
+                            <button onClick={() => setVendaPagInterna(prev => ({ ...prev, [v.id]: Math.min(totPagInt - 1, pagInt + 1) }))} disabled={pagInt === totPagInt - 1}
+                              className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-30 hover:bg-slate-50 transition-colors">›</button>
+                            <span className="text-[10px] text-slate-400 ml-1">{pagInt * POR_PAGINA_INTERNA + 1}–{Math.min((pagInt + 1) * POR_PAGINA_INTERNA, v.items.length)} de {v.items.length}</span>
+                          </div>
+                        )}
+
+                        {/* Grade de figurinhas */}
                         <div className="flex flex-wrap gap-2 mb-3">
-                          {v.items.map(item => {
+                          {itensPag.map(item => {
                             const jaColada  = meuTenhoSet.size > 0 && meuTenhoSet.has(item.num)
                             const sel       = selecionados.has(item.num)
                             const info      = currentGlobalInfo.get(item.num)
@@ -706,17 +772,21 @@ export default function MatchesPage() {
                                 key={item.num}
                                 onClick={() => !jaColada && toggleVendaSelecionado(v.id, item.num)}
                                 title={info ? `${info.code}-${info.localNum} · ${info.name} · ${fmtBRL(item.preco)}${jaColada ? ' · Já colada!' : ''}` : `#${item.num}`}
-                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0 transition-all',
+                                className={['w-12 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-0 transition-all active:scale-95',
                                   jaColada
-                                    ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-30 cursor-default'
+                                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-default relative'
                                     : sel
-                                      ? item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-400 text-amber-800 shadow-sm'
-                                        : item.tipo === 'escudo'   ? 'bg-indigo-50 border-indigo-400 text-indigo-800 shadow-sm'
-                                        : 'bg-blue-50 border-blue-400 text-blue-800 shadow-sm'
-                                      : 'bg-white border-slate-200 text-slate-300 opacity-40 hover:opacity-60',
+                                      ? item.tipo === 'brilhante' ? 'bg-amber-50 border-amber-400 text-amber-800 shadow-sm ring-2 ring-amber-200'
+                                        : item.tipo === 'escudo'   ? 'bg-indigo-50 border-indigo-400 text-indigo-800 shadow-sm ring-2 ring-indigo-200'
+                                        : 'bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-2 ring-blue-200'
+                                      : 'bg-white border-slate-300 text-slate-700 hover:border-blue-300 hover:bg-blue-50',
                                 ].join(' ')}>
                                 {jaColada ? (
-                                  <span className="text-[10px] font-bold leading-none">✓</span>
+                                  <>
+                                    {info && info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-40">{info.code}</span>}
+                                    <span className="text-[10px] font-black leading-none opacity-50">{info ? info.localNum : item.num}</span>
+                                    <span className="text-[8px] leading-none font-bold text-green-600">✓ tenho</span>
+                                  </>
                                 ) : (
                                   <>
                                     {info && info.code.length <= 4 && <span className="text-[7px] font-bold leading-none opacity-60">{info.code}</span>}
@@ -729,8 +799,8 @@ export default function MatchesPage() {
                           })}
                         </div>
 
-                        {meuTenhoSet.size > 0 && v.items.some(i => meuTenhoSet.has(i.num)) && (
-                          <p className="text-[10px] text-slate-400 text-center -mt-1 mb-2">Figurinhas acinzentadas já estão no seu álbum</p>
+                        {temJaColada && (
+                          <p className="text-[10px] text-slate-400 text-center -mt-1 mb-2">Figurinhas marcadas com ✓ já estão no seu álbum</p>
                         )}
 
                         {/* Resumo do pedido + campo de preço */}
@@ -800,7 +870,8 @@ export default function MatchesPage() {
                           </div>
                         )}
                       </div>
-                    )}
+                      )
+                    })()}
                   </div>
                 )
               })}
