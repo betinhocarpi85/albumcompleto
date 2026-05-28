@@ -116,7 +116,7 @@ export default function MatchesPage() {
   const [vendaSelecionados, setVendaSelecionados] = useState<Record<string, Set<number>>>({})
   const [vendaValorCustom,  setVendaValorCustom]  = useState<Record<string, string>>({})
   const [vendaPagInterna,   setVendaPagInterna]   = useState<Record<string, number>>({})
-  const POR_PAGINA_INTERNA = 60
+  const POR_PAGINA_INTERNA = 66
 
   function trocarAlbum(id: AlbumId) {
     setAlbumId(id)
