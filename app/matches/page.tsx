@@ -508,10 +508,11 @@ export default function MatchesPage() {
 
                   {isOpen && (() => {
                     const pagT     = trocaPagInterna[match.id] ?? 0
+                    const POR_PAG_TROCA = 30
                     const maxLen   = Math.max(match.temParaMim.length, match.euTenhoPara.length)
-                    const totPagT  = Math.ceil(maxLen / POR_PAGINA_INTERNA)
-                    const sliceD   = match.temParaMim.slice(pagT * POR_PAGINA_INTERNA, (pagT + 1) * POR_PAGINA_INTERNA)
-                    const sliceO   = match.euTenhoPara.slice(pagT * POR_PAGINA_INTERNA, (pagT + 1) * POR_PAGINA_INTERNA)
+                    const totPagT  = Math.ceil(maxLen / POR_PAG_TROCA)
+                    const sliceD   = match.temParaMim.slice(pagT * POR_PAG_TROCA, (pagT + 1) * POR_PAG_TROCA)
+                    const sliceO   = match.euTenhoPara.slice(pagT * POR_PAG_TROCA, (pagT + 1) * POR_PAG_TROCA)
                     return (
                     <div className="px-4 pb-4 border-t border-slate-50 pt-3 animate-fadein">
                       <p className="text-[11px] text-slate-400 text-center mb-3">Toque em qualquer figurinha para removê-la da proposta</p>
