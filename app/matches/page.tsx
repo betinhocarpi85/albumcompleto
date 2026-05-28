@@ -116,6 +116,7 @@ export default function MatchesPage() {
   const [vendaSelecionados, setVendaSelecionados] = useState<Record<string, Set<number>>>({})
   const [vendaValorCustom,  setVendaValorCustom]  = useState<Record<string, string>>({})
   const [vendaPagInterna,   setVendaPagInterna]   = useState<Record<string, number>>({})
+  const [trocaPagInterna,   setTrocaPagInterna]   = useState<Record<string, number>>({})
   const POR_PAGINA_INTERNA = 66
 
   function trocarAlbum(id: AlbumId) {
@@ -505,14 +506,37 @@ export default function MatchesPage() {
                     {!equilibrado && <><span className="text-slate-300">·</span><span className="text-amber-600 font-medium">{dynBalance > 0 ? `${dynBalance} a mais` : `${Math.abs(dynBalance)} a menos`}</span></>}
                   </div>
 
-                  {isOpen && (
+                  {isOpen && (() => {
+                    const pagT     = trocaPagInterna[match.id] ?? 0
+                    const maxLen   = Math.max(match.temParaMim.length, match.euTenhoPara.length)
+                    const totPagT  = Math.ceil(maxLen / POR_PAGINA_INTERNA)
+                    const sliceD   = match.temParaMim.slice(pagT * POR_PAGINA_INTERNA, (pagT + 1) * POR_PAGINA_INTERNA)
+                    const sliceO   = match.euTenhoPara.slice(pagT * POR_PAGINA_INTERNA, (pagT + 1) * POR_PAGINA_INTERNA)
+                    return (
                     <div className="px-4 pb-4 border-t border-slate-50 pt-3 animate-fadein">
                       <p className="text-[11px] text-slate-400 text-center mb-3">Toque em qualquer figurinha para removê-la da proposta</p>
+
+                      {/* Paginação interna trocas */}
+                      {totPagT > 1 && (
+                        <div className="flex items-center justify-center gap-1.5 mb-3">
+                          <button onClick={() => setTrocaPagInterna(prev => ({ ...prev, [match.id]: Math.max(0, pagT - 1) }))} disabled={pagT === 0}
+                            className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-30 hover:bg-slate-50 transition-colors">‹</button>
+                          {Array.from({ length: totPagT }, (_, i) => (
+                            <button key={i} onClick={() => setTrocaPagInterna(prev => ({ ...prev, [match.id]: i }))}
+                              className={['w-7 h-7 rounded-lg text-xs font-bold transition-all', pagT === i ? 'bg-slate-800 text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'].join(' ')}>
+                              {i + 1}
+                            </button>
+                          ))}
+                          <button onClick={() => setTrocaPagInterna(prev => ({ ...prev, [match.id]: Math.min(totPagT - 1, pagT + 1) }))} disabled={pagT === totPagT - 1}
+                            className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-30 hover:bg-slate-50 transition-colors">›</button>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-4 mb-3">
                         <div>
                           <p className="text-xs font-semibold text-blue-600 mb-2">🔵 Para você</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {match.temParaMim.map(num => {
+                            {sliceD.map(num => {
                               const info = currentGlobalInfo.get(num)
                               const removido = remDele.has(num)
                               return (
@@ -538,7 +562,7 @@ export default function MatchesPage() {
                         <div>
                           <p className="text-xs font-semibold text-green-600 mb-2">🟢 Sua oferta</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {match.euTenhoPara.map(num => {
+                            {sliceO.map(num => {
                               const info = currentGlobalInfo.get(num)
                               const removido = rem.has(num)
                               return (
@@ -601,7 +625,8 @@ export default function MatchesPage() {
                         </div>
                       )}
                     </div>
-                  )}
+                    )
+                  })()}
                 </div>
               )
             })}
