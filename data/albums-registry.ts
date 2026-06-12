@@ -1,4 +1,4 @@
-export type AlbumId = 'copa-2026' | 'brasileirao-masc-2026' | 'brasileirao-fem-2026'
+export type AlbumId = 'copa-2026' | 'brasileirao-masc-2026' | 'brasileirao-fem-2026' | 'dragon-ball-super-2026'
 
 export interface AlbumMeta {
   id: AlbumId
@@ -53,5 +53,18 @@ export const ALBUMS_REGISTRY: AlbumMeta[] = [
     gradientTo: 'to-purple-600',
     description: '480 figurinhas · 16 clubes · Série A1',
     available: false,
+  },
+  {
+    id: 'dragon-ball-super-2026',
+    name: 'Dragon Ball Super',
+    subtitle: 'Panini · A Coleção Suprema',
+    emoji: '🐉',
+    totalStickers: 192,
+    totalTeams: 0,
+    year: 2026,
+    gradientFrom: 'from-orange-500',
+    gradientTo: 'to-yellow-400',
+    description: '192 figurinhas · 160 normais + 32 folder',
+    available: true,
   },
 ]

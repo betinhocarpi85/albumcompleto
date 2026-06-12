@@ -5,6 +5,7 @@ import { albumCopa2026, buildGlobalNumberMap, stickerId, type Album } from '@/da
 import type { StickerType } from '@/data/album-copa-2026'
 import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
 import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 import type { AlbumId } from '@/data/albums-registry'
 import { dbGetActiveAlbums, dbGetAnuncios, dbSaveAnuncios, dbGetColadas, getSession } from '@/lib/db'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
@@ -80,9 +81,10 @@ function buildAlbumData(album: Album) {
 }
 
 const ALBUM_DATA: Record<string, ReturnType<typeof buildAlbumData>> = {
-  'copa-2026':              buildAlbumData(albumCopa2026),
-  'brasileirao-masc-2026': buildAlbumData(albumBrasileiraoMasc2026),
-  'brasileirao-fem-2026':  buildAlbumData(albumBrasileiraoFem2026),
+  'copa-2026':                buildAlbumData(albumCopa2026),
+  'brasileirao-masc-2026':    buildAlbumData(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':     buildAlbumData(albumBrasileiraoFem2026),
+  'dragon-ball-super-2026':   buildAlbumData(albumDragonBallSuper2026),
 }
 
 const PRECO_SUGERIDO: Record<StickerType, string> = {

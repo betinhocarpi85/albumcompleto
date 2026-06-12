@@ -27,9 +27,10 @@ const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge
 
 // Progresso real por álbum a partir do localStorage
 const ALBUM_PROGRESS_FALLBACK: Record<AlbumId, number> = {
-  'copa-2026':               0,
-  'brasileirao-masc-2026':   0,
-  'brasileirao-fem-2026':    0,
+  'copa-2026':                0,
+  'brasileirao-masc-2026':    0,
+  'brasileirao-fem-2026':     0,
+  'dragon-ball-super-2026':   0,
 }
 
 

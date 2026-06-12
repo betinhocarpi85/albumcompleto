@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
 import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
 import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 import type { AlbumId } from '@/data/albums-registry'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 
@@ -38,9 +39,10 @@ function buildAlbumMaps(album: Album) {
 }
 
 const ALBUM_MAPS: Record<string, ReturnType<typeof buildAlbumMaps>> = {
-  'copa-2026':              buildAlbumMaps(albumCopa2026),
-  'brasileirao-masc-2026': buildAlbumMaps(albumBrasileiraoMasc2026),
-  'brasileirao-fem-2026':  buildAlbumMaps(albumBrasileiraoFem2026),
+  'copa-2026':                buildAlbumMaps(albumCopa2026),
+  'brasileirao-masc-2026':    buildAlbumMaps(albumBrasileiraoMasc2026),
+  'brasileirao-fem-2026':     buildAlbumMaps(albumBrasileiraoFem2026),
+  'dragon-ball-super-2026':   buildAlbumMaps(albumDragonBallSuper2026),
 }
 
 // Fallback Copa (para evitar undefined)
