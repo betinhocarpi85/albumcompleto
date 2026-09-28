@@ -51,12 +51,17 @@ export async function POST(request: NextRequest) {
 
   const sb = createAdminClient()
 
-  // Verifica limite de propostas para usuários free (máx 3 pendentes)
+  // Verifica perfil do remetente (plano + telefone)
   const { data: perfil } = await sb
     .from('profiles')
-    .select('plano, plano_expira_em')
+    .select('plano, plano_expira_em, telefone')
     .eq('id', user.id)
     .single()
+
+  // Sem telefone → não pode enviar proposta
+  if (!perfil?.telefone) {
+    return NextResponse.json({ error: 'SEM_TELEFONE' }, { status: 403 })
+  }
 
   const isPro = perfil?.plano === 'pro' &&
     perfil?.plano_expira_em &&

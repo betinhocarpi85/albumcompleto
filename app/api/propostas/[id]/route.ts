@@ -19,6 +19,19 @@ export async function PATCH(
 
   const sb = createAdminClient()
 
+  // Sem telefone → não pode aceitar proposta
+  if (status === 'aceita') {
+    const { data: perfil } = await sb
+      .from('profiles')
+      .select('telefone')
+      .eq('id', user.id)
+      .single()
+
+    if (!perfil?.telefone) {
+      return NextResponse.json({ error: 'SEM_TELEFONE' }, { status: 403 })
+    }
+  }
+
   // Busca proposta — qualquer parte pode aceitar/recusar quando tem contra-proposta
   const { data: proposta, error: errBusca } = await sb
     .from('propostas')

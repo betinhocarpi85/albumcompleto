@@ -11,7 +11,7 @@ import {
 } from '@/lib/db'
 import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
 import { albumBrasileirao2026 } from '@/data/album-brasileirao-2026'
-import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
+import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
@@ -264,6 +264,7 @@ export default function PropostasPage() {
   const [recebidas, setRecebidas] = useState<Proposta[]>([])
   const [enviadas, setEnviadas]   = useState<Proposta[]>([])
   const [confirmando, setConfirmando] = useState<{ id: string; acao: 'aceitar' | 'recusar' } | null>(null)
+  const [semTelefone, setSemTelefone] = useState(false)
   const [avalModal, setAvalModal] = useState<AvaliacaoModal | null>(null)
   const [avalSalvando, setAvalSalvando] = useState(false)
   const [loading, setLoading]     = useState(false)
@@ -432,12 +433,23 @@ export default function PropostasPage() {
     // Persiste no banco + dispara push via API
     setLoading(true)
     try {
-      await fetch(`/api/propostas/${id}`, {
+      const resp = await fetch(`/api/propostas/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ status: novoStatus }),
       })
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}))
+        if (j.error === 'SEM_TELEFONE') {
+          // Desfaz o optimistic update
+          const revert = (p: PropostaComPerfil) => p.id === id ? { ...p, status: 'pendente' as const } : p
+          setRecebidas(prev => prev.map(revert))
+          setEnviadas(prev => prev.map(revert))
+          setSemTelefone(true)
+          return
+        }
+      }
       if (acao === 'aceitar') {
         const [phone, bancaProxima] = await Promise.all([
           dbGetPhoneForProposta(id),
@@ -1312,6 +1324,33 @@ export default function PropostasPage() {
                 {loading ? '…' : confirmando.acao === 'aceitar' ? '✓ Aceitar' : 'Recusar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal sem telefone */}
+      {semTelefone && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSemTelefone(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
+            <p className="text-3xl mb-3">📵</p>
+            <p className="font-bold text-slate-800 text-lg mb-2">Telefone necessário</p>
+            <p className="text-sm text-slate-500 mb-5">
+              Para enviar ou aceitar propostas de troca, você precisa cadastrar seu telefone no perfil.
+              Ele só é compartilhado com quem você aceitar trocar.
+            </p>
+            <a
+              href="/perfil"
+              className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              Ir para o Perfil
+            </a>
+            <button
+              onClick={() => setSemTelefone(false)}
+              className="mt-3 text-sm text-slate-400 hover:text-slate-600"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}
