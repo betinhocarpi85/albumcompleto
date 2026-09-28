@@ -113,7 +113,7 @@ export default function Home() {
         {
           '@type': 'Question',
           name: 'O Completando tem figurinhas da Copa do Mundo 2026?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Sim! O Completando já tem suporte ao álbum oficial da Copa do Mundo FIFA 2026, além do Brasileirão Masculino e Feminino 2026.' },
+          acceptedAnswer: { '@type': 'Answer', text: 'Sim! O Completando já tem suporte ao álbum oficial da Copa do Mundo FIFA 2026, além do álbum do Brasileirão 2026 (Série A, Série B e Feminino) e do Dragon Ball Super.' },
         },
         {
           '@type': 'Question',
@@ -132,6 +132,24 @@ export default function Home() {
   return (
     <div className="animate-fadein">
       <JsonLd data={jsonLd as Record<string, unknown>[]} />
+
+      <Link
+        href="/brasileirao-2026"
+        className="group block bg-green-600 hover:bg-green-500 text-white border-b-2 border-yellow-400 transition-colors"
+      >
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
+          <span className="bg-yellow-400 text-green-900 text-[11px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
+            Novo
+          </span>
+          <p className="font-black text-sm md:text-base leading-snug">
+            ⚽ O álbum do Campeonato Brasileiro 2026 já está disponível!
+            <span className="font-semibold text-green-100"> 512 figurinhas · Série A, Série B e Feminino</span>
+          </p>
+          <span className="bg-slate-900/80 group-hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors">
+            Marcar minhas figurinhas →
+          </span>
+        </div>
+      </Link>
 
       {/* ── HERO ── */}
       <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-green-900 text-white overflow-hidden">
@@ -479,6 +497,7 @@ export default function Home() {
       <footer className="bg-slate-900 text-slate-400 text-center py-8 text-xs space-y-3">
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link href="/copa-2026"   className="hover:text-white transition-colors">🏆 Copa do Mundo 2026</Link>
+          <Link href="/brasileirao-2026" className="hover:text-white transition-colors">⚽ Brasileirão 2026</Link>
           <Link href="/bancas"     className="hover:text-white transition-colors">📍 Pontos de Troca</Link>
           <Link href="/suporte"    className="hover:text-white transition-colors">🛟 Suporte</Link>
           <Link href="/termos"     className="hover:text-white transition-colors">📄 Termos de Uso</Link>
