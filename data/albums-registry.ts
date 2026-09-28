@@ -1,4 +1,4 @@
-export type AlbumId = 'copa-2026' | 'brasileirao-masc-2026' | 'brasileirao-fem-2026' | 'dragon-ball-super-2026'
+export type AlbumId = 'copa-2026' | 'brasileirao-2026' | 'dragon-ball-super-2026'
 
 export interface AlbumMeta {
   id: AlbumId
@@ -29,30 +29,17 @@ export const ALBUMS_REGISTRY: AlbumMeta[] = [
     available: true,
   },
   {
-    id: 'brasileirao-masc-2026',
-    name: 'Brasileirão Masculino 2026',
-    subtitle: 'Panini · Série A 2026',
+    id: 'brasileirao-2026',
+    name: 'Brasileirão 2026',
+    subtitle: 'Panini · Série A, Série B e Feminino',
     emoji: '⚽',
-    totalStickers: 685,
+    totalStickers: 512,
     totalTeams: 20,
     year: 2026,
     gradientFrom: 'from-yellow-500',
     gradientTo: 'to-green-600',
-    description: '685 figurinhas · 20 clubes · Série A',
-    available: false,
-  },
-  {
-    id: 'brasileirao-fem-2026',
-    name: 'Brasileirão Feminino 2026',
-    subtitle: 'Panini · Série A1 2026',
-    emoji: '⚽',
-    totalStickers: 480,
-    totalTeams: 16,
-    year: 2026,
-    gradientFrom: 'from-pink-500',
-    gradientTo: 'to-purple-600',
-    description: '480 figurinhas · 16 clubes · Série A1',
-    available: false,
+    description: '512 figurinhas · 20 clubes da Série A · inclui Feminino',
+    available: true,
   },
   {
     id: 'dragon-ball-super-2026',

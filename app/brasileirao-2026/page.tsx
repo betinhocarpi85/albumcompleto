@@ -8,12 +8,12 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://completando.com.br'
 
 export const metadata: Metadata = {
   title: 'Álbum Figurinhas Brasileirão 2026 — Troque e Complete | Completando',
-  description: 'Tudo sobre o álbum de figurinhas do Brasileirão Série A 2026. Troque suas repetidas, complete os times e jogadores com match automático no Completando.',
+  description: 'Álbum Panini Brasileirão 2026: 512 figurinhas, 20 clubes da Série A, Série B, mascotes e Brasileirão Feminino. Troque suas repetidas com match automático no Completando.',
   keywords: [
     'álbum figurinhas brasileirao 2026',
     'figurinhas brasileirao panini 2026',
     'trocar figurinhas brasileirao',
-    'álbum show de bola 2026',
+    'brasileirão feminino figurinhas 2026',
     'figurinhas série a 2026',
     'completar álbum brasileirao',
     'figurinhas repetidas brasileirao 2026',
@@ -32,21 +32,25 @@ export const metadata: Metadata = {
 }
 
 const TIMES = [
-  'Flamengo', 'Palmeiras', 'Corinthians', 'São Paulo',
-  'Grêmio', 'Internacional', 'Atlético Mineiro', 'Cruzeiro',
-  'Fluminense', 'Botafogo', 'Vasco', 'Santos',
-  'Bahia', 'Fortaleza', 'Athletico Paranaense', 'Bragantino',
-  'Cuiabá', 'Juventude', 'Vitória', 'Criciúma',
+  'Athletico-PR', 'Atlético-MG', 'Bahia', 'Botafogo',
+  'Chapecoense', 'Corinthians', 'Coritiba', 'Cruzeiro',
+  'Flamengo', 'Fluminense', 'Grêmio', 'Internacional',
+  'Mirassol', 'Palmeiras', 'Red Bull Bragantino', 'Remo',
+  'Santos', 'São Paulo', 'Vasco da Gama', 'Vitória',
 ]
 
 const FAQS = [
   {
     q: 'Quando lança o álbum do Brasileirão 2026?',
-    a: 'O álbum de figurinhas do Brasileirão Série A costuma ser lançado entre março e abril, acompanhando o início do campeonato. Fique de olho no Completando para ser notificado assim que estiver disponível.',
+    a: 'O álbum oficial da Panini foi lançado em setembro de 2026 e já está nas bancas, lotéricas, Panini Points e no site da Panini. O álbum capa brochura custa R$ 19,90, o capa dura R$ 69,90 e cada envelope R$ 5,00, com 5 figurinhas e 1 card.',
   },
   {
     q: 'Quantas figurinhas tem o álbum do Brasileirão 2026?',
-    a: 'O álbum do Brasileirão Série A 2026 tem em torno de 440 a 480 figurinhas, cobrindo os 20 times da primeira divisão com jogadores titulares, técnico, escudo e foto do estádio de cada clube.',
+    a: 'São 512 figurinhas: 18 atletas e 1 escudo holográfico para cada um dos 20 clubes da Série A, escudo e foto do time dos 20 clubes da Série B, 20 mascotes, 18 atletas do Brasileirão Feminino e as seções especiais São Eles!, Jogão e Homens-Gol. Além disso, a coleção tem 98 cards colecionáveis, que não são colados no álbum.',
+  },
+  {
+    q: 'O Brasileirão Feminino tem álbum separado?',
+    a: 'Não. Em 2026 a Panini colocou o Brasileirão Feminino dentro do mesmo álbum, em uma seção com 18 atletas (figurinhas 401 a 418).',
   },
   {
     q: 'Como trocar figurinhas repetidas do Brasileirão?',
@@ -54,7 +58,7 @@ const FAQS = [
   },
   {
     q: 'Tem figurinhas brilhantes no álbum do Brasileirão?',
-    a: 'Sim! O álbum do Brasileirão inclui figurinhas brilhantes (foil) dos principais jogadores de cada time — os craques de cada clube têm versão especial com acabamento metalizado, as mais disputadas entre os colecionadores.',
+    a: 'Sim. São 40 figurinhas holográficas (os escudos dos 20 clubes da Série A e dos 20 da Série B) e 20 figurinhas com corte especial, dos mascotes dos clubes da Série A.',
   },
   {
     q: 'Onde comprar figurinhas do Brasileirão 2026?',
@@ -68,7 +72,7 @@ export default function Brasileirao2026Page() {
       '@context': 'https://schema.org',
       '@type': 'Article',
       headline: 'Álbum de Figurinhas Brasileirão Série A 2026 — Guia Completo',
-      description: 'Tudo sobre o álbum de figurinhas do Brasileirão Série A 2026: times, jogadores, como trocar e completar.',
+      description: 'Tudo sobre o álbum de figurinhas Panini do Brasileirão 2026: 512 figurinhas, times, seções especiais, como trocar e completar.',
       url: `${APP_URL}/brasileirao-2026`,
       publisher: {
         '@type': 'Organization',
@@ -105,14 +109,14 @@ export default function Brasileirao2026Page() {
       <section className="bg-gradient-to-br from-green-900 via-slate-900 to-yellow-900 text-white py-14 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-500/30 text-green-300 text-xs font-bold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wide">
-            ⚽🇧🇷 Série A · Panini Oficial 2026
+            ⚽🇧🇷 Panini Oficial · Já nas bancas
           </div>
           <h1 className="text-3xl md:text-5xl font-black mb-4 leading-tight">
             Álbum Figurinhas
             <span className="block text-green-400 mt-1">Brasileirão 2026</span>
           </h1>
           <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
-            20 times · Série A completa
+            512 figurinhas · 20 clubes da Série A · Série B e Brasileirão Feminino
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/cadastro" className="bg-green-500 hover:bg-green-400 text-white font-black px-8 py-4 rounded-xl text-base transition-colors shadow-lg shadow-green-500/25">
@@ -129,10 +133,10 @@ export default function Brasileirao2026Page() {
       <section className="max-w-4xl mx-auto px-4 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { valor: '~440', label: 'Figurinhas no álbum', icon: '🖼️' },
-            { valor: '20', label: 'Times da Série A', icon: '⚽' },
-            { valor: '11+', label: 'Titulares por time', icon: '👕' },
-            { valor: '1', label: 'Técnico por clube', icon: '🧢' },
+            { valor: '512', label: 'Figurinhas no álbum', icon: '🖼️' },
+            { valor: '20', label: 'Clubes da Série A', icon: '⚽' },
+            { valor: '18', label: 'Atletas por clube', icon: '👕' },
+            { valor: '40', label: 'Escudos holográficos', icon: '✨' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
               <div className="text-3xl mb-2">{s.icon}</div>
@@ -150,7 +154,7 @@ export default function Brasileirao2026Page() {
             Os 20 times do álbum Brasileirão 2026
           </h2>
           <p className="text-slate-500 text-center mb-8 text-sm">
-            Todos os clubes da Série A com figurinhas de jogadores, técnico, emblema e estádio
+            Cada clube da Série A tem 18 atletas e 1 escudo holográfico
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {TIMES.map(time => (
@@ -159,9 +163,6 @@ export default function Brasileirao2026Page() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 text-center mt-4">
-            * Lista ilustrativa para a temporada 2026. Sujeita à composição oficial da Série A.
-          </p>
         </div>
       </section>
 
@@ -174,33 +175,33 @@ export default function Brasileirao2026Page() {
           {[
             {
               icon: '👕',
-              titulo: 'Jogadores titulares',
-              desc: 'Os 11 titulares mais utilizados por cada clube ao longo da temporada, com foto e nome oficial.',
-            },
-            {
-              icon: '🧢',
-              titulo: 'Técnico do time',
-              desc: 'Uma figurinha exclusiva do treinador de cada clube, com foto e identificação do cargo.',
+              titulo: 'Série A',
+              desc: '18 atletas e 1 escudo holográfico para cada um dos 20 clubes, figurinhas de 1 a 360.',
             },
             {
               icon: '🛡️',
-              titulo: 'Escudo e emblema',
-              desc: 'Figurinha oficial do escudo de cada time, geralmente em versão foil metalizado para destacar.',
+              titulo: 'Série B',
+              desc: 'Os 20 clubes da Série B, cada um com escudo holográfico e a foto do time formada por 2 figurinhas.',
             },
             {
-              icon: '🏟️',
-              titulo: 'Foto do estádio',
-              desc: 'Uma figurinha panorâmica do estádio principal de cada clube — uma das mais bonitas do álbum.',
+              icon: '👩',
+              titulo: 'Brasileirão Feminino',
+              desc: '18 atletas do Brasileirão Feminino 2026, no mesmo álbum (figurinhas 401 a 418).',
             },
             {
-              icon: '✨',
-              titulo: 'Figurinhas brilhantes',
-              desc: 'Os craques de cada time ganham versão especial foil (brilhante), as mais cobiçadas e valorizadas do álbum.',
+              icon: '🦊',
+              titulo: 'Mascotes',
+              desc: '20 figurinhas com corte especial, com os mascotes dos clubes da Série A.',
             },
             {
-              icon: '📖',
-              titulo: 'Páginas especiais',
-              desc: 'Seções introdutórias do campeonato, troféu do Brasileirão e outras páginas temáticas com figurinhas específicas.',
+              icon: '⭐',
+              titulo: 'São Eles!, Jogão e Homens-Gol',
+              desc: 'Atletas escolhidos pelos colecionadores, partidas marcantes da temporada e ilustrações exclusivas dos goleadores.',
+            },
+            {
+              icon: '🃏',
+              titulo: '98 cards colecionáveis',
+              desc: 'Cada envelope traz 5 figurinhas e 1 card. Os cards são uma coleção à parte e não são colados no álbum.',
             },
           ].map(item => (
             <div key={item.titulo} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex gap-4">

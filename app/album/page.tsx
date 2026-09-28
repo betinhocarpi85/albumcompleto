@@ -3,8 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { albumCopa2026, buildGlobalNumberMap, stickerId, type Album } from '@/data/album-copa-2026'
-import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
-import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { albumBrasileirao2026 } from '@/data/album-brasileirao-2026'
 import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 import { type AlbumId } from '@/lib/store'
 import { dbGetColadas, dbColaSticker, dbDescolaSticker, dbGetActiveAlbums, dbSaveActiveAlbums } from '@/lib/db'
@@ -15,8 +14,7 @@ type ColadasSet = Set<string>
 // Mapa de todos os álbuns disponíveis
 const ALBUM_DATA: Record<string, Album> = {
   'copa-2026':                albumCopa2026,
-  'brasileirao-masc-2026':    albumBrasileiraoMasc2026,
-  'brasileirao-fem-2026':     albumBrasileiraoFem2026,
+  'brasileirao-2026':       albumBrasileirao2026,
   'dragon-ball-super-2026':   albumDragonBallSuper2026,
 }
 
@@ -29,8 +27,7 @@ function buildOfficialSids(album: Album, maxGnum: number): Set<string> {
 
 const OFFICIAL_SIDS: Record<string, Set<string>> = {
   'copa-2026':                buildOfficialSids(albumCopa2026,              980),
-  'brasileirao-masc-2026':    buildOfficialSids(albumBrasileiraoMasc2026,   685),
-  'brasileirao-fem-2026':     buildOfficialSids(albumBrasileiraoFem2026,    480),
+  'brasileirao-2026':       buildOfficialSids(albumBrasileirao2026,      512),
   'dragon-ball-super-2026':   buildOfficialSids(albumDragonBallSuper2026,   192),
 }
 

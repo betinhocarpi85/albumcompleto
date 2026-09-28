@@ -18,13 +18,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminAuth } from '@/lib/admin-auth'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import { albumCopa2026, buildGlobalNumberMap } from '@/data/album-copa-2026'
-import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
-import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { albumBrasileirao2026 } from '@/data/album-brasileirao-2026'
+import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 
 // Mapa de album_id → Set de sids OFICIAIS (gnums ≤ totalStickers do registry)
 // Exclui categorias extra como XGOLD/XSILVER/XBRONZE/XPURPLE/COCA-COLA
 function buildValidSidsMap(): Map<string, Set<string>> {
-  const albums = [albumCopa2026, albumBrasileiraoMasc2026, albumBrasileiraoFem2026]
+  const albums = [albumCopa2026, albumBrasileirao2026, albumDragonBallSuper2026]
   const result = new Map<string, Set<string>>()
   for (const album of albums) {
     const gnumMap  = buildGlobalNumberMap(album)

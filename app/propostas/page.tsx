@@ -10,8 +10,8 @@ import {
   type PropostaComPerfil, type TipoProposta,
 } from '@/lib/db'
 import { albumCopa2026, buildGlobalNumberMap, type Album } from '@/data/album-copa-2026'
-import { albumBrasileiraoMasc2026 } from '@/data/album-brasileirao-masc-2025'
-import { albumBrasileiraoFem2026 } from '@/data/album-brasileirao-fem-2025'
+import { albumBrasileirao2026 } from '@/data/album-brasileirao-2026'
+import { albumDragonBallSuper2026 } from '@/data/album-dragon-ball-super-2026'
 import { ALBUMS_REGISTRY } from '@/data/albums-registry'
 import BannerMenorDeIdade from '@/components/BannerMenorDeIdade'
 
@@ -31,8 +31,8 @@ function buildGnumToLocal(album: Album) {
 
 const GNUM_TO_LOCAL: Record<string, Map<number, { code: string; localNum: number }>> = {
   'copa-2026':              buildGnumToLocal(albumCopa2026),
-  'brasileirao-masc-2026': buildGnumToLocal(albumBrasileiraoMasc2026),
-  'brasileirao-fem-2026':  buildGnumToLocal(albumBrasileiraoFem2026),
+  'brasileirao-2026':    buildGnumToLocal(albumBrasileirao2026),
+  'dragon-ball-super-2026': buildGnumToLocal(albumDragonBallSuper2026),
 }
 
 type Aba    = 'recebidas' | 'enviadas'
