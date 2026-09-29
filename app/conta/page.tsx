@@ -9,12 +9,14 @@ import {
 } from '@/lib/store'
 import { signOut, getSession, dbGetProfile, dbSaveProfile, dbGetColadas, dbGetActiveAlbums, dbSaveActiveAlbums, getUserId, dbUpdatePassword, dbDeleteAccount, dbGetPropostasRecebidas, dbGetTradeCount, dbGetPlano, dbGetHistorico, type HistoricoItem } from '@/lib/db'
 import UpgradeModal from '@/components/UpgradeModal'
+import TutorialSection from '@/components/TutorialSection'
 
 
-type Section = 'visao-geral' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
+type Section = 'visao-geral' | 'como-usar' | 'albuns' | 'propostas' | 'gamificacao' | 'dados' | 'historico' | 'seguranca'
 
 const MENU_ITEMS: { key: Section | 'suporte'; icon: string; label: string; badge?: number; href?: string }[] = [
   { key: 'visao-geral', icon: '📊', label: 'Visão Geral' },
+  { key: 'como-usar',   icon: '💡', label: 'Como usar' },
   { key: 'albuns',      icon: '📖', label: 'Meus Álbuns' },
   { key: 'propostas',   icon: '🔁', label: 'Propostas',  href: '/propostas' },
   { key: 'gamificacao', icon: '🏆', label: 'Gameficação' },
@@ -72,7 +74,7 @@ function ContaPageInner() {
 
   useEffect(() => {
     const s = searchParams.get('s') as Section | null
-    const valid: Section[] = ['visao-geral','albuns','propostas','gamificacao','dados','historico','seguranca']
+    const valid: Section[] = ['visao-geral','como-usar','albuns','propostas','gamificacao','dados','historico','seguranca']
     if (s && valid.includes(s)) queueMicrotask(() => setSection(s))
   }, [searchParams])
 
@@ -337,6 +339,16 @@ function ContaPageInner() {
 
         {/* ── CONTEÚDO ── */}
         <div className="flex-1 min-w-0">
+
+          {section === 'como-usar' && (
+            <div className="animate-fadein space-y-4">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">💡 Como usar o Completando</h2>
+                <p className="text-sm text-slate-500">Toque em um tema para ver o passo a passo.</p>
+              </div>
+              <TutorialSection />
+            </div>
+          )}
 
           {/* VISÃO GERAL */}
           {section === 'visao-geral' && (
