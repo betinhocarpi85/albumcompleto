@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALBUMS_REGISTRY, type AlbumId } from '@/data/albums-registry'
@@ -39,6 +39,18 @@ function ContaPageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [section, setSection]   = useState<Section>('visao-geral')
+  const conteudoRef = useRef<HTMLDivElement>(null)
+
+  function abrirSecao(s: Section) {
+    setSection(s)
+    requestAnimationFrame(() => {
+      const el = conteudoRef.current
+      if (!el) return
+      const top = el.getBoundingClientRect().top
+      // No celular o conteúdo fica abaixo do menu; no desktop já está visível ao lado
+      if (top > window.innerHeight * 0.6 || top < 0) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
   const [historico, setHistorico] = useState<HistoricoItem[]>([])
   const [propostasPendentes, setPropostasPendentes] = useState(0)
   const [tradeCount, setTradeCount] = useState(0)
@@ -313,7 +325,7 @@ function ContaPageInner() {
             {MENU.map((item, i) => (
               <button
                 key={item.key}
-                onClick={() => { if (item.href) { router.push(item.href); return; } setSection(item.key as Section) }}
+                onClick={() => { if (item.href) { router.push(item.href); return; } abrirSecao(item.key as Section) }}
                 className={[
                   'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors text-left',
                   i < MENU.length - 1 ? 'border-b border-slate-50' : '',
@@ -338,7 +350,7 @@ function ContaPageInner() {
         </aside>
 
         {/* ── CONTEÚDO ── */}
-        <div className="flex-1 min-w-0">
+        <div ref={conteudoRef} className="flex-1 min-w-0 scroll-mt-4 md:scroll-mt-20">
 
           {section === 'como-usar' && (
             <div className="animate-fadein space-y-4">
